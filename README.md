@@ -6,7 +6,7 @@ A library for reading infrared signals from Rust.
 
 ## Tested with
 
-Tested with a st32f401re board, a Vishay TSOP382 and "Special for MP3" remote. The example code is available  [Here](examples/polling)
+Tested with a st32f401re board, a Vishay TSOP382 and a "Special for MP3" remote. The example code is available  [Here](examples/polling)
 
 
 ![Boards](http://jott.se/wordpress/wp-content/uploads/2019/06/boards_small.jpg)
