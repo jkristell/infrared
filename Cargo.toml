@@ -3,9 +3,11 @@ name = "infrared"
 version = "0.1.0"
 authors = ["Johan Kristell <johan@jott.se>"]
 edition = "2018"
-exclude = [
-    "assets/*",
-]
-
+description = "Infrared remote library"
+repository = "https://github.com/jkristell/infrared"
+readme = "README.md"
+keywords = ["infrared", "remote", "control", "nec"]
+categories = ["no-std", "embedded"]
+license = "MIT OR Apache-2.0"
 
 [dependencies]
