@@ -110,24 +110,19 @@ impl Receiver<NecCmd, Error> for NecReceiver {
             }
 
             State::Data => {
-                let mut state = State::Data;
-
-                if self.tolerances.is_zero(ts_diff) {
-                    // Empty
-                } else if self.tolerances.is_one(ts_diff) {
-                    self.bitbuf |= 1 << self.bitbuf_idx;
+                if let Some(one) = self.tolerances.is_value(ts_diff) {
+                    if one {
+                        self.bitbuf |= 1 << self.bitbuf_idx;
+                    }
+                    self.bitbuf_idx += 1;
+                    if self.bitbuf_idx == 32 {
+                        State::Done(NecCmd::Command(Button {frame: self.bitbuf }))
+                    } else {
+                        State::Data
+                    }
                 } else {
-                    state = State::Error(Error::Data);
+                    State::Error(Error::Data)
                 }
-
-                self.bitbuf_idx += 1;
-
-                if self.bitbuf_idx == 32 {
-                    // We have a Command!
-                    let cmd = NecCmd::Command(Button {frame: self.bitbuf });
-                    state = State::Done(cmd);
-                }
-                state
             }
             State::Done(_) => State::Disabled,
             State::Error(_) => State::Disabled,
@@ -193,6 +188,16 @@ impl Tolerances {
 
     pub fn is_repeat(&self, tsd: u32) -> bool {
         self.repeat.contains(&tsd)
+    }
+
+    pub fn is_value(&self, tsd: u32) -> Option<bool> {
+        if self.is_zero(tsd) {
+            return Some(false);
+        }
+        if self.is_one(tsd) {
+            return Some(true);
+        }
+        None
     }
 
     pub fn is_zero(&self, tsd: u32) -> bool {
