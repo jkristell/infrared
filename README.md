@@ -1,5 +1,5 @@
 # Infrared
-A library for decoding infrared signals from receivers for Embedded Rust.
+A library for reading infrared signals from Rust.
 
 ## What works 
  - Receiving and decoding signals from a remote control that use the NEC protocol
