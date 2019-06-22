@@ -99,7 +99,6 @@ impl Receiver<NecCmd, Error> for NecReceiver {
             }
 
             State::Detect => {
-                // We are waiting for the sync frame
                 if self.tolerances.is_sync(ts_diff) {
                     State::Data
                 } else if self.tolerances.is_repeat(ts_diff) {
