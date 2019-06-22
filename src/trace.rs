@@ -24,9 +24,8 @@ impl Receiver<TraceResult, ()> for TraceReceiver {
         };
 
         self.data[self.ts_idx] = t;
-        self.ts_prev = ts;
-
         self.ts_idx += 1;
+        self.ts_prev = ts;
 
         if self.ts_idx == BUF_LEN {
             Ok(Some(TraceResult { buf: self.data }))
