@@ -1,5 +1,5 @@
 [package]
-name = "rir"
+name = "infrared"
 version = "0.1.0"
 authors = ["Johan Kristell <johan@jott.se>"]
 edition = "2018"
