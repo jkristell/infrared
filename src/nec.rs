@@ -71,10 +71,10 @@ pub struct NecReceiver {
 
 impl NecReceiver {
     pub const fn new(timer_freq: u32) -> Self {
-        Self::new_from_tolerance(Tolerances::from_freq(timer_freq))
+        Self::new_with_tolerance(Tolerances::from_freq(timer_freq))
     }
 
-    pub const fn new_from_tolerance(tolerances: Tolerances) -> Self {
+    pub const fn new_with_tolerance(tolerances: Tolerances) -> Self {
         Self {
             state: State::Idle,
             tolerances,
