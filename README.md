@@ -23,6 +23,7 @@ Tested with a st32f401re board, a Vishay TSOP382 and "Special for MP3" remote. T
 ## References
 
  * https://www.sbprojects.net/knowledge/ir/nec.php
+ * https://www.vishay.com/docs/82491/tsop382.pdf
     
 ![Remote](http://jott.se/wordpress/wp-content/uploads/2019/06/remote_small.jpg)
     
