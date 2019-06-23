@@ -162,12 +162,12 @@ pub struct Tolerances {
 
 impl Tolerances {
     pub const fn from_freq(timer_freq: u32) -> Self {
-        let period_ms: u32 = (1 * 1000) / (timer_freq / 1000);
-        Tolerances::from_period_ms(period_ms)
+        let period_us: u32 = (1 * 1000) / (timer_freq / 1000);
+        Tolerances::from_period_us(period_us)
     }
 
-    pub const fn from_period_ms(period: u32) -> Self {
-        // Values in ms
+    pub const fn from_period_us(period: u32) -> Self {
+        // Values in us
         let sync_units = 13500 / period;
         let repeat_units = 11250 / period;
         let zero_units = 1250 / period;
