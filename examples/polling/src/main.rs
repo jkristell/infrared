@@ -30,33 +30,6 @@ static mut IRPIN: Option<PB8<Input<Floating>>> = None;
 static mut NEC: NecReceiver = NecReceiver::new(FREQ);
 static mut CQ: Option<Queue<NecResult, U8>> = None;
 
-// Mappings for "Special for MP3" Remote
-fn command_to_str(cmd: u8) -> Option<&'static str> {
-    match cmd {
-        69 => Some("Power"),
-        70 => Some("Mode"),
-        71 => Some("Mute"),
-        68 => Some("Play/Paus"),
-        64 => Some("Prev"),
-        67 => Some("Next"),
-        7 => Some("Eq"),
-        21 => Some("Minus"),
-        9 => Some("Plus"),
-        22 => Some("0"),
-        25 => Some("Shuffle"),
-        13 => Some("U/SD"),
-        12 => Some("1"),
-        24 => Some("2"),
-        94 => Some("3"),
-        8 => Some("4"),
-        28 => Some("5"),
-        90 => Some("6"),
-        66 => Some("7"),
-        82 => Some("8"),
-        74 => Some("9"),
-        _ => None,
-    }
-}
 
 #[entry]
 fn main() -> ! {
@@ -86,16 +59,13 @@ fn main() -> ! {
     let mut consumer = unsafe { CQ.as_mut().unwrap().split().1 };
 
     loop {
-
         let res = consumer.dequeue();
+
+        // The hprints are done in interrupt free context. So they make us loose button presses
 
         if let Some(ReceiverState::Done(cmd)) = res {
             match cmd {
                 NecCmd::Command(button) => {
-                    if !button.verify() {
-                        hprintln!("Failed to verify cmd {}", button.command()).unwrap();
-                    }
-
                     if let Some(name) = command_to_str(button.command()) {
                         hprintln!("cmd: {}", name).unwrap();
                     } else {
@@ -145,3 +115,33 @@ fn TIM2() {
     *PINVAL = new_pinval;
     *COUNT += 1;
 }
+
+
+// Mappings for "Special for MP3" Remote
+fn command_to_str(cmd: u8) -> Option<&'static str> {
+    match cmd {
+        69 => Some("Power"),
+        70 => Some("Mode"),
+        71 => Some("Mute"),
+        68 => Some("Play/Paus"),
+        64 => Some("Prev"),
+        67 => Some("Next"),
+        7 => Some("Eq"),
+        21 => Some("Minus"),
+        9 => Some("Plus"),
+        22 => Some("0"),
+        25 => Some("Shuffle"),
+        13 => Some("U/SD"),
+        12 => Some("1"),
+        24 => Some("2"),
+        94 => Some("3"),
+        8 => Some("4"),
+        28 => Some("5"),
+        90 => Some("6"),
+        66 => Some("7"),
+        82 => Some("8"),
+        74 => Some("9"),
+        _ => None,
+    }
+}
+

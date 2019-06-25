@@ -7,20 +7,20 @@ pub type NecResult = State<NecCmd, Error>;
 /// Error when receiving
 pub enum Error {
     /// Couldn't determine the type of message
-    CommandType,
+    CommandType(u32),
     /// Receiving data but failed to read bit
     Data,
 }
 
-// NEC
+// NEC Header
 //
 // _/'''''''''\_____ DATA
 //  |--- 9 ---| 4.5 |
 
-// Samsung TV
+// Samsung TV Header
 //
 //_/'''''\_____
-// |  5  |  5  |
+// | 4.5 | 4.5 |
 
 pub struct Timing {
     header_high: u32,
@@ -39,11 +39,11 @@ const GENERIC_TIMING: Timing = Timing {
 };
 
 const SAMSUNG_TIMING: Timing = Timing {
-    header_high: 5000,
-    header_low: 5000,
+    header_high: 4500,
+    header_low: 4500,
     repeat_low: 2250,
     one: 2250,
-    zero: 1250,
+    zero: 1150,
 };
 
 
@@ -143,7 +143,7 @@ impl Receiver<NecCmd, Error> for NecReceiver {
                 } else if self.samsung.is_sync_high(ts_diff) {
                     InternalState::HeaderLow
                 } else {
-                    InternalState::Error(Error::CommandType)
+                    InternalState::Error(Error::CommandType(ts_diff))
                 }
             }
 
@@ -157,11 +157,11 @@ impl Receiver<NecCmd, Error> for NecReceiver {
                 } else if self.generic.is_repeat(ts_diff) {
                     InternalState::Done(NecCmd::Repeat)
                 } else {
-                    InternalState::Error(Error::CommandType)
+                    InternalState::Error(Error::CommandType(ts_diff))
                 }
             }
 
-            (InternalState::Data(saved), false) => InternalState::Data(ts_diff),
+            (InternalState::Data(_saved), false) => InternalState::Data(ts_diff),
             (InternalState::Data(saved), true) => {
 
                 let ts_diff = ts_diff + saved;
