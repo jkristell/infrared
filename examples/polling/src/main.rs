@@ -16,7 +16,7 @@ use nucleo_f401re::{
 use panic_semihosting as _;
 use infrared::{
     nec::{NecResult, NecCmd, NecReceiver},
-    Receiver,
+    Receiver, State as ReceiverState,
 };
 
 use heapless::consts::*;
@@ -86,9 +86,12 @@ fn main() -> ! {
     let mut consumer = unsafe { CQ.as_mut().unwrap().split().1 };
 
     loop {
-        if let Some(result) = consumer.dequeue() {
-            match result {
-                Ok(Some(NecCmd::Command(button))) => {
+
+        let res = consumer.dequeue();
+
+        if let Some(ReceiverState::Done(cmd)) = res {
+            match cmd {
+                NecCmd::Command(button) => {
                     if !button.verify() {
                         hprintln!("Failed to verify cmd {}", button.command()).unwrap();
                     }
@@ -99,10 +102,11 @@ fn main() -> ! {
                         hprintln!("unknown: {}", button.command()).unwrap();
                     }
                 }
-                Ok(Some(NecCmd::Repeat)) => hprintln!("repeat").unwrap(),
-                Ok(None) => (),
-                Err(err) => hprintln!("Err: {:?}", err).unwrap(),
+                NecCmd::Repeat => hprintln!("repeat").unwrap(),
             }
+        }
+        else if let Some(ReceiverState::Err(e)) = res {
+            hprintln!("Err: {:?}", e).unwrap();
         }
     }
 }
@@ -118,17 +122,22 @@ fn TIM2() {
     // Read the value of the pin (active low)
     let new_pinval = unsafe { IRPIN.as_ref().unwrap().is_low() };
 
-    // Only look for positive edges
-    let pos_edge = *PINVAL == false && new_pinval == true;
 
-    if pos_edge {
+    if *PINVAL != new_pinval {
+        let rising = *PINVAL == false && new_pinval == true;
+
         let nec = unsafe { &mut NEC };
-        let result = nec.event(*COUNT);
-
+        let state = nec.event(rising, *COUNT);
         let mut producer = unsafe { CQ.as_mut().unwrap().split().0 };
-        producer.enqueue(result).ok().unwrap();
 
-        if result.is_err() {
+        let is_err = state.is_err();
+        let enqueue =  state.is_done() || state.is_err();
+
+        if enqueue {
+            producer.enqueue(state).ok().unwrap();
+        }
+
+        if is_err {
             nec.reset();
         }
     }

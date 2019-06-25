@@ -1,7 +1,7 @@
-use crate::Receiver;
+use crate::{Receiver, State};
 use core::ops::Range;
 
-pub type NecResult = Result<Option<NecCmd>, Error>;
+pub type NecResult = State<NecCmd, Error>;
 
 #[derive(Debug, Clone, Copy)]
 /// Error when receiving
@@ -12,14 +12,51 @@ pub enum Error {
     Data,
 }
 
+// NEC
+//
+// _/'''''''''\_____ DATA
+//  |--- 9 ---| 4.5 |
+
+// Samsung TV
+//
+//_/'''''\_____
+// |  5  |  5  |
+
+pub struct Timing {
+    header_high: u32,
+    header_low: u32,
+    repeat_low: u32,
+    one: u32,
+    zero: u32,
+}
+
+const GENERIC_TIMING: Timing = Timing {
+    header_high: 9000,
+    header_low: 4500,
+    repeat_low: 2250,
+    one: 2250,
+    zero: 1250,
+};
+
+const SAMSUNG_TIMING: Timing = Timing {
+    header_high: 5000,
+    header_low: 5000,
+    repeat_low: 2250,
+    one: 2250,
+    zero: 1250,
+};
+
+
 /// Receiver state
-enum State {
+#[derive(Clone)]
+enum InternalState {
     /// Waiting for first edge
     Idle,
     /// Determine the type of message
-    Detect,
+    HeaderHigh,
+    HeaderLow,
     /// Capturing
-    Data,
+    Data(u32),
     /// Done
     Done(NecCmd),
     /// Error
@@ -62,22 +99,24 @@ impl Button {
 
 
 pub struct NecReceiver {
-    state: State,
-    pub tolerances: Tolerances,
+    state: InternalState,
+    pub generic: Tolerances,
+    pub samsung: Tolerances,
     bitbuf: u32,
     bitbuf_idx: u32,
     prev_timestamp: u32,
 }
 
 impl NecReceiver {
-    pub const fn new(timer_freq: u32) -> Self {
-        Self::new_with_tolerance(Tolerances::from_freq(timer_freq))
-    }
+    pub const fn new(freq: u32) -> Self {
 
-    pub const fn new_with_tolerance(tolerances: Tolerances) -> Self {
+        let generic = Tolerances::from_timing(&GENERIC_TIMING, freq);
+        let samsung = Tolerances::from_timing(&SAMSUNG_TIMING, freq);
+
         Self {
-            state: State::Idle,
-            tolerances,
+            state: InternalState::Idle,
+            generic,
+            samsung,
             prev_timestamp: 0,
             bitbuf_idx: 0,
             bitbuf: 0,
@@ -86,103 +125,141 @@ impl NecReceiver {
 }
 
 impl Receiver<NecCmd, Error> for NecReceiver {
-    fn event(&mut self, timestamp: u32) -> NecResult {
+    fn event(&mut self, rising: bool, timestamp: u32) -> State<NecCmd, Error> {
 
         // Distance between positive edges
         let ts_diff = timestamp.wrapping_sub(self.prev_timestamp);
         self.prev_timestamp = timestamp;
 
-        self.state = match self.state {
-            State::Idle => {
-                // Got our first event.
-                State::Detect
-            }
+        self.state = match (self.state.clone(), rising) {
+            (InternalState::Idle, true) => InternalState::HeaderHigh,
+            (InternalState::Idle, false) => InternalState::Idle,
 
-            State::Detect => {
-                if self.tolerances.is_sync(ts_diff) {
-                    State::Data
-                } else if self.tolerances.is_repeat(ts_diff) {
-                    State::Done(NecCmd::Repeat)
+            (InternalState::HeaderHigh, true) => panic!("invalid"),
+            (InternalState::HeaderHigh, false) => {
+
+                if self.generic.is_sync_high(ts_diff) {
+                    InternalState::HeaderLow
+                } else if self.samsung.is_sync_high(ts_diff) {
+                    InternalState::HeaderLow
                 } else {
-                    State::Error(Error::CommandType)
+                    InternalState::Error(Error::CommandType)
                 }
             }
 
-            State::Data => {
-                if let Some(one) = self.tolerances.is_value(ts_diff) {
+            (InternalState::HeaderLow, false) => panic!("invalid"),
+            (InternalState::HeaderLow, true) => {
+
+                if self.generic.is_sync_low(ts_diff) {
+                    InternalState::Data(0)
+                } else if self.samsung.is_sync_high(ts_diff) {
+                    InternalState::Data(0)
+                } else if self.generic.is_repeat(ts_diff) {
+                    InternalState::Done(NecCmd::Repeat)
+                } else {
+                    InternalState::Error(Error::CommandType)
+                }
+            }
+
+            (InternalState::Data(saved), false) => InternalState::Data(ts_diff),
+            (InternalState::Data(saved), true) => {
+
+                let ts_diff = ts_diff + saved;
+
+                if let Some(one) = self.generic.is_value(ts_diff) {
                     if one {
                         self.bitbuf |= 1 << self.bitbuf_idx;
                     }
                     self.bitbuf_idx += 1;
                     if self.bitbuf_idx == 32 {
-                        State::Done(NecCmd::Command(Button {frame: self.bitbuf }))
+                        InternalState::Done(NecCmd::Command(Button {frame: self.bitbuf }))
                     } else {
-                        State::Data
+                        InternalState::Data(0)
                     }
                 } else {
-                    State::Error(Error::Data)
+                    InternalState::Error(Error::Data)
                 }
             }
-            State::Done(_) => State::Disabled,
-            State::Error(_) => State::Disabled,
-            State::Disabled => State::Disabled,
+            (InternalState::Done(_), _) => InternalState::Disabled,
+            (InternalState::Error(_), _) => InternalState::Disabled,
+            (InternalState::Disabled, _) => InternalState::Disabled,
         };
 
 
         match self.state {
-            State::Done(cmd) => {
+            InternalState::Idle => State::Idle,
+            InternalState::Done(cmd) => {
                 self.reset();
-                Ok(Some(cmd))
+                State::Done(cmd)
             },
-            State::Error(e) => Err(e),
-            _ => Ok(None),
+            InternalState::Error(e) => State::Err(e),
+            _ => State::InProgress,
         }
     }
 
     fn reset(&mut self) {
-        self.state = State::Idle;
+        self.state = InternalState::Idle;
         self.prev_timestamp = 0;
         self.bitbuf_idx = 0;
         self.bitbuf = 0;
     }
 
     fn disable(&mut self) {
-        self.state = State::Disabled;
+        self.state = InternalState::Disabled;
     }
 }
 
 
 #[derive(Debug)]
 pub struct Tolerances {
-    pub sync: Range<u32>,
+    pub sync_high: Range<u32>,
+    pub sync_low: Range<u32>,
     pub repeat: Range<u32>,
     pub zero: Range<u32>,
     pub one: Range<u32>,
 }
 
 impl Tolerances {
-    pub const fn from_freq(timer_freq: u32) -> Self {
-        let period_us: u32 = (1 * 1000) / (timer_freq / 1000);
-        Tolerances::from_period_us(period_us)
+
+    pub const fn from_timing(t: &Timing, freq: u32) -> Self {
+        let per: u32 = (1 * 1000) / (freq / 1000);
+        Tolerances {
+            sync_high: unit_range(t.header_high / per, 5),
+            sync_low: unit_range(t.header_low / per, 5),
+            repeat: unit_range(t.repeat_low / per, 5),
+            zero: unit_range(t.zero / per, 15),
+            one: unit_range(t.one / per, 15),
+        }
     }
 
-    pub const fn from_period_us(period: u32) -> Self {
+    pub const fn from_freq(sync_high: u32, sync_low: u32, timer_freq: u32) -> Self {
+        let period_us: u32 = (1 * 1000) / (timer_freq / 1000);
+        Tolerances::from_period_us(sync_high, sync_low, period_us)
+    }
+
+    pub const fn from_period_us(sync_high_us: u32, sync_low_us: u32, period: u32) -> Self {
         // Values in us
-        let sync_units = 13500 / period;
-        let repeat_units = 11250 / period;
+        let sync_high_units = sync_high_us / period;
+        let sync_low_units = sync_low_us / period;
+        let repeat_units = 2250 / period;
         let zero_units = 1250 / period;
         let one_units = 2250 / period;
 
         Tolerances {
-            sync: unit_range(sync_units, 5),
+            sync_high: unit_range(sync_high_units, 5),
+            sync_low: unit_range(sync_low_units, 5),
             repeat: unit_range(repeat_units, 5),
             zero: unit_range(zero_units, 15),
             one: unit_range(one_units, 15),
         }
     }
 
-    pub fn is_sync(&self, tsd: u32) -> bool {
-        self.sync.contains(&tsd)
+    pub fn is_sync_high(&self, units: u32) -> bool {
+        self.sync_high.contains(&units)
+    }
+
+    pub fn is_sync_low(&self, units: u32) -> bool {
+        self.sync_low.contains(&units)
     }
 
     pub fn is_repeat(&self, tsd: u32) -> bool {
