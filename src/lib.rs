@@ -11,6 +11,18 @@ pub enum State<T, E> {
     Err(E)
 }
 
+
+/// Receiver trait
+pub trait Receiver<T, E> {
+    /// Register new event
+    fn event(&mut self, rising: bool, timestamp: u32) -> State<T, E>;
+    /// Reset receiver
+    fn reset(&mut self);
+    /// Disable receiver
+    fn disable(&mut self);
+}
+
+
 impl<T, E> State<T, E> {
     pub fn is_err(&self) -> bool {
         match *self {
@@ -24,15 +36,5 @@ impl<T, E> State<T, E> {
             _ => false,
         }
     }
-}
-
-/// Receiver trait
-pub trait Receiver<T, E> {
-    /// Register new event
-    fn event(&mut self, rising: bool, timestamp: u32) -> State<T, E>;
-    /// Reset receiver
-    fn reset(&mut self);
-    /// Disable receiver
-    fn disable(&mut self);
 }
 
