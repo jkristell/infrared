@@ -7,7 +7,6 @@ use panic_semihosting as _;
 
 use cortex_m_rt::entry;
 use cortex_m_semihosting::hprintln;
-use cortex_m::iprintln;
 use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Floating, Input},
     pac,
@@ -21,7 +20,7 @@ use heapless::spsc::Queue;
 
 use infrared::{
     nec::{NecCmd, NecReceiver, NecResult},
-    Receiver,
+    Receiver, State as ReceiverState,
 };
 
 const FREQ: u32 = 20_000;
@@ -62,29 +61,29 @@ fn main() -> ! {
     let mut consumer = unsafe { CQ.as_mut().unwrap().split().1 };
     let stim = &mut core.ITM.stim[0];
 
-    iprintln!(stim, "Testar");
-
     loop {
-        if let Some(result) = consumer.dequeue() {
-            match result {
-                Ok(Some(NecCmd::Command(button))) => {
-                    if !button.verify() {
-                        hprintln!("Failed to verify cmd {}", button.command()).unwrap();
-                    }
+        let res = consumer.dequeue();
 
+        // The hprints are done in interrupt free context. So they make us loose button presses
+
+        if let Some(ReceiverState::Done(cmd)) = res {
+            match cmd {
+                NecCmd::Command(button) => {
                     if let Some(name) = command_to_str(button.command()) {
                         hprintln!("cmd: {}", name).unwrap();
                     } else {
                         hprintln!("unknown: {}", button.command()).unwrap();
                     }
                 }
-                Ok(Some(NecCmd::Repeat)) => hprintln!("repeat").unwrap(),
-                Ok(None) => (),
-                Err(err) => hprintln!("Err: {:?}", err).unwrap(),
+                NecCmd::Repeat => hprintln!("repeat").unwrap(),
             }
+        }
+        else if let Some(ReceiverState::Err(e)) = res {
+            hprintln!("Err: {:?}", e).unwrap();
         }
     }
 }
+
 
 #[interrupt]
 fn TIM2() {
@@ -98,17 +97,21 @@ fn TIM2() {
     // Read the value of the pin (active low)
     let new_pinval = unsafe { IRPIN.as_ref().unwrap().is_low() };
 
-    // Only look for positive edges
-    let pos_edge = *PINVAL == false && new_pinval == true;
+    if *PINVAL != new_pinval {
+        let rising = *PINVAL == false && new_pinval == true;
 
-    if pos_edge {
         let nec = unsafe { &mut NEC };
-        let result = nec.event(*COUNT);
-
+        let state = nec.event(rising, *COUNT);
         let mut producer = unsafe { CQ.as_mut().unwrap().split().0 };
-        producer.enqueue(result).ok().unwrap();
 
-        if result.is_err() {
+        let is_err = state.is_err();
+        let enqueue =  state.is_done() || state.is_err();
+
+        if enqueue {
+            producer.enqueue(state).ok().unwrap();
+        }
+
+        if is_err {
             nec.reset();
         }
     }
