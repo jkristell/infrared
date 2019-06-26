@@ -89,14 +89,12 @@ fn TIM2() {
     unsafe { (*stm32::TIM2::ptr()).sr.modify(|_, w| w.uif().clear_bit()); }
 
     // Read the value of the pin (active low)
-    let new_pinval = unsafe { IRPIN.as_ref().unwrap().is_low() };
+    let pinval = unsafe { IRPIN.as_ref().unwrap().is_low() };
 
-
-    if *PINVAL != new_pinval {
-        let rising = *PINVAL == false && new_pinval == true;
+    if *PINVAL != pinval {
 
         let nec = unsafe { NEC.as_mut().unwrap() };
-        let state = nec.event(rising, *COUNT);
+        let state = nec.event(pinval, *COUNT);
         let mut producer = unsafe { CQ.as_mut().unwrap().split().0 };
 
         let is_err = state.is_err();
@@ -111,7 +109,7 @@ fn TIM2() {
         }
     }
 
-    *PINVAL = new_pinval;
+    *PINVAL = pinval;
     *COUNT += 1;
 }
 
