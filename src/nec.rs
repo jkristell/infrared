@@ -1,5 +1,6 @@
 use crate::{Receiver, State};
 use core::ops::Range;
+use core::convert::From;
 
 // NEC Header
 //
@@ -19,6 +20,61 @@ pub struct Timing {
     zero: u32,
 }
 
+#[derive(Clone)]
+/// The Command types
+pub enum Command<T>
+where
+    T: Clone + From<u32>
+{
+    /// A Repeat
+    Repeat,
+    /// A Command With address and command
+    Payload(T),
+}
+
+
+#[derive(Debug, Clone, Copy)]
+/// Error when receiving
+pub enum Error {
+    /// Couldn't determine the type of message
+    CommandType(u32),
+    /// Receiving data but failed to read bit
+    Data,
+}
+
+//TODO: Fix
+pub type NecResult<T> = State<Command<T>, Error>;
+
+pub struct NecReceiver<T: Clone + From<u32>> {
+    // State
+    state: InternalState<T>,
+    bitbuf: u32,
+    bitbuf_idx: u32,
+    prev_timestamp: u32,
+    // Timing and tolerances
+    generic: Tolerances,
+    samsung: Tolerances,
+}
+
+#[derive(Clone)]
+/// Receiver state
+enum InternalState<T: Clone + From<u32>> {
+    /// Waiting for first edge
+    Idle,
+    /// Determining the type of message
+    HeaderHigh,
+    HeaderLow,
+    /// Receiving data
+    Receiving(u32),
+    /// Done receiving
+    Done(Command<T>),
+    /// In error state
+    Error(Error),
+    /// Disabled
+    Disabled,
+}
+
+
 const GENERIC_TIMING: Timing = Timing {
     header_high: 9000,
     header_low: 4500,
@@ -35,84 +91,14 @@ const SAMSUNG_TIMING: Timing = Timing {
     zero: 1150,
 };
 
-#[derive(Clone, Copy)]
-/// The Command types
-pub enum NecCmd {
-    Repeat,
-    Command(Button),
-}
 
-#[derive(Clone, Copy)]
-pub struct Button {
-    pub frame: u32,
-}
 
-#[derive(Debug, Clone, Copy)]
-/// Error when receiving
-pub enum Error {
-    /// Couldn't determine the type of message
-    CommandType(u32),
-    /// Receiving data but failed to read bit
-    Data,
-}
 
-pub type NecResult = State<NecCmd, Error>;
-
-pub struct NecReceiver {
-    // State
-    state: InternalState,
-    bitbuf: u32,
-    bitbuf_idx: u32,
-    prev_timestamp: u32,
-    // Timing
-    generic: Tolerances,
-    samsung: Tolerances,
-}
-
-/// Receiver state
-#[derive(Clone, Copy)]
-enum InternalState {
-    /// Waiting for first edge
-    Idle,
-    /// Determining the type of message
-    HeaderHigh,
-    HeaderLow,
-    /// Receiving data
-    Receiving(u32),
-    /// Done receiving
-    Done(NecCmd),
-    /// In error state
-    Error(Error),
-    /// Disabled
-    Disabled,
-}
-
-impl Button {
-    pub fn verify(&self) -> bool {
-        let frame = self.frame;
-        let addr0 = (frame & 0xFF) as u8;
-        let addr1 = ((frame >> 8) & 0xFF) as u8;
-        let cmd0 = ((frame >> 16) & 0xFF) as u8;
-        let cmd1 = ((frame >> 24) & 0xFF) as u8;
-
-        addr0 ^ addr1 == 0xFF && cmd0 ^ cmd1 == 0xFF
-    }
-
-    pub fn address(&self) -> u8 {
-        (self.frame & 0xFF) as u8
-    }
-
-    pub fn address16(&self) -> u16 {
-        (self.frame & 0xFFFF) as u16
-    }
-
-    pub fn command(&self) -> u8 {
-        (((self.frame >> 16) & 0xFF) as u8)
-    }
-}
-
-impl NecReceiver {
-    pub const fn new(freq: u32) -> Self {
+impl<T> NecReceiver<T>
+where
+    T: Clone + From<u32>,
+{
+    pub fn new(freq: u32) -> Self {
         let generic = Tolerances::from_timing(&GENERIC_TIMING, freq);
         let samsung = Tolerances::from_timing(&SAMSUNG_TIMING, freq);
 
@@ -127,8 +113,11 @@ impl NecReceiver {
     }
 }
 
-impl Receiver<NecCmd, Error> for NecReceiver {
-    fn event(&mut self, rising: bool, timestamp: u32) -> State<NecCmd, Error> {
+impl<T> Receiver<Command<T>, Error> for NecReceiver<T>
+where
+    T: Clone + From<u32>,
+{
+    fn event(&mut self, rising: bool, timestamp: u32) -> State<Command<T>, Error> {
         use InternalState::{
             Disabled, Done, Error as InternalError, HeaderHigh, HeaderLow, Idle, Receiving,
         };
@@ -137,7 +126,7 @@ impl Receiver<NecCmd, Error> for NecReceiver {
         let tsdiff = timestamp.wrapping_sub(self.prev_timestamp);
         self.prev_timestamp = timestamp;
 
-        self.state = match (self.state, rising) {
+        self.state = match (self.state.clone(), rising) {
             (Idle, true) => HeaderHigh,
             (Idle, false) => Idle,
 
@@ -159,7 +148,7 @@ impl Receiver<NecCmd, Error> for NecReceiver {
                 } else if self.samsung.is_sync_high(tsdiff) {
                     Receiving(0)
                 } else if self.generic.is_repeat(tsdiff) {
-                    Done(NecCmd::Repeat)
+                    Done(Command::Repeat)
                 } else {
                     InternalError(Error::CommandType(tsdiff))
                 }
@@ -175,7 +164,7 @@ impl Receiver<NecCmd, Error> for NecReceiver {
                     }
                     self.bitbuf_idx += 1;
                     if self.bitbuf_idx == 32 {
-                        Done(NecCmd::Command(Button { frame: self.bitbuf }))
+                        Done(Command::Payload(self.bitbuf.into() ))
                     } else {
                         Receiving(0)
                     }
@@ -188,7 +177,7 @@ impl Receiver<NecCmd, Error> for NecReceiver {
             (Disabled, _) => Disabled,
         };
 
-        match self.state {
+        match self.state.clone() {
             InternalState::Idle => State::Idle,
             InternalState::Done(cmd) => {
                 self.reset();

@@ -3,6 +3,7 @@
 #![allow(deprecated)]
 
 use core::sync::atomic::{AtomicU32, Ordering};
+use core::convert;
 
 use cortex_m_rt::entry;
 use cortex_m_semihosting::hprintln;
@@ -17,8 +18,9 @@ use nucleo_f401re::{
 };
 use panic_semihosting as _;
 use infrared::{
-    nec::{NecResult, NecCmd, NecReceiver},
+    nec::{NecResult, Command as NecCmd, NecReceiver},
     Receiver, State as ReceiverState,
+    remotes::{SpecialForMp3, SamsungTv}
 };
 
 use heapless::consts::*;
@@ -29,8 +31,8 @@ const FREQ: u32 = 20_000;
 
 // Global data
 static mut IRPIN: Option<PB8<Input<Floating>>> = None;
-static mut NEC: NecReceiver = NecReceiver::new(FREQ);
-static mut CQ: Option<Queue<NecResult, U8>> = None;
+static mut NEC: Option<NecReceiver<SpecialForMp3>> = None;
+static mut CQ: Option<Queue<NecResult<SpecialForMp3>, U8>> = None;
 static PCOUNTER: AtomicU32 = AtomicU32::new(0);
 
 
@@ -55,6 +57,10 @@ fn main() -> ! {
         IRPIN.replace(irpin);
     }
 
+    unsafe {
+        NEC.replace(NecReceiver::new(FREQ));
+    }
+
     // Setup the timer for 50us operation
     let mut timer2 = Timer::tim2(device.TIM2, FREQ.hz(), clocks);
     timer2.listen(Event::TimeOut);
@@ -73,12 +79,8 @@ fn main() -> ! {
 
         if let Some(ReceiverState::Done(cmd)) = res {
             match cmd {
-                NecCmd::Command(button) => {
-                    if let Some(name) = command_to_str(button.command()) {
-                        hprintln!("cmd: {}", name).unwrap();
-                    } else {
-                        hprintln!("unknown: {}", button.command()).unwrap();
-                    }
+                NecCmd::Payload(button) => {
+                    hprintln!("cmd: {:?}", button).unwrap();
                 }
                 NecCmd::Repeat => hprintln!("repeat").unwrap(),
             }
@@ -100,7 +102,7 @@ fn EXTI9_5() {
         (*stm32::EXTI::ptr()).pr.modify(|_, w| w.pr8().set_bit());
     }
 
-    let nec = unsafe { &mut NEC };
+    let nec = unsafe { NEC.as_mut().unwrap() };
     let state = nec.event(rising, count);
     let mut producer = unsafe { CQ.as_mut().unwrap().split().0 };
 
@@ -120,34 +122,5 @@ fn EXTI9_5() {
 fn TIM2() {
     unsafe { (*stm32::TIM2::ptr()).sr.modify(|_, w| w.uif().clear_bit()); }
     PCOUNTER.fetch_add(1, Ordering::Relaxed);
-}
-
-
-// Mappings for "Special for MP3" Remote
-fn command_to_str(cmd: u8) -> Option<&'static str> {
-    match cmd {
-        69 => Some("Power"),
-        70 => Some("Mode"),
-        71 => Some("Mute"),
-        68 => Some("Play/Paus"),
-        64 => Some("Prev"),
-        67 => Some("Next"),
-        7 => Some("Eq"),
-        21 => Some("Minus"),
-        9 => Some("Plus"),
-        22 => Some("0"),
-        25 => Some("Shuffle"),
-        13 => Some("U/SD"),
-        12 => Some("1"),
-        24 => Some("2"),
-        94 => Some("3"),
-        8 => Some("4"),
-        28 => Some("5"),
-        90 => Some("6"),
-        66 => Some("7"),
-        82 => Some("8"),
-        74 => Some("9"),
-        _ => None,
-    }
 }
 

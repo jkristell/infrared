@@ -19,16 +19,19 @@ use heapless::consts::*;
 use heapless::spsc::Queue;
 
 use infrared::{
-    nec::{NecCmd, NecReceiver, NecResult},
+    nec::{Command as NecCmd, NecReceiver, NecResult},
     Receiver, State as ReceiverState,
+    remotes::SpecialForMp3,
 };
 
 const FREQ: u32 = 20_000;
 
 static mut TIMER: Option<Timer<TIM2>> = None;
 static mut IRPIN: Option<PB8<Input<Floating>>> = None;
-static mut NEC: NecReceiver = NecReceiver::new(FREQ);
-static mut CQ: Option<Queue<NecResult, U8>> = None;
+static mut CQ: Option<Queue<NecResult<SpecialForMp3>, U8>> = None;
+
+
+static mut NEC: Option<NecReceiver<SpecialForMp3>> = None;
 
 #[entry]
 fn main() -> ! {
@@ -52,9 +55,9 @@ fn main() -> ! {
     unsafe {
         TIMER.replace(timer);
         IRPIN.replace(irpin);
+        NEC.replace(NecReceiver::new(FREQ));
     }
 
-    // Enable the external interrupt
     core.NVIC.enable(pac::Interrupt::TIM2);
 
     unsafe { CQ = Some(Queue::new()) };
@@ -64,16 +67,10 @@ fn main() -> ! {
     loop {
         let res = consumer.dequeue();
 
-        // The hprints are done in interrupt free context. So they make us loose button presses
-
         if let Some(ReceiverState::Done(cmd)) = res {
             match cmd {
-                NecCmd::Command(button) => {
-                    if let Some(name) = command_to_str(button.command()) {
-                        hprintln!("cmd: {}", name).unwrap();
-                    } else {
-                        hprintln!("unknown: {}", button.command()).unwrap();
-                    }
+                NecCmd::Payload(data) => {
+                    hprintln!("cmd: {:?}", data).unwrap();
                 }
                 NecCmd::Repeat => hprintln!("repeat").unwrap(),
             }
@@ -100,12 +97,12 @@ fn TIM2() {
     if *PINVAL != new_pinval {
         let rising = *PINVAL == false && new_pinval == true;
 
-        let nec = unsafe { &mut NEC };
+        let nec = unsafe { NEC.as_mut().unwrap() };
         let state = nec.event(rising, *COUNT);
         let mut producer = unsafe { CQ.as_mut().unwrap().split().0 };
 
         let is_err = state.is_err();
-        let enqueue =  state.is_done() || state.is_err();
+        let enqueue = state.is_done() || is_err;
 
         if enqueue {
             producer.enqueue(state).ok().unwrap();
@@ -120,30 +117,4 @@ fn TIM2() {
     *COUNT += 1;
 }
 
-// Mappings for "Special for MP3" Remote
-fn command_to_str(cmd: u8) -> Option<&'static str> {
-    match cmd {
-        69 => Some("Power"),
-        70 => Some("Mode"),
-        71 => Some("Mute"),
-        68 => Some("Play/Paus"),
-        64 => Some("Prev"),
-        67 => Some("Next"),
-        7 => Some("Eq"),
-        21 => Some("Minus"),
-        9 => Some("Plus"),
-        22 => Some("0"),
-        25 => Some("Shuffle"),
-        13 => Some("U/SD"),
-        12 => Some("1"),
-        24 => Some("2"),
-        94 => Some("3"),
-        8 => Some("4"),
-        28 => Some("5"),
-        90 => Some("6"),
-        66 => Some("7"),
-        82 => Some("8"),
-        74 => Some("9"),
-        _ => None,
-    }
-}
+

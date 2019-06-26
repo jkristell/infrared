@@ -1,9 +1,15 @@
 #![no_std]
 
+/// NEC protocol decoder
 pub mod nec;
+/// Tracing protocol decoder
 pub mod trace;
 
+/// Remote controls
+pub mod remotes;
+
 #[derive(PartialEq)]
+/// Protocol decoder state
 pub enum State<T, E> {
     Idle,
     Receiving,
