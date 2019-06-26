@@ -8,9 +8,8 @@ pub enum State<T, E> {
     Idle,
     Receiving,
     Done(T),
-    Err(E)
+    Err(E),
 }
-
 
 /// Receiver trait
 pub trait Receiver<T, E> {
@@ -21,7 +20,6 @@ pub trait Receiver<T, E> {
     /// Disable receiver
     fn disable(&mut self);
 }
-
 
 impl<T, E> State<T, E> {
     pub fn is_err(&self) -> bool {
@@ -37,4 +35,3 @@ impl<T, E> State<T, E> {
         }
     }
 }
-

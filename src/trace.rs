@@ -15,8 +15,7 @@ pub struct TraceResult {
 }
 
 impl Receiver<TraceResult, ()> for TraceReceiver {
-    fn event(&mut self, _rising: bool, ts: u32) -> State<TraceResult, ()>  {
-
+    fn event(&mut self, _rising: bool, ts: u32) -> State<TraceResult, ()> {
         let t = if self.logdiffs {
             ts.wrapping_sub(self.ts_prev)
         } else {
@@ -39,8 +38,7 @@ impl Receiver<TraceResult, ()> for TraceReceiver {
         self.ts_idx = 0;
     }
 
-    fn disable(&mut self) {
-    }
+    fn disable(&mut self) {}
 }
 
 impl TraceReceiver {

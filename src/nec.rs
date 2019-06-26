@@ -1,8 +1,6 @@
 use crate::{Receiver, State};
 use core::ops::Range;
 
-
-
 // NEC Header
 //
 // _/'''''''''\_____ DATA
@@ -37,8 +35,6 @@ const SAMSUNG_TIMING: Timing = Timing {
     zero: 1150,
 };
 
-
-
 #[derive(Clone, Copy)]
 /// The Command types
 pub enum NecCmd {
@@ -62,7 +58,6 @@ pub enum Error {
 
 pub type NecResult = State<NecCmd, Error>;
 
-
 pub struct NecReceiver {
     // State
     state: InternalState,
@@ -84,14 +79,13 @@ enum InternalState {
     HeaderLow,
     /// Receiving data
     Receiving(u32),
-    /// Done
+    /// Done receiving
     Done(NecCmd),
     /// In error state
     Error(Error),
     /// Disabled
     Disabled,
 }
-
 
 impl Button {
     pub fn verify(&self) -> bool {
@@ -108,15 +102,17 @@ impl Button {
         (self.frame & 0xFF) as u8
     }
 
+    pub fn address16(&self) -> u16 {
+        (self.frame & 0xFFFF) as u16
+    }
+
     pub fn command(&self) -> u8 {
         (((self.frame >> 16) & 0xFF) as u8)
     }
 }
 
-
 impl NecReceiver {
     pub const fn new(freq: u32) -> Self {
-
         let generic = Tolerances::from_timing(&GENERIC_TIMING, freq);
         let samsung = Tolerances::from_timing(&SAMSUNG_TIMING, freq);
 
@@ -133,7 +129,9 @@ impl NecReceiver {
 
 impl Receiver<NecCmd, Error> for NecReceiver {
     fn event(&mut self, rising: bool, timestamp: u32) -> State<NecCmd, Error> {
-        use InternalState::{Idle, HeaderHigh, HeaderLow, Receiving, Done, Disabled, Error as InternalError};
+        use InternalState::{
+            Disabled, Done, Error as InternalError, HeaderHigh, HeaderLow, Idle, Receiving,
+        };
 
         // Distance between positive edges
         let tsdiff = timestamp.wrapping_sub(self.prev_timestamp);
@@ -145,7 +143,6 @@ impl Receiver<NecCmd, Error> for NecReceiver {
 
             (HeaderHigh, true) => unreachable!(),
             (HeaderHigh, false) => {
-
                 if self.generic.is_sync_high(tsdiff) {
                     HeaderLow
                 } else if self.samsung.is_sync_high(tsdiff) {
@@ -157,7 +154,6 @@ impl Receiver<NecCmd, Error> for NecReceiver {
 
             (HeaderLow, false) => unreachable!(),
             (HeaderLow, true) => {
-
                 if self.generic.is_sync_low(tsdiff) {
                     Receiving(0)
                 } else if self.samsung.is_sync_high(tsdiff) {
@@ -171,7 +167,6 @@ impl Receiver<NecCmd, Error> for NecReceiver {
 
             (Receiving(_saved), false) => Receiving(tsdiff),
             (Receiving(saved), true) => {
-
                 let tsdiff = tsdiff + saved;
 
                 if let Some(one) = self.generic.is_value(tsdiff) {
@@ -180,7 +175,7 @@ impl Receiver<NecCmd, Error> for NecReceiver {
                     }
                     self.bitbuf_idx += 1;
                     if self.bitbuf_idx == 32 {
-                        Done(NecCmd::Command(Button {frame: self.bitbuf }))
+                        Done(NecCmd::Command(Button { frame: self.bitbuf }))
                     } else {
                         Receiving(0)
                     }
@@ -193,13 +188,12 @@ impl Receiver<NecCmd, Error> for NecReceiver {
             (Disabled, _) => Disabled,
         };
 
-
         match self.state {
             InternalState::Idle => State::Idle,
             InternalState::Done(cmd) => {
                 self.reset();
                 State::Done(cmd)
-            },
+            }
             InternalState::Error(e) => State::Err(e),
             _ => State::Receiving,
         }
@@ -217,7 +211,6 @@ impl Receiver<NecCmd, Error> for NecReceiver {
     }
 }
 
-
 #[derive(Debug)]
 pub struct Tolerances {
     pub sync_high: Range<u32>,
@@ -228,7 +221,6 @@ pub struct Tolerances {
 }
 
 impl Tolerances {
-
     pub const fn from_timing(t: &Timing, freq: u32) -> Self {
         let per: u32 = (1 * 1000) / (freq / 1000);
         Tolerances {
@@ -273,6 +265,5 @@ impl Tolerances {
 
 const fn unit_range(units: u32, percent: u32) -> Range<u32> {
     let tol = (units * percent) / 100;
-    (units - tol .. units + tol)
+    (units - tol..units + tol)
 }
-
