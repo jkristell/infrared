@@ -6,7 +6,7 @@ pub mod trace;
 #[derive(PartialEq)]
 pub enum State<T, E> {
     Idle,
-    InProgress,
+    Receiving,
     Done(T),
     Err(E)
 }

@@ -1,16 +1,7 @@
 use crate::{Receiver, State};
 use core::ops::Range;
 
-pub type NecResult = State<NecCmd, Error>;
 
-#[derive(Debug, Clone, Copy)]
-/// Error when receiving
-pub enum Error {
-    /// Couldn't determine the type of message
-    CommandType(u32),
-    /// Receiving data but failed to read bit
-    Data,
-}
 
 // NEC Header
 //
@@ -47,23 +38,6 @@ const SAMSUNG_TIMING: Timing = Timing {
 };
 
 
-/// Receiver state
-#[derive(Clone)]
-enum InternalState {
-    /// Waiting for first edge
-    Idle,
-    /// Determine the type of message
-    HeaderHigh,
-    HeaderLow,
-    /// Capturing
-    Data(u32),
-    /// Done
-    Done(NecCmd),
-    /// Error
-    Error(Error),
-    /// Disable
-    Disabled,
-}
 
 #[derive(Clone, Copy)]
 /// The Command types
@@ -76,6 +50,48 @@ pub enum NecCmd {
 pub struct Button {
     pub frame: u32,
 }
+
+#[derive(Debug, Clone, Copy)]
+/// Error when receiving
+pub enum Error {
+    /// Couldn't determine the type of message
+    CommandType(u32),
+    /// Receiving data but failed to read bit
+    Data,
+}
+
+pub type NecResult = State<NecCmd, Error>;
+
+
+pub struct NecReceiver {
+    // State
+    state: InternalState,
+    bitbuf: u32,
+    bitbuf_idx: u32,
+    prev_timestamp: u32,
+    // Timing
+    generic: Tolerances,
+    samsung: Tolerances,
+}
+
+/// Receiver state
+#[derive(Clone, Copy)]
+enum InternalState {
+    /// Waiting for first edge
+    Idle,
+    /// Determining the type of message
+    HeaderHigh,
+    HeaderLow,
+    /// Receiving data
+    Receiving(u32),
+    /// Done
+    Done(NecCmd),
+    /// In error state
+    Error(Error),
+    /// Disabled
+    Disabled,
+}
+
 
 impl Button {
     pub fn verify(&self) -> bool {
@@ -98,15 +114,6 @@ impl Button {
 }
 
 
-pub struct NecReceiver {
-    state: InternalState,
-    pub generic: Tolerances,
-    pub samsung: Tolerances,
-    bitbuf: u32,
-    bitbuf_idx: u32,
-    prev_timestamp: u32,
-}
-
 impl NecReceiver {
     pub const fn new(freq: u32) -> Self {
 
@@ -126,63 +133,64 @@ impl NecReceiver {
 
 impl Receiver<NecCmd, Error> for NecReceiver {
     fn event(&mut self, rising: bool, timestamp: u32) -> State<NecCmd, Error> {
+        use InternalState::{Idle, HeaderHigh, HeaderLow, Receiving, Done, Disabled, Error as InternalError};
 
         // Distance between positive edges
-        let ts_diff = timestamp.wrapping_sub(self.prev_timestamp);
+        let tsdiff = timestamp.wrapping_sub(self.prev_timestamp);
         self.prev_timestamp = timestamp;
 
-        self.state = match (self.state.clone(), rising) {
-            (InternalState::Idle, true) => InternalState::HeaderHigh,
-            (InternalState::Idle, false) => InternalState::Idle,
+        self.state = match (self.state, rising) {
+            (Idle, true) => HeaderHigh,
+            (Idle, false) => Idle,
 
-            (InternalState::HeaderHigh, true) => panic!("invalid"),
-            (InternalState::HeaderHigh, false) => {
+            (HeaderHigh, true) => unreachable!(),
+            (HeaderHigh, false) => {
 
-                if self.generic.is_sync_high(ts_diff) {
-                    InternalState::HeaderLow
-                } else if self.samsung.is_sync_high(ts_diff) {
-                    InternalState::HeaderLow
+                if self.generic.is_sync_high(tsdiff) {
+                    HeaderLow
+                } else if self.samsung.is_sync_high(tsdiff) {
+                    HeaderLow
                 } else {
-                    InternalState::Error(Error::CommandType(ts_diff))
+                    InternalError(Error::CommandType(tsdiff))
                 }
             }
 
-            (InternalState::HeaderLow, false) => panic!("invalid"),
-            (InternalState::HeaderLow, true) => {
+            (HeaderLow, false) => unreachable!(),
+            (HeaderLow, true) => {
 
-                if self.generic.is_sync_low(ts_diff) {
-                    InternalState::Data(0)
-                } else if self.samsung.is_sync_high(ts_diff) {
-                    InternalState::Data(0)
-                } else if self.generic.is_repeat(ts_diff) {
-                    InternalState::Done(NecCmd::Repeat)
+                if self.generic.is_sync_low(tsdiff) {
+                    Receiving(0)
+                } else if self.samsung.is_sync_high(tsdiff) {
+                    Receiving(0)
+                } else if self.generic.is_repeat(tsdiff) {
+                    Done(NecCmd::Repeat)
                 } else {
-                    InternalState::Error(Error::CommandType(ts_diff))
+                    InternalError(Error::CommandType(tsdiff))
                 }
             }
 
-            (InternalState::Data(_saved), false) => InternalState::Data(ts_diff),
-            (InternalState::Data(saved), true) => {
+            (Receiving(_saved), false) => Receiving(tsdiff),
+            (Receiving(saved), true) => {
 
-                let ts_diff = ts_diff + saved;
+                let tsdiff = tsdiff + saved;
 
-                if let Some(one) = self.generic.is_value(ts_diff) {
+                if let Some(one) = self.generic.is_value(tsdiff) {
                     if one {
                         self.bitbuf |= 1 << self.bitbuf_idx;
                     }
                     self.bitbuf_idx += 1;
                     if self.bitbuf_idx == 32 {
-                        InternalState::Done(NecCmd::Command(Button {frame: self.bitbuf }))
+                        Done(NecCmd::Command(Button {frame: self.bitbuf }))
                     } else {
-                        InternalState::Data(0)
+                        Receiving(0)
                     }
                 } else {
-                    InternalState::Error(Error::Data)
+                    InternalError(Error::Data)
                 }
             }
-            (InternalState::Done(_), _) => InternalState::Disabled,
-            (InternalState::Error(_), _) => InternalState::Disabled,
-            (InternalState::Disabled, _) => InternalState::Disabled,
+            (Done(_), _) => Disabled,
+            (InternalError(_), _) => Disabled,
+            (Disabled, _) => Disabled,
         };
 
 
@@ -193,7 +201,7 @@ impl Receiver<NecCmd, Error> for NecReceiver {
                 State::Done(cmd)
             },
             InternalState::Error(e) => State::Err(e),
-            _ => State::InProgress,
+            _ => State::Receiving,
         }
     }
 
@@ -229,28 +237,6 @@ impl Tolerances {
             repeat: unit_range(t.repeat_low / per, 5),
             zero: unit_range(t.zero / per, 15),
             one: unit_range(t.one / per, 15),
-        }
-    }
-
-    pub const fn from_freq(sync_high: u32, sync_low: u32, timer_freq: u32) -> Self {
-        let period_us: u32 = (1 * 1000) / (timer_freq / 1000);
-        Tolerances::from_period_us(sync_high, sync_low, period_us)
-    }
-
-    pub const fn from_period_us(sync_high_us: u32, sync_low_us: u32, period: u32) -> Self {
-        // Values in us
-        let sync_high_units = sync_high_us / period;
-        let sync_low_units = sync_low_us / period;
-        let repeat_units = 2250 / period;
-        let zero_units = 1250 / period;
-        let one_units = 2250 / period;
-
-        Tolerances {
-            sync_high: unit_range(sync_high_units, 5),
-            sync_low: unit_range(sync_low_units, 5),
-            repeat: unit_range(repeat_units, 5),
-            zero: unit_range(zero_units, 15),
-            one: unit_range(one_units, 15),
         }
     }
 

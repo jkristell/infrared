@@ -30,7 +30,7 @@ impl Receiver<TraceResult, ()> for TraceReceiver {
         if self.ts_idx == BUF_LEN {
             State::Done(TraceResult { buf: self.data })
         } else {
-            State::InProgress
+            State::Receiving
         }
     }
 
