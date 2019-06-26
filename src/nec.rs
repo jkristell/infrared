@@ -42,7 +42,6 @@ pub enum Error {
     Data,
 }
 
-//TODO: Fix
 pub type NecResult<T> = State<Command<T>, Error>;
 
 pub struct NecReceiver<T: Clone + From<u32>> {
@@ -57,20 +56,20 @@ pub struct NecReceiver<T: Clone + From<u32>> {
 }
 
 #[derive(Clone)]
-/// Receiver state
+// Internal receiver state
 enum InternalState<T: Clone + From<u32>> {
-    /// Waiting for first edge
+    // Waiting for first edge
     Idle,
-    /// Determining the type of message
+    // Determining the type of message
     HeaderHigh,
     HeaderLow,
-    /// Receiving data
+    // Receiving data
     Receiving(u32),
-    /// Done receiving
+    // Done receiving
     Done(Command<T>),
-    /// In error state
+    // In error state
     Error(Error),
-    /// Disabled
+    // Disabled
     Disabled,
 }
 
@@ -90,8 +89,6 @@ const SAMSUNG_TIMING: Timing = Timing {
     one: 2250,
     zero: 1150,
 };
-
-
 
 
 impl<T> NecReceiver<T>

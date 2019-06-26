@@ -3,7 +3,6 @@
 #![allow(deprecated)]
 
 use core::sync::atomic::{AtomicU32, Ordering};
-use core::convert;
 
 use cortex_m_rt::entry;
 use cortex_m_semihosting::hprintln;
@@ -20,7 +19,7 @@ use panic_semihosting as _;
 use infrared::{
     nec::{NecResult, Command as NecCmd, NecReceiver},
     Receiver, State as ReceiverState,
-    remotes::{SpecialForMp3, SamsungTv}
+    remotes,
 };
 
 use heapless::consts::*;
@@ -29,10 +28,13 @@ use heapless::spsc::Queue;
 // 50 us = 20_000 Hz
 const FREQ: u32 = 20_000;
 
+// Remote to use for demo
+type Remote = remotes::SamsungTv;
+
 // Global data
 static mut IRPIN: Option<PB8<Input<Floating>>> = None;
-static mut NEC: Option<NecReceiver<SpecialForMp3>> = None;
-static mut CQ: Option<Queue<NecResult<SpecialForMp3>, U8>> = None;
+static mut NEC: Option<NecReceiver<Remote>> = None;
+static mut CQ: Option<Queue<NecResult<Remote>, U8>> = None;
 static PCOUNTER: AtomicU32 = AtomicU32::new(0);
 
 
@@ -79,8 +81,8 @@ fn main() -> ! {
 
         if let Some(ReceiverState::Done(cmd)) = res {
             match cmd {
-                NecCmd::Payload(button) => {
-                    hprintln!("cmd: {:?}", button).unwrap();
+                NecCmd::Payload(data) => {
+                    hprintln!("cmd: {:?}", data.button()).unwrap();
                 }
                 NecCmd::Repeat => hprintln!("repeat").unwrap(),
             }

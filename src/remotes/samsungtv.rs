@@ -14,7 +14,7 @@ impl SamsungTv {
     pub fn button(&self) -> SamsungTvCommand {
         use SamsungTvCommand::*;
 
-        let (_, cmd) = self.address_command();
+        let (addr, cmd) = self.address_command();
 
         match cmd {
             2 => Power,
@@ -59,7 +59,7 @@ impl SamsungTv {
             74 => Paus,
             72 => Forward,
 
-            _ => UNKNOWN,
+            _ => UNKNOWN((addr, cmd)),
         }
     }
 }
@@ -118,5 +118,5 @@ pub enum SamsungTvCommand {
     Paus,
     Forward,
 
-    UNKNOWN
+    UNKNOWN((u16, u8))
 }

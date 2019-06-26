@@ -12,10 +12,10 @@ A library for reading infrared signals from Rust.
 
 ![Boards](http://jott.se/wordpress/wp-content/uploads/2019/06/boards_small.jpg)
 
-## Howto use it
+## How to use it
 
-The examples are the documentation for now. As I add more features there will be breaking changes. 
-The stm32f401-interrupt is the best example on how to use the library right now.
+The examples are the documentation for now. The stm32f401-interrupt is probably the one to start to look at.
+As I add more features there will be breaking changes. 
 
 ## Todo
     - Imlement support for transmitting

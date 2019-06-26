@@ -26,7 +26,7 @@ pub enum SpecialForMp3 {
     Eight,
     Nine,
 
-    Unknown
+    Unknown(u8)
 }
 
 impl From<u32> for SpecialForMp3 {
@@ -57,7 +57,7 @@ impl From<u32> for SpecialForMp3 {
             66 => Seven,
             82 => Eight,
             74 => Nine,
-            _ => Unknown,
+            _ => Unknown(cmd),
         }
     }
 }
