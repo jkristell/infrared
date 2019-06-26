@@ -95,7 +95,7 @@ fn TIM2() {
     let new_pinval = unsafe { IRPIN.as_ref().unwrap().is_low() };
 
     if *PINVAL != new_pinval {
-        let rising = *PINVAL == false && new_pinval == true;
+        let rising = new_pinval;
 
         let nec = unsafe { NEC.as_mut().unwrap() };
         let state = nec.event(rising, *COUNT);
