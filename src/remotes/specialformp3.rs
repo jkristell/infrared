@@ -1,9 +1,41 @@
 use core::convert::From;
 
+use crate::remotes::Remote;
+
+impl Remote<SpecialForMp3Action> for SpecialForMp3 {
+    fn action(&self) -> Option<SpecialForMp3Action> {
+        use SpecialForMp3Action::*;
+
+        match self.cmd {
+            69 => Some(Power),
+            70 => Some(Mode),
+            71 => Some(Mute),
+            68 => Some(Play_Paus),
+            64 => Some(Prev),
+            67 => Some(Next),
+            7 => Some(Eq),
+            21 => Some(Minus),
+            9 => Some(Plus),
+            22 => Some(Zero),
+            25 => Some(Shuffle),
+            13 => Some(U_SD),
+            12 => Some(One),
+            24 => Some(Two),
+            94 => Some(Three),
+            8 => Some(Four),
+            28 => Some(Five),
+            90 => Some(Six),
+            66 => Some(Seven),
+            82 => Some(Eight),
+            74 => Some(Nine),
+            _ => None,
+        }
+    }
+}
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone)]
-pub enum SpecialForMp3 {
+pub enum SpecialForMp3Action {
     Power,
     Mode,
     Mute,
@@ -25,42 +57,17 @@ pub enum SpecialForMp3 {
     Seven,
     Eight,
     Nine,
+}
 
-    Unknown(u8)
+#[derive(Debug, Clone)]
+pub struct SpecialForMp3 {
+    // Address is always 0 for this remote
+    cmd: u8,
 }
 
 impl From<u32> for SpecialForMp3 {
     fn from(value: u32) -> Self {
-        use SpecialForMp3::*;
-
         let cmd = ((value >> 16) & 0xFF) as u8;
-
-        match cmd {
-            69 => Power,
-            70 => Mode,
-            71 => Mute,
-            68 => Play_Paus,
-            64 => Prev,
-            67 => Next,
-            7 => Eq,
-            21 => Minus,
-            9 => Plus,
-            22 => Zero,
-            25 => Shuffle,
-            13 => U_SD,
-            12 => One,
-            24 => Two,
-            94 => Three,
-            8 => Four,
-            28 => Five,
-            90 => Six,
-            66 => Seven,
-            82 => Eight,
-            74 => Nine,
-            _ => Unknown(cmd),
-        }
+        Self { cmd }
     }
 }
-
-
-

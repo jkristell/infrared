@@ -17,8 +17,9 @@ use nucleo_f401re::{
 };
 use panic_semihosting as _;
 use infrared::{
-    nec::{NecResult, Command as NecCmd, NecReceiver},
+    nec::{NecResult, NecCommand, NecReceiver},
     Receiver, State as ReceiverState,
+    Remote,
     remotes,
 };
 
@@ -29,12 +30,12 @@ use heapless::spsc::Queue;
 const FREQ: u32 = 20_000;
 
 // Remote to use for demo
-type Remote = remotes::SamsungTv;
+type RemoteType = remotes::SamsungTv;
 
 // Global data
 static mut IRPIN: Option<PB8<Input<Floating>>> = None;
-static mut NEC: Option<NecReceiver<Remote>> = None;
-static mut CQ: Option<Queue<NecResult<Remote>, U8>> = None;
+static mut NEC: Option<NecReceiver<RemoteType>> = None;
+static mut CQ: Option<Queue<NecResult<RemoteType>, U8>> = None;
 static PCOUNTER: AtomicU32 = AtomicU32::new(0);
 
 
@@ -77,14 +78,12 @@ fn main() -> ! {
     loop {
         let res = consumer.dequeue();
 
-        // The hprints are done in interrupt free context. So they make us loose button presses
-
         if let Some(ReceiverState::Done(cmd)) = res {
             match cmd {
-                NecCmd::Payload(data) => {
-                    hprintln!("cmd: {:?}", data.button()).unwrap();
+                NecCommand::Payload(cmd) => {
+                    hprintln!("cmd: {:?}", cmd.action()).unwrap();
                 }
-                NecCmd::Repeat => hprintln!("repeat").unwrap(),
+                NecCommand::Repeat => hprintln!("repeat").unwrap(),
             }
         }
         else if let Some(ReceiverState::Err(e)) = res {

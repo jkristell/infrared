@@ -19,8 +19,9 @@ use heapless::consts::*;
 use heapless::spsc::Queue;
 
 use infrared::{
-    nec::{Command as NecCmd, NecReceiver, NecResult},
+    nec::{NecCommand, NecReceiver, NecResult},
     Receiver, State as ReceiverState,
+    Remote,
     remotes::SpecialForMp3,
 };
 
@@ -69,10 +70,10 @@ fn main() -> ! {
 
         if let Some(ReceiverState::Done(cmd)) = res {
             match cmd {
-                NecCmd::Payload(data) => {
-                    hprintln!("cmd: {:?}", data).unwrap();
+                NecCommand::Payload(cmd) => {
+                    hprintln!("cmd: {:?}", cmd.action()).unwrap();
                 }
-                NecCmd::Repeat => hprintln!("repeat").unwrap(),
+                NecCommand::Repeat => hprintln!("repeat").unwrap(),
             }
         }
         else if let Some(ReceiverState::Err(e)) = res {

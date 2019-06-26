@@ -14,7 +14,10 @@ pub struct TraceResult {
     pub buf: [u32; BUF_LEN],
 }
 
-impl Receiver<TraceResult, ()> for TraceReceiver {
+impl Receiver for TraceReceiver {
+    type Command = TraceResult;
+    type ReceiveError = ();
+
     fn event(&mut self, _rising: bool, ts: u32) -> State<TraceResult, ()> {
         let t = if self.logdiffs {
             ts.wrapping_sub(self.ts_prev)

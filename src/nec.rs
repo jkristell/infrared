@@ -1,6 +1,6 @@
 use crate::{Receiver, State};
-use core::ops::Range;
 use core::convert::From;
+use core::ops::Range;
 
 // NEC Header
 //
@@ -22,27 +22,26 @@ pub struct Timing {
 
 #[derive(Clone)]
 /// The Command types
-pub enum Command<T>
+pub enum NecCommand<T>
 where
-    T: Clone + From<u32>
+    T: Clone + From<u32>,
 {
     /// A Repeat
     Repeat,
-    /// A Command With address and command
+    /// A Command With device address and action
     Payload(T),
 }
 
-
 #[derive(Debug, Clone, Copy)]
 /// Error when receiving
-pub enum Error {
+pub enum NecError {
     /// Couldn't determine the type of message
     CommandType(u32),
     /// Receiving data but failed to read bit
     Data,
 }
 
-pub type NecResult<T> = State<Command<T>, Error>;
+pub type NecResult<T> = State<NecCommand<T>, NecError>;
 
 pub struct NecReceiver<T: Clone + From<u32>> {
     // State
@@ -66,13 +65,12 @@ enum InternalState<T: Clone + From<u32>> {
     // Receiving data
     Receiving(u32),
     // Done receiving
-    Done(Command<T>),
+    Done(NecCommand<T>),
     // In error state
-    Error(Error),
+    Error(NecError),
     // Disabled
     Disabled,
 }
-
 
 const GENERIC_TIMING: Timing = Timing {
     header_high: 9000,
@@ -89,7 +87,6 @@ const SAMSUNG_TIMING: Timing = Timing {
     one: 2250,
     zero: 1150,
 };
-
 
 impl<T> NecReceiver<T>
 where
@@ -110,11 +107,14 @@ where
     }
 }
 
-impl<T> Receiver<Command<T>, Error> for NecReceiver<T>
+impl<T> Receiver for NecReceiver<T>
 where
     T: Clone + From<u32>,
 {
-    fn event(&mut self, rising: bool, timestamp: u32) -> State<Command<T>, Error> {
+    type Command = NecCommand<T>;
+    type ReceiveError = NecError;
+
+    fn event(&mut self, rising: bool, timestamp: u32) -> State<NecCommand<T>, NecError> {
         use InternalState::{
             Disabled, Done, Error as InternalError, HeaderHigh, HeaderLow, Idle, Receiving,
         };
@@ -134,7 +134,7 @@ where
                 } else if self.samsung.is_sync_high(tsdiff) {
                     HeaderLow
                 } else {
-                    InternalError(Error::CommandType(tsdiff))
+                    InternalError(NecError::CommandType(tsdiff))
                 }
             }
 
@@ -145,9 +145,9 @@ where
                 } else if self.samsung.is_sync_high(tsdiff) {
                     Receiving(0)
                 } else if self.generic.is_repeat(tsdiff) {
-                    Done(Command::Repeat)
+                    Done(NecCommand::Repeat)
                 } else {
-                    InternalError(Error::CommandType(tsdiff))
+                    InternalError(NecError::CommandType(tsdiff))
                 }
             }
 
@@ -161,12 +161,12 @@ where
                     }
                     self.bitbuf_idx += 1;
                     if self.bitbuf_idx == 32 {
-                        Done(Command::Payload(self.bitbuf.into() ))
+                        Done(NecCommand::Payload(self.bitbuf.into()))
                     } else {
                         Receiving(0)
                     }
                 } else {
-                    InternalError(Error::Data)
+                    InternalError(NecError::Data)
                 }
             }
             (Done(_), _) => Disabled,

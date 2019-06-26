@@ -15,8 +15,9 @@ use nucleo_f401re::{
 };
 use panic_semihosting as _;
 use infrared::{
-    nec::{NecResult, Command as NecCmd, NecReceiver},
+    nec::{NecResult, NecCommand, NecReceiver},
     Receiver, State as ReceiverState,
+    Remote,
     remotes::SamsungTv,
 };
 
@@ -68,10 +69,10 @@ fn main() -> ! {
 
         if let Some(ReceiverState::Done(cmd)) = res {
             match cmd {
-                NecCmd::Payload(c) => {
-                    hprintln!("{:?}", c.button()).unwrap();
+                NecCommand::Payload(c) => {
+                    hprintln!("{:?}", c.action()).unwrap();
                 }
-                NecCmd::Repeat => hprintln!("repeat").unwrap(),
+                NecCommand::Repeat => hprintln!("repeat").unwrap(),
             }
         }
         else if let Some(ReceiverState::Err(e)) = res {
