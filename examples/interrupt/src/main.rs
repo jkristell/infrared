@@ -51,7 +51,6 @@ fn main() -> ! {
     irpin.enable_interrupt(&mut device.EXTI);
     irpin.trigger_on_edge(&mut device.EXTI, Edge::RISING_FALLING);
 
-
     unsafe {
         IRPIN.replace(irpin);
     }
@@ -63,10 +62,9 @@ fn main() -> ! {
     unsafe { CQ.replace(Queue::new()) };
     let mut consumer = unsafe { CQ.as_mut().unwrap().split().1 };
 
-    // Enable the external interrupt
+    // Enable the interrupts
     core.NVIC.enable(Interrupt::TIM2);
     core.NVIC.enable(Interrupt::EXTI9_5);
-
 
     loop {
         let res = consumer.dequeue();
@@ -93,7 +91,6 @@ fn main() -> ! {
 
 #[interrupt]
 fn EXTI9_5() {
-
     // Read the value of the pin (active low)
     let rising = unsafe { IRPIN.as_ref().unwrap().is_low() };
     let count = PCOUNTER.load(Ordering::Relaxed);
@@ -108,7 +105,7 @@ fn EXTI9_5() {
     let mut producer = unsafe { CQ.as_mut().unwrap().split().0 };
 
     let is_err = state.is_err();
-    let enqueue =  state.is_done() || state.is_err();
+    let enqueue = state.is_done() || is_err;
 
     if enqueue {
         producer.enqueue(state).ok().unwrap();
