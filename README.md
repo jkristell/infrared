@@ -4,14 +4,14 @@ A library for using remote controls with embedded Rust!
 ## Status
 
 ### The good 
- - Receiving and decoding signals Remote controls that use the NEC protocol,
-   or the Samsung variant of it should work.
+ - Receiving and decoding signals from remote controls that use the NEC protocol,
+   or the Samsung variant of it, should work.
  - Adding a mapping for a new Remote is doable
  
 ### The bad
-  - The API is to be considered WIP and will evolve as find add new
+  - The API is to be considered WIP and will evolve as I add new
   features and correct all mistakes done by me previously :).
-  - The tools for capturing remotes is not great yet
+  - The tools for capturing remotes are not great yet
   - Only supports the NEC protocol
   
 ## Tested with
@@ -26,10 +26,9 @@ A library for using remote controls with embedded Rust!
 
 The examples are the documentation for now. The stm32f401-interrupt is probably the one to start to look at.
 Beware that as I add more features there will be breaking changes.
-But the examples will be kept working. 
 
 ## Near time goals
-    - Imlement support for transmitting
+    - Implement support for transmitting
     - Implement support for RC protocols (RC-5 and RC-6)
     - Hw Timer-Capture based example
     - Better tracer/capture application so that remotes can be
@@ -37,7 +36,7 @@ But the examples will be kept working.
     - More utilities
     
 ## Long time goals
- USB/Network support to be able to create universal remote control type of applications.
+USB/Network support to be able to create universal remote control type of applications.
     
 ## References
 
