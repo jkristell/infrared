@@ -129,9 +129,7 @@ where
 
             (HeaderHigh, true) => unreachable!(),
             (HeaderHigh, false) => {
-                if self.generic.is_sync_high(tsdiff) {
-                    HeaderLow
-                } else if self.samsung.is_sync_high(tsdiff) {
+                if self.generic.is_sync_high(tsdiff) || self.samsung.is_sync_high(tsdiff) {
                     HeaderLow
                 } else {
                     InternalError(NecError::CommandType(tsdiff))
@@ -140,9 +138,7 @@ where
 
             (HeaderLow, false) => unreachable!(),
             (HeaderLow, true) => {
-                if self.generic.is_sync_low(tsdiff) {
-                    Receiving(0)
-                } else if self.samsung.is_sync_high(tsdiff) {
+                if self.generic.is_sync_low(tsdiff) || self.samsung.is_sync_high(tsdiff) {
                     Receiving(0)
                 } else if self.generic.is_repeat(tsdiff) {
                     Done(NecCommand::Repeat)

@@ -29,8 +29,8 @@ use heapless::spsc::Queue;
 // 50 us = 20_000 Hz
 const FREQ: u32 = 20_000;
 
-// Remote to use for demo
-type RemoteType = remotes::SamsungTv;
+// Remote(s) to use for demo
+type RemoteType = remotes::Combine<remotes::SamsungTv, remotes::SpecialForMp3>;
 
 // Global data
 static mut IRPIN: Option<PB8<Input<Floating>>> = None;
@@ -81,7 +81,16 @@ fn main() -> ! {
         if let Some(ReceiverState::Done(cmd)) = res {
             match cmd {
                 NecCommand::Payload(cmd) => {
-                    hprintln!("cmd: {:?}", cmd.action()).unwrap();
+
+                    if let Some(combined) = cmd.action() {
+                        match combined {
+                            (Some(r1), _) => hprintln!("r1: {:?}", r1).unwrap(),
+                            (_, Some(r2)) => hprintln!("r2: {:?}", r2).unwrap(),
+                            (_, _) => hprintln!("No remote matched").unwrap(),
+                        };
+                    }
+
+                    //hprintln!("cmd: {:?}", cmd.action().unwrap().0).unwrap();
                 }
                 NecCommand::Repeat => hprintln!("repeat").unwrap(),
             }

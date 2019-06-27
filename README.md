@@ -1,5 +1,5 @@
 # Infrared
-A library for interacting with IR-based devices for embedded Rust.
+A library for using remote controls with embedded Rust!
 
 ## Status
 
@@ -11,8 +11,8 @@ A library for interacting with IR-based devices for embedded Rust.
 ### The bad
   - The API is to be considered WIP and will evolve as find add new
   features and correct all mistakes done by me previously :).
-  - The tools for capturing remotes is not there yet
-  - Only supports NEC
+  - The tools for capturing remotes is not great yet
+  - Only supports the NEC protocol
   
 ## Tested with
     - Tested with a st32f401re and bluepill boards
@@ -25,21 +25,19 @@ A library for interacting with IR-based devices for embedded Rust.
 ## How to use it
 
 The examples are the documentation for now. The stm32f401-interrupt is probably the one to start to look at.
-As I add more features there will be breaking changes. 
+Beware that as I add more features there will be breaking changes.
+But the examples will be kept working. 
 
-## Example
-
-```Rust
-
-let nec: NecReceiver<SpecialForMp3> = NecReceiver::new(20_000);
-
-```
-
-## Todo
+## Near time goals
     - Imlement support for transmitting
     - Implement support for RC protocols (RC-5 and RC-6)
-    - Implement support for Timer-Capture
-    - More examples and utilities
+    - Hw Timer-Capture based example
+    - Better tracer/capture application so that remotes can be
+     cloned easily
+    - More utilities
+    
+## Long time goals
+ USB/Network support to be able to create universal remote control type of applications.
     
 ## References
 

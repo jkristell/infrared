@@ -2,8 +2,10 @@ use core::convert::From;
 
 use crate::remotes::Remote;
 
-impl Remote<SpecialForMp3Action> for SpecialForMp3 {
-    fn action(&self) -> Option<SpecialForMp3Action> {
+impl Remote for SpecialForMp3 {
+    type Action = SpecialForMp3Action;
+
+    fn action(&self) -> Option<Self::Action> {
         use SpecialForMp3Action::*;
 
         match self.cmd {
@@ -30,6 +32,10 @@ impl Remote<SpecialForMp3Action> for SpecialForMp3 {
             74 => Some(Nine),
             _ => None,
         }
+    }
+
+    fn data(&self) -> (u16, u16) {
+        (0, self.cmd as u16)
     }
 }
 

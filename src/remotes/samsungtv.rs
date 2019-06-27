@@ -2,10 +2,12 @@ use core::convert::From;
 
 use crate::remotes::Remote;
 
-impl Remote<SamsungTvAction> for SamsungTv {
-    fn action(&self) -> Option<SamsungTvAction> {
+impl Remote for SamsungTv {
+    type Action = SamsungTvAction;
+
+    fn action(&self) -> Option<Self::Action> {
         use SamsungTvAction::*;
-        let (_addr, cmd) = self.address_command();
+        let (_addr, cmd) = self.data();
 
         match cmd {
             2 => Some(Power),
@@ -52,6 +54,10 @@ impl Remote<SamsungTvAction> for SamsungTv {
             _ => None,
         }
     }
+
+    fn data(&self) -> (u16, u16) {
+        (self.address, self.command)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -60,11 +66,6 @@ pub struct SamsungTv {
     pub command: u16,
 }
 
-impl SamsungTv {
-    pub fn address_command(&self) -> (u16, u8) {
-        (self.address, (self.command & 0xFF) as u8)
-    }
-}
 
 impl From<u32> for SamsungTv {
     fn from(value: u32) -> Self {
