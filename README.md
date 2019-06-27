@@ -1,9 +1,19 @@
 # Infrared
-A library for reading infrared signals from Rust.
+A library for interacting with IR-based devices for embedded Rust.
 
-## What works 
- - Receiving and decoding signals from a remote control that use the NEC protocol or the Samsung variant of it.
+## Status
 
+### The good 
+ - Receiving and decoding signals Remote controls that use the NEC protocol,
+   or the Samsung variant of it should work.
+ - Adding a mapping for a new Remote is doable
+ 
+### The bad
+  - The API is to be considered WIP and will evolve as find add new
+  features and correct all mistakes done by me previously :).
+  - The tools for capturing remotes is not there yet
+  - Only supports NEC
+  
 ## Tested with
     - Tested with a st32f401re and bluepill boards
     - Vishay TSOP382 IR receiver
@@ -16,6 +26,14 @@ A library for reading infrared signals from Rust.
 
 The examples are the documentation for now. The stm32f401-interrupt is probably the one to start to look at.
 As I add more features there will be breaking changes. 
+
+## Example
+
+```Rust
+
+let nec: NecReceiver<SpecialForMp3> = NecReceiver::new(20_000);
+
+```
 
 ## Todo
     - Imlement support for transmitting
