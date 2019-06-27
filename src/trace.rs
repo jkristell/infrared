@@ -1,4 +1,4 @@
-use crate::Receiver;
+use crate::{Receiver, State};
 
 const BUF_LEN: usize = 32;
 
@@ -14,9 +14,11 @@ pub struct TraceResult {
     pub buf: [u32; BUF_LEN],
 }
 
-impl Receiver<TraceResult, ()> for TraceReceiver {
-    fn event(&mut self, ts: u32) -> Result<Option<TraceResult>, ()> {
+impl Receiver for TraceReceiver {
+    type Command = TraceResult;
+    type ReceiveError = ();
 
+    fn event(&mut self, _rising: bool, ts: u32) -> State<TraceResult, ()> {
         let t = if self.logdiffs {
             ts.wrapping_sub(self.ts_prev)
         } else {
@@ -28,9 +30,9 @@ impl Receiver<TraceResult, ()> for TraceReceiver {
         self.ts_prev = ts;
 
         if self.ts_idx == BUF_LEN {
-            Ok(Some(TraceResult { buf: self.data }))
+            State::Done(TraceResult { buf: self.data })
         } else {
-            Ok(None)
+            State::Receiving
         }
     }
 
@@ -39,8 +41,7 @@ impl Receiver<TraceResult, ()> for TraceReceiver {
         self.ts_idx = 0;
     }
 
-    fn disable(&mut self) {
-    }
+    fn disable(&mut self) {}
 }
 
 impl TraceReceiver {

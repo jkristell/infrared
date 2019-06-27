@@ -1,30 +1,48 @@
 # Infrared
-A library for reading infrared signals from Rust.
+A library for using remote controls with embedded Rust!
 
-## What works 
- - Receiving and decoding signals from a remote control that use the NEC protocol
+## Status
 
+### The good 
+ - Receiving and decoding signals from remote controls that use the NEC protocol,
+   or the Samsung variant of it, should work.
+ - Adding a mapping for a new Remote is doable
+ 
+### The bad
+  - The API is to be considered WIP and will evolve as I add new
+  features and correct all mistakes done by me previously :).
+  - The tools for capturing remotes are not great yet
+  - Only supports the NEC protocol
+  
 ## Tested with
-
-Tested with a st32f401re board, a Vishay TSOP382 and a "Special for MP3" remote. The example code is available  [Here](examples/polling)
+    - Tested with a st32f401re and bluepill boards
+    - Vishay TSOP382 IR receiver
+    - "Special for MP3" and Samsung remotes.
 
 
 ![Boards](http://jott.se/wordpress/wp-content/uploads/2019/06/boards_small.jpg)
 
+## How to use it
 
-## Todo
-    - Test more NEC remotes
-    - Implement support for extended NEC
-    - Imlement support for transmitting
+The examples are the documentation for now. The stm32f401-interrupt is probably the one to start to look at.
+Beware that as I add more features there will be breaking changes.
+
+## Near time goals
+    - Implement support for transmitting
     - Implement support for RC protocols (RC-5 and RC-6)
-    - Implement support for Timer-Capture
-    - More examples and utilities
+    - Hw Timer-Capture based example
+    - Better tracer/capture application so that remotes can be
+     cloned easily
+    - More utilities
+    
+## Long time goals
+USB/Network support to be able to create universal remote control type of applications.
     
 ## References
 
  * https://www.sbprojects.net/knowledge/ir/nec.php
  * https://www.vishay.com/docs/82491/tsop382.pdf
-    
+
 ![Remote](http://jott.se/wordpress/wp-content/uploads/2019/06/remote_small.jpg)
     
 
