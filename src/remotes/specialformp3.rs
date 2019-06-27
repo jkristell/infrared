@@ -2,11 +2,17 @@ use core::convert::From;
 
 use crate::remotes::Remote;
 
+const ADDR: u8 = 0;
+
 impl Remote for SpecialForMp3 {
     type Action = SpecialForMp3Action;
 
     fn action(&self) -> Option<Self::Action> {
         use SpecialForMp3Action::*;
+
+        if self.addr != ADDR {
+            return None;
+        }
 
         match self.cmd {
             69 => Some(Power),
@@ -35,7 +41,7 @@ impl Remote for SpecialForMp3 {
     }
 
     fn data(&self) -> (u16, u16) {
-        (0, self.cmd as u16)
+        (self.addr as u16, self.cmd as u16)
     }
 }
 
@@ -67,13 +73,14 @@ pub enum SpecialForMp3Action {
 
 #[derive(Debug, Clone)]
 pub struct SpecialForMp3 {
-    // Address is always 0 for this remote
+    addr: u8,
     cmd: u8,
 }
 
 impl From<u32> for SpecialForMp3 {
     fn from(value: u32) -> Self {
+        let addr = (value & 0xFF) as u8;
         let cmd = ((value >> 16) & 0xFF) as u8;
-        Self { cmd }
+        Self { cmd, addr }
     }
 }

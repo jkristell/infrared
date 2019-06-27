@@ -2,12 +2,20 @@ use core::convert::From;
 
 use crate::remotes::Remote;
 
+const ADDR: u16 = 7;
+
 impl Remote for SamsungTv {
     type Action = SamsungTvAction;
 
     fn action(&self) -> Option<Self::Action> {
         use SamsungTvAction::*;
-        let (_addr, cmd) = self.data();
+        let (addr, cmd) = self.data();
+
+        if addr != ADDR {
+            return None;
+        }
+
+        let cmd = cmd & 0xff;
 
         match cmd {
             2 => Some(Power),

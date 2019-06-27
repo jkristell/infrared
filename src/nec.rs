@@ -138,7 +138,7 @@ where
 
             (HeaderLow, false) => unreachable!(),
             (HeaderLow, true) => {
-                if self.generic.is_sync_low(tsdiff) || self.samsung.is_sync_high(tsdiff) {
+                if self.generic.is_sync_low(tsdiff) || self.samsung.is_sync_low(tsdiff) {
                     Receiving(0)
                 } else if self.generic.is_repeat(tsdiff) {
                     Done(NecCommand::Repeat)
