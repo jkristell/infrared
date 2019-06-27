@@ -6,7 +6,7 @@ edition = "2018"
 description = "Infrared remote control library"
 repository = "https://github.com/jkristell/infrared"
 readme = "README.md"
-keywords = ["infrared", "remote", "control", "nec", "ir", "receiver"]
+keywords = ["infrared", "remote", "control", "nec", "ir"]
 categories = ["no-std", "embedded"]
 license = "MIT OR Apache-2.0"
 
