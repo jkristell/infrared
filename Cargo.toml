@@ -3,10 +3,10 @@ name = "infrared"
 version = "0.2.0"
 authors = ["Johan Kristell <johan@jott.se>"]
 edition = "2018"
-description = "Infrared remote library"
+description = "Infrared remote control library"
 repository = "https://github.com/jkristell/infrared"
 readme = "README.md"
-keywords = ["infrared", "remote", "control", "nec"]
+keywords = ["infrared", "remote", "control", "nec", "ir", "receiver"]
 categories = ["no-std", "embedded"]
 license = "MIT OR Apache-2.0"
 
