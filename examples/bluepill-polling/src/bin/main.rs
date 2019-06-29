@@ -8,10 +8,11 @@ use panic_semihosting as _;
 use cortex_m_rt::entry;
 use cortex_m_semihosting::hprintln;
 use stm32f1xx_hal::{
-    gpio::{gpiob::PB8, Floating, Input},
+    gpio::{gpiob::{PB8, PB9}, Floating, PushPull, Input, Alternate},
+    pwm::{Pins, Pwm, C4},
     pac,
     prelude::*,
-    stm32::{interrupt, TIM2},
+    stm32::{interrupt, TIM2, TIM4},
     timer::{Event, Timer},
 };
 
@@ -34,6 +35,21 @@ static mut CQ: Option<Queue<NecResult<SpecialForMp3>, U8>> = None;
 
 static mut NEC: Option<NecReceiver<SpecialForMp3>> = None;
 
+
+
+// Using PB4 and PB5 channels for TIM3 PWM output
+struct MyChannels(PB9<Alternate<PushPull>>);
+impl Pins<TIM4> for MyChannels {
+    const REMAP: u8 = 0b00;
+    const C1: bool = false;
+    const C2: bool = false;
+    const C3: bool = false;
+    const C4: bool = true; // PB9
+    type Channels = (Pwm<TIM4, C4>);
+}
+
+
+
 #[entry]
 fn main() -> ! {
     let mut core = cortex_m::Peripherals::take().unwrap();
@@ -52,6 +68,23 @@ fn main() -> ! {
 
     let mut timer = Timer::tim2(device.TIM2, 20.khz(), clocks, &mut rcc.apb1);
     timer.listen(Event::Update);
+
+    // PWM
+    let mut afio = device.AFIO.constrain(&mut rcc.apb2);
+    let p9 = gpiob.pb9.into_alternate_push_pull(&mut gpiob.crh);
+
+    let mut c4 = device.TIM4.pwm(
+        MyChannels(p9),
+        &mut afio.mapr,
+        100.hz(),
+        clocks,
+        &mut rcc.apb1
+    );
+    // Set the duty cycle of channel 0 to 50%
+    c4.set_duty(c4.get_max_duty() / 2);
+    // PWM outputs are disabled by default
+    c4.enable();
+
 
     unsafe {
         TIMER.replace(timer);
