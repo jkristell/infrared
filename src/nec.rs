@@ -41,6 +41,12 @@ pub enum NecError {
     Data,
 }
 
+pub enum NecVariant {
+    Standard,
+    Samsung,
+}
+
+
 pub type NecResult<T> = State<NecCommand<T>, NecError>;
 
 pub struct NecReceiver<T: Clone + From<u32>> {
@@ -50,8 +56,7 @@ pub struct NecReceiver<T: Clone + From<u32>> {
     bitbuf_idx: u32,
     prev_timestamp: u32,
     // Timing and tolerances
-    generic: Tolerances,
-    samsung: Tolerances,
+    tolerance: Tolerances,
 }
 
 #[derive(Clone)]
@@ -92,18 +97,26 @@ impl<T> NecReceiver<T>
 where
     T: Clone + From<u32>,
 {
-    pub fn new(freq: u32) -> Self {
-        let generic = Tolerances::from_timing(&GENERIC_TIMING, freq);
-        let samsung = Tolerances::from_timing(&SAMSUNG_TIMING, freq);
+    pub fn new(variant: NecVariant, freq: u32) -> Self {
 
+        let timing = match variant {
+            NecVariant::Standard => &GENERIC_TIMING,
+            NecVariant::Samsung => &SAMSUNG_TIMING,
+        };
+
+        Self::new_from_timing(freq, timing)
+    }
+
+    pub fn new_from_timing(freq: u32, timing: &Timing) -> Self {
+        let tol = Tolerances::from_timing(timing, freq);
         Self {
             state: InternalState::Idle,
-            generic,
-            samsung,
+            tolerance: tol,
             prev_timestamp: 0,
             bitbuf_idx: 0,
             bitbuf: 0,
         }
+
     }
 }
 
@@ -129,7 +142,7 @@ where
 
             (HeaderHigh, true) => unreachable!(),
             (HeaderHigh, false) => {
-                if self.generic.is_sync_high(tsdiff) || self.samsung.is_sync_high(tsdiff) {
+                if self.tolerance.is_sync_high(tsdiff) {
                     HeaderLow
                 } else {
                     InternalError(NecError::CommandType(tsdiff))
@@ -138,9 +151,9 @@ where
 
             (HeaderLow, false) => unreachable!(),
             (HeaderLow, true) => {
-                if self.generic.is_sync_low(tsdiff) || self.samsung.is_sync_low(tsdiff) {
+                if self.tolerance.is_sync_low(tsdiff) {
                     Receiving(0)
-                } else if self.generic.is_repeat(tsdiff) {
+                } else if self.tolerance.is_repeat(tsdiff) {
                     Done(NecCommand::Repeat)
                 } else {
                     InternalError(NecError::CommandType(tsdiff))
@@ -151,7 +164,7 @@ where
             (Receiving(saved), true) => {
                 let tsdiff = tsdiff + saved;
 
-                if let Some(one) = self.generic.is_value(tsdiff) {
+                if let Some(one) = self.tolerance.is_value(tsdiff) {
                     if one {
                         self.bitbuf |= 1 << self.bitbuf_idx;
                     }
