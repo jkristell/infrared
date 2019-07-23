@@ -131,6 +131,13 @@ fn EXTI9_5() {
 #[interrupt]
 fn TIM2() {
     unsafe { (*stm32::TIM2::ptr()).sr.modify(|_, w| w.uif().clear_bit()); }
+
+    let nec = unsafe { NEC.as_mut().unwrap() };
+
+
+
+
+
     PCOUNTER.fetch_add(1, Ordering::Relaxed);
 }
 

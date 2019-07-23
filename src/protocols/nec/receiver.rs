@@ -1,30 +1,15 @@
-use crate::{Receiver, State};
 use core::convert::From;
 use core::ops::Range;
 
-// NEC Header
-//
-// _/'''''''''\_____ DATA
-//  |--- 9 ---| 4.5 |
-
-// Samsung TV Header
-//
-//_/'''''\_____
-// | 4.5 | 4.5 |
-
-pub struct Timing {
-    header_high: u32,
-    header_low: u32,
-    repeat_low: u32,
-    one: u32,
-    zero: u32,
-}
+use crate::{Receiver, State};
+use crate::protocols::nec::Timing;
+use crate::protocols::nec::{SAMSUNG_TIMING, GENERIC_TIMING};
 
 #[derive(Clone)]
 /// The Command types
 pub enum NecCommand<T>
-where
-    T: Clone + From<u32>,
+    where
+        T: Clone + From<u32>,
 {
     /// A Repeat
     Repeat,
@@ -77,25 +62,12 @@ enum InternalState<T: Clone + From<u32>> {
     Disabled,
 }
 
-const GENERIC_TIMING: Timing = Timing {
-    header_high: 9000,
-    header_low: 4500,
-    repeat_low: 2250,
-    one: 2250,
-    zero: 1250,
-};
 
-const SAMSUNG_TIMING: Timing = Timing {
-    header_high: 4500,
-    header_low: 4500,
-    repeat_low: 2250,
-    one: 2250,
-    zero: 1150,
-};
+
 
 impl<T> NecReceiver<T>
-where
-    T: Clone + From<u32>,
+    where
+        T: Clone + From<u32>,
 {
     pub fn new(variant: NecVariant, freq: u32) -> Self {
 
@@ -120,9 +92,11 @@ where
     }
 }
 
+
+
 impl<T> Receiver for NecReceiver<T>
-where
-    T: Clone + From<u32>,
+    where
+        T: Clone + From<u32>,
 {
     type Command = NecCommand<T>;
     type ReceiveError = NecError;

@@ -20,7 +20,7 @@ use heapless::consts::*;
 use heapless::spsc::Queue;
 
 use infrared::{
-    nec::{NecCommand, NecReceiver, NecResult},
+    protocols::{NecCommand, NecReceiver, NecResult},
     Receiver, State as ReceiverState,
     Remote,
     remotes::SpecialForMp3,
