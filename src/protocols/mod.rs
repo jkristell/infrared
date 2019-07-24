@@ -1,6 +1,6 @@
 mod nec;
 
 
-pub use nec::receiver::{NecReceiver, NecCommand, NecResult};
+pub use nec::receiver::{NecReceiver, NecVariant, NecCommand, NecResult};
 
-pub use nec::transmitter::NecTransmitter;
+pub use nec::transmitter::{NecTransmitter};

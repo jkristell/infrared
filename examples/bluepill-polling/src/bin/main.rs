@@ -20,7 +20,7 @@ use heapless::consts::*;
 use heapless::spsc::Queue;
 
 use infrared::{
-    protocols::{NecCommand, NecReceiver, NecResult},
+    protocols::{NecCommand, NecVariant, NecReceiver, NecResult},
     Receiver, State as ReceiverState,
     Remote,
     remotes::SpecialForMp3,
@@ -89,7 +89,7 @@ fn main() -> ! {
     unsafe {
         TIMER.replace(timer);
         IRPIN.replace(irpin);
-        NEC.replace(NecReceiver::new(FREQ));
+        NEC.replace(NecReceiver::new(NecVariant::Standard, FREQ));
     }
 
     core.NVIC.enable(pac::Interrupt::TIM2);
