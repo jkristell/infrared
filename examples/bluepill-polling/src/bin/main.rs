@@ -20,7 +20,7 @@ use heapless::consts::*;
 use heapless::spsc::Queue;
 
 use infrared::{
-    protocols::{NecCommand, NecVariant, NecReceiver, NecResult},
+    protocols::{NecCommand, NecVariant, NecReceiver, NecResult, NecError},
     Receiver, State as ReceiverState,
     Remote,
     remotes::SpecialForMp3,
@@ -30,24 +30,12 @@ const FREQ: u32 = 20_000;
 
 static mut TIMER: Option<Timer<TIM2>> = None;
 static mut IRPIN: Option<PB8<Input<Floating>>> = None;
-static mut CQ: Option<Queue<NecResult<SpecialForMp3>, U8>> = None;
+static mut NEC: Option<NecReceiver<u32>> = None;
 
-
-static mut NEC: Option<NecReceiver<SpecialForMp3>> = None;
-
-
-
-// Using PB4 and PB5 channels for TIM3 PWM output
-struct MyChannels(PB9<Alternate<PushPull>>);
-impl Pins<TIM4> for MyChannels {
-    const REMAP: u8 = 0b00;
-    const C1: bool = false;
-    const C2: bool = false;
-    const C3: bool = false;
-    const C4: bool = true; // PB9
-    type Channels = (Pwm<TIM4, C4>);
-}
-
+// Command Queue
+static mut CQ: Option<Queue<NecCommand<u32>, U8>> = None;
+// Error Queue
+static mut EQ: Option<Queue<NecError, U8>> = None;
 
 
 #[entry]
@@ -69,23 +57,7 @@ fn main() -> ! {
     let mut timer = Timer::tim2(device.TIM2, 20.khz(), clocks, &mut rcc.apb1);
     timer.listen(Event::Update);
 
-    // PWM
-    let mut afio = device.AFIO.constrain(&mut rcc.apb2);
-    let p9 = gpiob.pb9.into_alternate_push_pull(&mut gpiob.crh);
-
-    let mut c4 = device.TIM4.pwm(
-        MyChannels(p9),
-        &mut afio.mapr,
-        100.hz(),
-        clocks,
-        &mut rcc.apb1
-    );
-    // Set the duty cycle of channel 0 to 50%
-    c4.set_duty(c4.get_max_duty() / 2);
-    // PWM outputs are disabled by default
-    c4.enable();
-
-
+    // Safe because the devices are only used in the interrupt handler
     unsafe {
         TIMER.replace(timer);
         IRPIN.replace(irpin);
@@ -94,23 +66,33 @@ fn main() -> ! {
 
     core.NVIC.enable(pac::Interrupt::TIM2);
 
+    // Initialize the queues
     unsafe { CQ = Some(Queue::new()) };
-    let mut consumer = unsafe { CQ.as_mut().unwrap().split().1 };
-    let stim = &mut core.ITM.stim[0];
+    unsafe { EQ = Some(Queue::new()) };
 
+    let mut cmdq = unsafe { CQ.as_mut().unwrap().split().1 };
+    let mut errq = unsafe { EQ.as_mut().unwrap().split().1 };
+
+    // Main loop
     loop {
-        let res = consumer.dequeue();
-
-        if let Some(ReceiverState::Done(cmd)) = res {
+        if let Some(cmd) = cmdq.dequeue() {
             match cmd {
                 NecCommand::Payload(cmd) => {
-                    hprintln!("cmd: {:?}", cmd.action()).unwrap();
+                    // Convert the u32 to a command for our remote
+                    let cmd = SpecialForMp3::from(cmd);
+
+                    if let Some(action) = cmd.action() {
+                        hprintln!("cmd: {:?}", action).unwrap();
+                    } else {
+                        hprintln!("<unknown>").unwrap();
+                    }
                 }
-                NecCommand::Repeat => hprintln!("repeat").unwrap(),
+                NecCommand::Repeat => hprintln!("REPEAT").unwrap(),
             }
         }
-        else if let Some(ReceiverState::Err(e)) = res {
-            hprintln!("Err: {:?}", e).unwrap();
+
+        if let Some(err) = errq.dequeue() {
+            hprintln!("Err: {:?}", err).unwrap();
         }
     }
 }
@@ -133,16 +115,13 @@ fn TIM2() {
 
         let nec = unsafe { NEC.as_mut().unwrap() };
         let state = nec.event(rising, *COUNT);
-        let mut producer = unsafe { CQ.as_mut().unwrap().split().0 };
+        let mut cmdq = unsafe { CQ.as_mut().unwrap().split().0 };
+        let mut errq = unsafe { EQ.as_mut().unwrap().split().0 };
 
-        let is_err = state.is_err();
-        let enqueue = state.is_done() || is_err;
-
-        if enqueue {
-            producer.enqueue(state).ok().unwrap();
-        }
-
-        if is_err {
+        if let ReceiverState::Done(cmd) = state {
+            cmdq.enqueue(cmd).ok().unwrap();
+        } else if let ReceiverState::Err(e) = state {
+            errq.enqueue(e).ok().unwrap();
             nec.reset();
         }
     }

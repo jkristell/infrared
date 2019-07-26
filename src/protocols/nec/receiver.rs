@@ -8,8 +8,8 @@ use crate::protocols::nec::{SAMSUNG_TIMING, GENERIC_TIMING};
 #[derive(Clone)]
 /// The Command types
 pub enum NecCommand<T>
-    where
-        T: Clone + From<u32>,
+where
+    T: Clone + From<u32>,
 {
     /// A Repeat
     Repeat,
@@ -66,8 +66,8 @@ enum InternalState<T: Clone + From<u32>> {
 
 
 impl<T> NecReceiver<T>
-    where
-        T: Clone + From<u32>,
+where
+    T: Clone + From<u32>,
 {
     pub fn new(variant: NecVariant, freq: u32) -> Self {
 
@@ -88,15 +88,14 @@ impl<T> NecReceiver<T>
             bitbuf_idx: 0,
             bitbuf: 0,
         }
-
     }
 }
 
 
 
 impl<T> Receiver for NecReceiver<T>
-    where
-        T: Clone + From<u32>,
+where
+    T: Clone + From<u32>,
 {
     type Command = NecCommand<T>;
     type ReceiveError = NecError;
@@ -106,7 +105,7 @@ impl<T> Receiver for NecReceiver<T>
             Disabled, Done, Error as InternalError, HeaderHigh, HeaderLow, Idle, Receiving,
         };
 
-        // Distance between positive edges
+        // Distance between edges
         let tsdiff = timestamp.wrapping_sub(self.prev_timestamp);
         self.prev_timestamp = timestamp;
 
@@ -157,6 +156,7 @@ impl<T> Receiver for NecReceiver<T>
             (Disabled, _) => Disabled,
         };
 
+        // Internalstate to ReceiverState
         match self.state.clone() {
             InternalState::Idle => State::Idle,
             InternalState::Done(cmd) => {
@@ -164,6 +164,7 @@ impl<T> Receiver for NecReceiver<T>
                 State::Done(cmd)
             }
             InternalState::Error(e) => State::Err(e),
+            InternalState::Disabled => State::Disabled,
             _ => State::Receiving,
         }
     }

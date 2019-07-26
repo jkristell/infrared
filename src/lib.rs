@@ -18,6 +18,7 @@ pub enum State<CMD, ERR> {
     Receiving,
     Done(CMD),
     Err(ERR),
+    Disabled,
 }
 
 /// Receiver trait
@@ -45,7 +46,7 @@ pub enum TransmitterState {
 
 pub trait Transmitter {
 
-    //Initiate transfer
+    // Set command to be transmitted
     fn set_command<CMD: Into<u32>>(&mut self, cmd: CMD);
 
     // transfer loop
