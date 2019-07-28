@@ -1,26 +1,29 @@
 #![no_std]
 #![no_main]
-#![allow(unused)]
 #![allow(deprecated)]
 
 use panic_semihosting as _;
-
+use cortex_m::asm::delay;
 use cortex_m_rt::entry;
 use cortex_m_semihosting::hprintln;
 use stm32f1xx_hal::{
-    gpio::{gpiob::{PB8, PB9}, Floating, PushPull, Input, Alternate},
-    pwm::{Pins, Pwm, C4},
+    gpio::{gpiob::PB8, Floating, Input},
     pac,
     prelude::*,
-    stm32::{interrupt, TIM2, TIM4},
+    stm32::{interrupt, TIM2},
     timer::{Event, Timer},
 };
+
+use stm32_usbd::UsbBus;
+use usb_device::prelude::*;
+use usbd_serial::{SerialPort, USB_CLASS_CDC};
+
 
 use heapless::consts::*;
 use heapless::spsc::Queue;
 
 use infrared::{
-    protocols::{NecCommand, NecVariant, NecReceiver, NecResult, NecError},
+    protocols::{NecCommand, NecVariant, NecReceiver, NecError},
     Receiver, State as ReceiverState,
     Remote,
     remotes::SpecialForMp3,
@@ -45,14 +48,45 @@ fn main() -> ! {
 
     let mut flash = device.FLASH.constrain();
     let mut rcc = device.RCC.constrain();
+
     let clocks = rcc
         .cfgr
         .use_hse(8.mhz())
-        .sysclk(16.mhz())
+        .sysclk(48.mhz())
+        .pclk1(24.mhz())
         .freeze(&mut flash.acr);
 
+    assert!(clocks.usbclk_valid());
+
+
+    // Setup USB
+
+    let mut gpioa = device.GPIOA.split(&mut rcc.apb2);
+
+    // BluePill board has a pull-up resistor on the D+ line.
+    // Pull the D+ pin down to send a RESET condition to the USB bus.
+    let mut usb_dp = gpioa.pa12.into_push_pull_output(&mut gpioa.crh);
+    usb_dp.set_low();
+    delay(clocks.sysclk().0 / 100);
+
+    let usb_dm = gpioa.pa11;
+    let usb_dp = usb_dp.into_floating_input(&mut gpioa.crh);
+
+    let usb_bus = UsbBus::new(device.USB, (usb_dm, usb_dp));
+
+    let mut serial = SerialPort::new(&usb_bus);
+
+    let mut usb_dev = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x5824, 0x27dd))
+        .manufacturer("Fake company")
+        .product("Serial port")
+        .serial_number("TEST")
+        .device_class(USB_CLASS_CDC)
+        .build();
+
+    // End
+
     let mut gpiob = device.GPIOB.split(&mut rcc.apb2);
-    let mut irpin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
+    let irpin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
 
     let mut timer = Timer::tim2(device.TIM2, 20.khz(), clocks, &mut rcc.apb1);
     timer.listen(Event::Update);
@@ -64,17 +98,53 @@ fn main() -> ! {
         NEC.replace(NecReceiver::new(NecVariant::Standard, FREQ));
     }
 
-    core.NVIC.enable(pac::Interrupt::TIM2);
-
     // Initialize the queues
-    unsafe { CQ = Some(Queue::new()) };
-    unsafe { EQ = Some(Queue::new()) };
+    unsafe {
+        CQ.replace(Queue::new());
+        EQ.replace(Queue::new());
+    };
 
     let mut cmdq = unsafe { CQ.as_mut().unwrap().split().1 };
     let mut errq = unsafe { EQ.as_mut().unwrap().split().1 };
 
+    // Enable the timer interrupt
+    core.NVIC.enable(pac::Interrupt::TIM2);
+
     // Main loop
     loop {
+
+        // Handle USB
+        if usb_dev.poll(&mut [&mut serial]) {
+            let mut buf = [0u8; 64];
+
+            match serial.read(&mut buf) {
+                Ok(count) if count > 0 => {
+                    //led.set_low(); // Turn on
+
+                    // Echo back in upper case
+                    for c in buf[0..count].iter_mut() {
+                        if 0x61 <= *c && *c <= 0x7a {
+                            *c = *c + 1;
+                        }
+                    }
+
+                    let mut write_offset = 0;
+                    while write_offset < count {
+                        match serial.write(&buf[write_offset..count]) {
+                            Ok(len) if len > 0 => {
+                                write_offset += len;
+                            },
+                            _ => {},
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+
+
+
+
         if let Some(cmd) = cmdq.dequeue() {
             match cmd {
                 NecCommand::Payload(cmd) => {
@@ -82,9 +152,12 @@ fn main() -> ! {
                     let cmd = SpecialForMp3::from(cmd);
 
                     if let Some(action) = cmd.action() {
+                        let buf = [cmd.cmd + b'a'];
+                        serial.write(&buf[..]).unwrap();
+
                         hprintln!("cmd: {:?}", action).unwrap();
                     } else {
-                        hprintln!("<unknown>").unwrap();
+                        hprintln!("unknown command").unwrap();
                     }
                 }
                 NecCommand::Repeat => hprintln!("REPEAT").unwrap(),
@@ -113,14 +186,17 @@ fn TIM2() {
     if *PINVAL != new_pinval {
         let rising = new_pinval;
 
-        let nec = unsafe { NEC.as_mut().unwrap() };
-        let state = nec.event(rising, *COUNT);
         let mut cmdq = unsafe { CQ.as_mut().unwrap().split().0 };
         let mut errq = unsafe { EQ.as_mut().unwrap().split().0 };
 
+        let nec = unsafe { NEC.as_mut().unwrap() };
+        let state = nec.event(rising, *COUNT);
+
         if let ReceiverState::Done(cmd) = state {
             cmdq.enqueue(cmd).ok().unwrap();
-        } else if let ReceiverState::Err(e) = state {
+        }
+
+        else if let ReceiverState::Err(e) = state {
             errq.enqueue(e).ok().unwrap();
             nec.reset();
         }
@@ -129,5 +205,4 @@ fn TIM2() {
     *PINVAL = new_pinval;
     *COUNT += 1;
 }
-
 
