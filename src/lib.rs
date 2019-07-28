@@ -13,7 +13,7 @@ pub use remotes::Remote;
 
 #[derive(PartialEq)]
 /// Protocol decoder state
-pub enum State<CMD, ERR> {
+pub enum ReceiverState<CMD, ERR> {
     Idle,
     Receiving,
     Done(CMD),
@@ -29,7 +29,7 @@ pub trait Receiver {
     type ReceiveError;
 
     /// Register new event
-    fn event(&mut self, rising: bool, timestamp: u32) -> State<Self::Command, Self::ReceiveError>;
+    fn event(&mut self, rising: bool, timestamp: u32) -> ReceiverState<Self::Command, Self::ReceiveError>;
     /// Reset receiver
     fn reset(&mut self);
     /// Disable receiver
@@ -53,17 +53,3 @@ pub trait Transmitter {
     fn transmit(&mut self, ts: u32) -> TransmitterState;
 }
 
-impl<CMD, ERR> State<CMD, ERR> {
-    pub fn is_err(&self) -> bool {
-        match *self {
-            State::Err(_) => true,
-            _ => false,
-        }
-    }
-    pub fn is_done(&self) -> bool {
-        match *self {
-            State::Done(_) => true,
-            _ => false,
-        }
-    }
-}

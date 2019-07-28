@@ -46,7 +46,7 @@ impl TimeUnits {
 }
 
 impl NecTransmitter {
-    pub fn new<CMD: Into<u32>>(nectype: NecType, period: u32, cmd: CMD) -> Self {
+    pub fn new(nectype: NecType, period: u32) -> Self {
         
         let units = TimeUnits::new(period, &GENERIC_TIMING);
 
@@ -54,7 +54,7 @@ impl NecTransmitter {
             state: TransmitStateInternal::Idle,
             units,
             last_ts: 0,
-            cmd: cmd.into(),
+            cmd: 0,
         }
     }
 

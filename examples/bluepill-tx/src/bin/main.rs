@@ -24,8 +24,14 @@ use heapless::consts::*;
 use heapless::spsc::Queue;
 
 use infrared::{
-    protocols::{NecCommand, NecVariant, NecReceiver, NecResult, NecError},
-    Receiver, State as ReceiverState,
+    protocols::{NecCommand,
+                NecVariant, NecType,
+                NecReceiver, NecResult, NecError,
+        NecTransmitter,
+    },
+
+    Receiver, ReceiverState,
+    Transmitter, TransmitterState,
     Remote,
     remotes::SpecialForMp3,
 };
@@ -35,6 +41,7 @@ const FREQ: u32 = 20_000;
 static mut TIMER: Option<Timer<TIM2>> = None;
 static mut IRPIN: Option<PB8<Input<Floating>>> = None;
 static mut NEC: Option<NecReceiver<u32>> = None;
+static mut NECTX: Option<NecTransmitter> = None;
 
 // Command Queue
 static mut CQ: Option<Queue<NecCommand<u32>, U8>> = None;
@@ -132,6 +139,9 @@ fn main() -> ! {
         TIMER.replace(timer);
         IRPIN.replace(irpin);
         NEC.replace(NecReceiver::new(NecVariant::Standard, FREQ));
+
+        let per: u32 = (1 * 1000) / (FREQ / 1000);
+        NECTX.replace(NecTransmitter::new(NecType::Nec, per));
     }
 
     core.NVIC.enable(pac::Interrupt::TIM2);
@@ -152,6 +162,7 @@ fn main() -> ! {
                 Ok(count) if count > 0 => {
 
                     //TODO: Initiate TX
+                    
 
                     // Echo back in upper case
                     for c in buf[0..count].iter_mut() {

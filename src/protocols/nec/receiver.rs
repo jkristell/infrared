@@ -1,7 +1,7 @@
 use core::convert::From;
 use core::ops::Range;
 
-use crate::{Receiver, State};
+use crate::{Receiver, ReceiverState};
 use crate::protocols::nec::Timing;
 use crate::protocols::nec::{SAMSUNG_TIMING, GENERIC_TIMING};
 
@@ -32,7 +32,7 @@ pub enum NecVariant {
 }
 
 
-pub type NecResult<T> = State<NecCommand<T>, NecError>;
+pub type NecResult<T> = ReceiverState<NecCommand<T>, NecError>;
 
 pub struct NecReceiver<T: Clone + From<u32>> {
     // State
@@ -100,7 +100,7 @@ where
     type Command = NecCommand<T>;
     type ReceiveError = NecError;
 
-    fn event(&mut self, rising: bool, timestamp: u32) -> State<NecCommand<T>, NecError> {
+    fn event(&mut self, rising: bool, timestamp: u32) -> ReceiverState<NecCommand<T>, NecError> {
         use InternalState::{
             Disabled, Done, Error as InternalError, HeaderHigh, HeaderLow, Idle, Receiving,
         };
@@ -158,14 +158,14 @@ where
 
         // Internalstate to ReceiverState
         match self.state.clone() {
-            InternalState::Idle => State::Idle,
+            InternalState::Idle => ReceiverState::Idle,
             InternalState::Done(cmd) => {
                 self.reset();
-                State::Done(cmd)
+                ReceiverState::Done(cmd)
             }
-            InternalState::Error(e) => State::Err(e),
-            InternalState::Disabled => State::Disabled,
-            _ => State::Receiving,
+            InternalState::Error(e) => ReceiverState::Err(e),
+            InternalState::Disabled => ReceiverState::Disabled,
+            _ => ReceiverState::Receiving,
         }
     }
 
