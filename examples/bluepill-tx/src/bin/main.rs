@@ -42,13 +42,14 @@ static mut TIMER: Option<Timer<TIM2>> = None;
 static mut IRPIN: Option<PB8<Input<Floating>>> = None;
 static mut NEC: Option<NecReceiver<u32>> = None;
 static mut NECTX: Option<NecTransmitter> = None;
+static mut PWM: Option<Pwm<TIM4, C4>> = None;
 
 // Command Queue
 static mut CQ: Option<Queue<NecCommand<u32>, U8>> = None;
 // Error Queue
 static mut EQ: Option<Queue<NecError, U8>> = None;
 
-
+static mut TXQ: Option<Queue<u32, U8>> = None;
 
 
 
@@ -122,7 +123,7 @@ fn main() -> ! {
     let mut afio = device.AFIO.constrain(&mut rcc.apb2);
     let ir_tx = gpiob.pb9.into_alternate_push_pull(&mut gpiob.crh);
 
-    let mut c4 = device.TIM4.pwm(
+    let mut c4: Pwm<TIM4, C4> = device.TIM4.pwm(
         MyChannels(ir_tx),
         &mut afio.mapr,
         100.hz(),
@@ -131,8 +132,7 @@ fn main() -> ! {
     );
     // Set the duty cycle of channel 0 to 50%
     c4.set_duty(c4.get_max_duty() / 2);
-    // PWM outputs are disabled by default
-    c4.enable();
+    c4.disable();
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
@@ -142,16 +142,22 @@ fn main() -> ! {
 
         let per: u32 = (1 * 1000) / (FREQ / 1000);
         NECTX.replace(NecTransmitter::new(NecType::Nec, per));
+
+        PWM.replace(c4);
     }
 
     core.NVIC.enable(pac::Interrupt::TIM2);
 
     // Initialize the queues
-    unsafe { CQ = Some(Queue::new()) };
-    unsafe { EQ = Some(Queue::new()) };
+    unsafe {
+        CQ = Some(Queue::new());
+        EQ = Some(Queue::new());
+        TXQ = Some(Queue::new());
+    };
 
     let mut cmdq = unsafe { CQ.as_mut().unwrap().split().1 };
     let mut errq = unsafe { EQ.as_mut().unwrap().split().1 };
+    let mut txq = unsafe { TXQ.as_mut().unwrap().split().0 };
 
     loop {
         // Handle USB
@@ -162,7 +168,8 @@ fn main() -> ! {
                 Ok(count) if count > 0 => {
 
                     //TODO: Initiate TX
-                    
+                    txq.enqueue(64u32).ok().unwrap();
+
 
                     // Echo back in upper case
                     for c in buf[0..count].iter_mut() {
@@ -217,6 +224,28 @@ fn TIM2() {
 
     // Read the value of the pin (active low)
     let new_pinval = unsafe { IRPIN.as_ref().unwrap().is_low() };
+
+    let nectx = unsafe { NECTX.as_mut().unwrap() };
+
+    let txstate = nectx.transmit(*COUNT);
+    let mut txq = unsafe { TXQ.as_mut().unwrap().split().1 };
+    let pwm = unsafe { PWM.as_mut().unwrap() };
+
+    match txstate {
+        TransmitterState::Idle => {
+            pwm.disable();
+            // Check queue
+            if let Some(txcmd) = txq.dequeue() {
+                nectx.set_command(txcmd);
+            }
+        },
+        TransmitterState::Transmit(true) => pwm.enable(),
+        TransmitterState::Transmit(false) => pwm.disable(),
+        TransmitterState::Done => {},
+        TransmitterState::Err => {},
+    }
+
+
 
     if *PINVAL != new_pinval {
         let rising = new_pinval;

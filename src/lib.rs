@@ -51,5 +51,7 @@ pub trait Transmitter {
 
     // transfer loop
     fn transmit(&mut self, ts: u32) -> TransmitterState;
+
+    fn reset(&mut self) {}
 }
 
