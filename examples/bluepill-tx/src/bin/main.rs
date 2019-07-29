@@ -1,8 +1,10 @@
 #![no_std]
 #![no_main]
+#![allow(unused)]
 #![allow(deprecated)]
 
 use panic_semihosting as _;
+
 use cortex_m::asm::delay;
 use cortex_m_rt::entry;
 use cortex_m_semihosting::hprintln;
@@ -14,18 +16,22 @@ use stm32f1xx_hal::{
     stm32::{interrupt, TIM2, TIM4},
     timer::{Event, Timer},
 };
-
 use stm32_usbd::UsbBus;
 use usb_device::prelude::*;
 use usbd_serial::{SerialPort, USB_CLASS_CDC};
-
 
 use heapless::consts::*;
 use heapless::spsc::Queue;
 
 use infrared::{
-    protocols::{NecCommand, NecVariant, NecReceiver, NecError},
-    Receiver, State as ReceiverState,
+    protocols::{NecCommand,
+                NecVariant, NecType,
+                NecReceiver, NecResult, NecError,
+        NecTransmitter,
+    },
+
+    Receiver, ReceiverState,
+    Transmitter, TransmitterState,
     Remote,
     remotes::SpecialForMp3,
 };
@@ -35,11 +41,13 @@ const FREQ: u32 = 20_000;
 static mut TIMER: Option<Timer<TIM2>> = None;
 static mut IRPIN: Option<PB8<Input<Floating>>> = None;
 static mut NEC: Option<NecReceiver<u32>> = None;
+static mut NECTX: Option<NecTransmitter> = None;
 
 // Command Queue
 static mut CQ: Option<Queue<NecCommand<u32>, U8>> = None;
 // Error Queue
 static mut EQ: Option<Queue<NecError, U8>> = None;
+
 
 
 
@@ -74,7 +82,6 @@ fn main() -> ! {
 
     assert!(clocks.usbclk_valid());
 
-
     // Setup USB
 
     let mut gpioa = device.GPIOA.split(&mut rcc.apb2);
@@ -101,41 +108,61 @@ fn main() -> ! {
 
     // End
 
+
+
+
+
     let mut gpiob = device.GPIOB.split(&mut rcc.apb2);
-    let irpin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
+    let mut irpin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
 
     let mut timer = Timer::tim2(device.TIM2, 20.khz(), clocks, &mut rcc.apb1);
     timer.listen(Event::Update);
+
+    // PWM
+    let mut afio = device.AFIO.constrain(&mut rcc.apb2);
+    let ir_tx = gpiob.pb9.into_alternate_push_pull(&mut gpiob.crh);
+
+    let mut c4 = device.TIM4.pwm(
+        MyChannels(ir_tx),
+        &mut afio.mapr,
+        100.hz(),
+        clocks,
+        &mut rcc.apb1
+    );
+    // Set the duty cycle of channel 0 to 50%
+    c4.set_duty(c4.get_max_duty() / 2);
+    // PWM outputs are disabled by default
+    c4.enable();
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
         TIMER.replace(timer);
         IRPIN.replace(irpin);
         NEC.replace(NecReceiver::new(NecVariant::Standard, FREQ));
+
+        let per: u32 = (1 * 1000) / (FREQ / 1000);
+        NECTX.replace(NecTransmitter::new(NecType::Nec, per));
     }
 
+    core.NVIC.enable(pac::Interrupt::TIM2);
+
     // Initialize the queues
-    unsafe {
-        CQ.replace(Queue::new());
-        EQ.replace(Queue::new());
-    };
+    unsafe { CQ = Some(Queue::new()) };
+    unsafe { EQ = Some(Queue::new()) };
 
     let mut cmdq = unsafe { CQ.as_mut().unwrap().split().1 };
     let mut errq = unsafe { EQ.as_mut().unwrap().split().1 };
 
-    // Enable the timer interrupt
-    core.NVIC.enable(pac::Interrupt::TIM2);
-
-    // Main loop
     loop {
-
         // Handle USB
         if usb_dev.poll(&mut [&mut serial]) {
             let mut buf = [0u8; 64];
 
             match serial.read(&mut buf) {
                 Ok(count) if count > 0 => {
-                    //led.set_low(); // Turn on
+
+                    //TODO: Initiate TX
+                    
 
                     // Echo back in upper case
                     for c in buf[0..count].iter_mut() {
@@ -166,15 +193,7 @@ fn main() -> ! {
                 NecCommand::Payload(cmd) => {
                     // Convert the u32 to a command for our remote
                     let cmd = SpecialForMp3::from(cmd);
-
-                    if let Some(action) = cmd.action() {
-                        let buf = [cmd.cmd + b'a'];
-                        serial.write(&buf[..]).unwrap();
-
-                        hprintln!("cmd: {:?}", action).unwrap();
-                    } else {
-                        hprintln!("unknown command").unwrap();
-                    }
+                    hprintln!("cmd: {:?}", cmd.action()).unwrap();
                 }
                 NecCommand::Repeat => hprintln!("REPEAT").unwrap(),
             }
@@ -202,17 +221,14 @@ fn TIM2() {
     if *PINVAL != new_pinval {
         let rising = new_pinval;
 
+        let nec = unsafe { NEC.as_mut().unwrap() };
+        let state = nec.event(rising, *COUNT);
         let mut cmdq = unsafe { CQ.as_mut().unwrap().split().0 };
         let mut errq = unsafe { EQ.as_mut().unwrap().split().0 };
 
-        let nec = unsafe { NEC.as_mut().unwrap() };
-        let state = nec.event(rising, *COUNT);
-
         if let ReceiverState::Done(cmd) = state {
             cmdq.enqueue(cmd).ok().unwrap();
-        }
-
-        else if let ReceiverState::Err(e) = state {
+        } else if let ReceiverState::Err(e) = state {
             errq.enqueue(e).ok().unwrap();
             nec.reset();
         }
@@ -221,4 +237,5 @@ fn TIM2() {
     *PINVAL = new_pinval;
     *COUNT += 1;
 }
+
 

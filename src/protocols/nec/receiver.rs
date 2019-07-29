@@ -1,24 +1,9 @@
-use crate::{Receiver, State};
 use core::convert::From;
 use core::ops::Range;
 
-// NEC Header
-//
-// _/'''''''''\_____ DATA
-//  |--- 9 ---| 4.5 |
-
-// Samsung TV Header
-//
-//_/'''''\_____
-// | 4.5 | 4.5 |
-
-pub struct Timing {
-    header_high: u32,
-    header_low: u32,
-    repeat_low: u32,
-    one: u32,
-    zero: u32,
-}
+use crate::{Receiver, ReceiverState};
+use crate::protocols::nec::Timing;
+use crate::protocols::nec::{SAMSUNG_TIMING, GENERIC_TIMING};
 
 #[derive(Clone)]
 /// The Command types
@@ -41,7 +26,13 @@ pub enum NecError {
     Data,
 }
 
-pub type NecResult<T> = State<NecCommand<T>, NecError>;
+pub enum NecVariant {
+    Standard,
+    Samsung,
+}
+
+
+pub type NecResult<T> = ReceiverState<NecCommand<T>, NecError>;
 
 pub struct NecReceiver<T: Clone + From<u32>> {
     // State
@@ -50,8 +41,7 @@ pub struct NecReceiver<T: Clone + From<u32>> {
     bitbuf_idx: u32,
     prev_timestamp: u32,
     // Timing and tolerances
-    generic: Tolerances,
-    samsung: Tolerances,
+    tolerance: Tolerances,
 }
 
 #[derive(Clone)]
@@ -72,40 +62,36 @@ enum InternalState<T: Clone + From<u32>> {
     Disabled,
 }
 
-const GENERIC_TIMING: Timing = Timing {
-    header_high: 9000,
-    header_low: 4500,
-    repeat_low: 2250,
-    one: 2250,
-    zero: 1250,
-};
 
-const SAMSUNG_TIMING: Timing = Timing {
-    header_high: 4500,
-    header_low: 4500,
-    repeat_low: 2250,
-    one: 2250,
-    zero: 1150,
-};
+
 
 impl<T> NecReceiver<T>
 where
     T: Clone + From<u32>,
 {
-    pub fn new(freq: u32) -> Self {
-        let generic = Tolerances::from_timing(&GENERIC_TIMING, freq);
-        let samsung = Tolerances::from_timing(&SAMSUNG_TIMING, freq);
+    pub fn new(variant: NecVariant, freq: u32) -> Self {
 
+        let timing = match variant {
+            NecVariant::Standard => &GENERIC_TIMING,
+            NecVariant::Samsung => &SAMSUNG_TIMING,
+        };
+
+        Self::new_from_timing(freq, timing)
+    }
+
+    pub fn new_from_timing(freq: u32, timing: &Timing) -> Self {
+        let tol = Tolerances::from_timing(timing, freq);
         Self {
             state: InternalState::Idle,
-            generic,
-            samsung,
+            tolerance: tol,
             prev_timestamp: 0,
             bitbuf_idx: 0,
             bitbuf: 0,
         }
     }
 }
+
+
 
 impl<T> Receiver for NecReceiver<T>
 where
@@ -114,12 +100,12 @@ where
     type Command = NecCommand<T>;
     type ReceiveError = NecError;
 
-    fn event(&mut self, rising: bool, timestamp: u32) -> State<NecCommand<T>, NecError> {
+    fn event(&mut self, rising: bool, timestamp: u32) -> ReceiverState<NecCommand<T>, NecError> {
         use InternalState::{
             Disabled, Done, Error as InternalError, HeaderHigh, HeaderLow, Idle, Receiving,
         };
 
-        // Distance between positive edges
+        // Distance between edges
         let tsdiff = timestamp.wrapping_sub(self.prev_timestamp);
         self.prev_timestamp = timestamp;
 
@@ -129,7 +115,7 @@ where
 
             (HeaderHigh, true) => unreachable!(),
             (HeaderHigh, false) => {
-                if self.generic.is_sync_high(tsdiff) || self.samsung.is_sync_high(tsdiff) {
+                if self.tolerance.is_sync_high(tsdiff) {
                     HeaderLow
                 } else {
                     InternalError(NecError::CommandType(tsdiff))
@@ -138,9 +124,9 @@ where
 
             (HeaderLow, false) => unreachable!(),
             (HeaderLow, true) => {
-                if self.generic.is_sync_low(tsdiff) || self.samsung.is_sync_low(tsdiff) {
+                if self.tolerance.is_sync_low(tsdiff) {
                     Receiving(0)
-                } else if self.generic.is_repeat(tsdiff) {
+                } else if self.tolerance.is_repeat(tsdiff) {
                     Done(NecCommand::Repeat)
                 } else {
                     InternalError(NecError::CommandType(tsdiff))
@@ -151,7 +137,7 @@ where
             (Receiving(saved), true) => {
                 let tsdiff = tsdiff + saved;
 
-                if let Some(one) = self.generic.is_value(tsdiff) {
+                if let Some(one) = self.tolerance.is_value(tsdiff) {
                     if one {
                         self.bitbuf |= 1 << self.bitbuf_idx;
                     }
@@ -170,14 +156,16 @@ where
             (Disabled, _) => Disabled,
         };
 
+        // Internalstate to ReceiverState
         match self.state.clone() {
-            InternalState::Idle => State::Idle,
+            InternalState::Idle => ReceiverState::Idle,
             InternalState::Done(cmd) => {
                 self.reset();
-                State::Done(cmd)
+                ReceiverState::Done(cmd)
             }
-            InternalState::Error(e) => State::Err(e),
-            _ => State::Receiving,
+            InternalState::Error(e) => ReceiverState::Err(e),
+            InternalState::Disabled => ReceiverState::Disabled,
+            _ => ReceiverState::Receiving,
         }
     }
 

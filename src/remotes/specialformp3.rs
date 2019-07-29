@@ -73,8 +73,8 @@ pub enum SpecialForMp3Action {
 
 #[derive(Debug, Clone)]
 pub struct SpecialForMp3 {
-    addr: u8,
-    cmd: u8,
+    pub addr: u8,
+    pub cmd: u8,
 }
 
 impl From<u32> for SpecialForMp3 {

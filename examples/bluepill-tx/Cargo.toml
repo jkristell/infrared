@@ -10,10 +10,10 @@ cortex-m = "0.6"
 cortex-m-rt = { version = "0.6.7" }
 panic-semihosting = "0.5"
 cortex-m-semihosting = "0.3.3"
+heapless = "0.4"
 usb-device = "0.2.1"
 usbd-serial = "0.1"
 stm32-usbd = { version = "0.3.0", features = ["stm32f103xx"] }
-heapless = "0.4"
 infrared = { path = "../.." }
 
 [profile.release]
