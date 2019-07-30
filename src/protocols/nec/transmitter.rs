@@ -62,9 +62,14 @@ impl NecTransmitter {
 
 impl Transmitter for NecTransmitter {
     fn set_command<CMD: Into<u32>>(&mut self, cmd: CMD) {
-
         self.cmd = cmd.into();
         self.state = TransmitStateInternal::Start;
+    }
+
+    fn reset(&mut self) {
+        self.cmd = 0;
+        self.state = TransmitStateInternal::Idle;
+        self.last_ts = 0;
     }
 
     fn transmit(&mut self, ts: u32) -> TransmitterState {
