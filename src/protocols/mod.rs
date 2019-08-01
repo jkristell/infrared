@@ -1,4 +1,4 @@
-mod nec;
+pub mod nec;
 
 
 pub use nec::receiver::{NecReceiver, NecVariant, NecCommand, NecResult, NecError};

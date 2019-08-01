@@ -1,4 +1,4 @@
-
+pub mod remotes;
 pub mod receiver;
 pub mod transmitter;
 

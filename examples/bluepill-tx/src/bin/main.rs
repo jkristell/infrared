@@ -27,13 +27,12 @@ use infrared::{
     protocols::{NecCommand,
                 NecVariant, NecType,
                 NecReceiver, NecResult, NecError,
-        NecTransmitter,
+                NecTransmitter,
     },
-
     Receiver, ReceiverState,
     Transmitter, TransmitterState,
     Remote,
-    remotes::SpecialForMp3,
+    protocols::nec::remotes::SpecialForMp3,
 };
 
 const FREQ: u32 = 20_000;

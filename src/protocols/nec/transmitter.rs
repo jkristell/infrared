@@ -2,6 +2,7 @@ use core::convert::Into;
 
 use crate::protocols::nec::{Timing, NecType, GENERIC_TIMING};
 use crate::{Transmitter, TransmitterState};
+use crate::protocols::NecCommand;
 
 
 enum TransmitStateInternal {
@@ -57,7 +58,11 @@ impl NecTransmitter {
             cmd: 0,
         }
     }
+/*
+    pub fn serialize_cmd(&self, cmd: NecCommand) -> u32 {
 
+    }
+*/
 }
 
 impl Transmitter for NecTransmitter {
