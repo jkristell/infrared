@@ -31,9 +31,11 @@ use infrared::{
     },
     Receiver, ReceiverState,
     Transmitter, TransmitterState,
-    Remote,
-    protocols::nec::remotes::SpecialForMp3,
+    remote::Remote,
+    //protocols::nec::remotes::SpecialForMp3,
+    protocols::nec::remotes::SamsungTv,
 };
+use infrared::remote::RemoteControl;
 
 const FREQ: u32 = 20_000;
 
@@ -192,14 +194,15 @@ fn main() -> ! {
         }
 
 
+        let remote = SamsungTv::new();
 
 
         if let Some(cmd) = cmdq.dequeue() {
             match cmd {
                 NecCommand::Payload(cmd) => {
                     // Convert the u32 to a command for our remote
-                    let cmd = SpecialForMp3::from(cmd);
-                    hprintln!("cmd: {:?}", cmd.action()).unwrap();
+                    let cmd = remote.decode(cmd);
+                    hprintln!("cmd: {:?}", cmd).unwrap();
                 }
                 NecCommand::Repeat => hprintln!("REPEAT").unwrap(),
             }

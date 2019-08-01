@@ -8,8 +8,7 @@ pub mod protocols;
 pub mod trace;
 
 /// Remote controls
-pub mod remotes;
-pub use remotes::Remote;
+pub mod remote;
 
 #[derive(PartialEq)]
 /// Protocol decoder state
@@ -49,7 +48,7 @@ pub trait Transmitter {
     // Set command to be transmitted
     fn set_command<CMD: Into<u32>>(&mut self, cmd: CMD);
 
-    // transfer loop
+    // Step the transfer loop
     fn transmit(&mut self, ts: u32) -> TransmitterState;
 
     fn reset(&mut self) {}

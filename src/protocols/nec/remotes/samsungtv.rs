@@ -1,88 +1,102 @@
-use core::convert::From;
+use crate::remote::RemoteControl;
 
-use crate::remotes::Remote;
+const SAMSUNGTV_ADDR: u16 = 7;
 
-const ADDR: u16 = 7;
-
-impl Remote for SamsungTv {
+impl RemoteControl for SamsungTv {
     type Action = SamsungTvAction;
 
-    fn action(&self) -> Option<Self::Action> {
-        use SamsungTvAction::*;
-        let (addr, cmd) = self.data();
-
-        if addr != ADDR {
-            return None;
-        }
-
-        let cmd = cmd & 0xff;
-
-        match cmd {
-            2 => Some(Power),
-            1 => Some(Source),
-            4 => Some(One),
-            5 => Some(Two),
-            6 => Some(Three),
-            8 => Some(Four),
-            9 => Some(Five),
-            10 => Some(Six),
-            12 => Some(Seven),
-            13 => Some(Eight),
-            14 => Some(Nine),
-            17 => Some(Zero),
-            44 => Some(Teletext),
-            19 => Some(ChannelPrev),
-            7 => Some(VolumeUp),
-            11 => Some(VolumeDown),
-            15 => Some(VolumeMute),
-            107 => Some(ChannelList),
-            18 => Some(ChannelListNext),
-            16 => Some(ChannelListPrev),
-            75 => Some(Tools),
-            31 => Some(Info),
-            88 => Some(Return),
-            45 => Some(Exit),
-            104 => Some(Enter),
-            96 => Some(Up),
-            97 => Some(Down),
-            101 => Some(Left),
-            98 => Some(Right),
-            108 => Some(Red),
-            20 => Some(Green),
-            21 => Some(Yellow),
-            22 => Some(Blue),
-            63 => Some(Emanual),
-            62 => Some(PictureSize),
-            37 => Some(Subtitle),
-            70 => Some(Stop),
-            69 => Some(Rewind),
-            71 => Some(Play),
-            74 => Some(Paus),
-            72 => Some(Forward),
-            _ => None,
-        }
+    fn decode(&self, raw: u32) -> Option<SamsungTvAction> {
+        to_action(raw)
     }
 
-    fn data(&self) -> (u16, u16) {
-        (self.address, self.command)
+    fn encode(&self, cmd: SamsungTvAction) -> u32 {
+        let cmd = to_command(cmd);
+
+        let addr = (SAMSUNGTV_ADDR as u32) << 16;
+        let cmd = (cmd as u32) << 8 | !cmd as u32;
+
+        addr | cmd
     }
 }
+
+fn to_command(action: SamsungTvAction) -> u8 {
+    use SamsungTvAction::*;
+    match action {
+        Power => 2,
+        _ => 0,
+    }
+}
+
+
+fn to_action(raw: u32) -> Option<SamsungTvAction> {
+    use SamsungTvAction::*;
+
+    let addr = (raw & 0xff) as u16;
+    let cmd = (raw >> 16) as u16;
+
+    if addr != SAMSUNGTV_ADDR {
+        return None;
+    }
+
+    let cmd = cmd & 0xff;
+
+    match cmd {
+        2 => Some(Power),
+        1 => Some(Source),
+        4 => Some(One),
+        5 => Some(Two),
+        6 => Some(Three),
+        8 => Some(Four),
+        9 => Some(Five),
+        10 => Some(Six),
+        12 => Some(Seven),
+        13 => Some(Eight),
+        14 => Some(Nine),
+        17 => Some(Zero),
+        44 => Some(Teletext),
+        19 => Some(ChannelPrev),
+        7 => Some(VolumeUp),
+        11 => Some(VolumeDown),
+        15 => Some(VolumeMute),
+        107 => Some(ChannelList),
+        18 => Some(ChannelListNext),
+        16 => Some(ChannelListPrev),
+        75 => Some(Tools),
+        31 => Some(Info),
+        88 => Some(Return),
+        45 => Some(Exit),
+        104 => Some(Enter),
+        96 => Some(Up),
+        97 => Some(Down),
+        101 => Some(Left),
+        98 => Some(Right),
+        108 => Some(Red),
+        20 => Some(Green),
+        21 => Some(Yellow),
+        22 => Some(Blue),
+        63 => Some(Emanual),
+        62 => Some(PictureSize),
+        37 => Some(Subtitle),
+        70 => Some(Stop),
+        69 => Some(Rewind),
+        71 => Some(Play),
+        74 => Some(Paus),
+        72 => Some(Forward),
+        _ => None,
+    }
+}
+
 
 #[derive(Clone, Debug)]
 pub struct SamsungTv {
-    pub address: u16,
-    pub command: u16,
 }
 
-
-impl From<u32> for SamsungTv {
-    fn from(value: u32) -> Self {
-        Self {
-            address: (value & 0xff) as u16,
-            command: (value >> 16) as u16,
-        }
+impl SamsungTv {
+    pub fn new() -> Self {
+        Self {}
     }
 }
+
 
 #[derive(Clone, Debug)]
 pub enum SamsungTvAction {
