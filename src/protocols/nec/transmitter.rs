@@ -1,9 +1,7 @@
 use core::convert::Into;
 
-use crate::protocols::nec::{Timing, NecType, GENERIC_TIMING};
+use crate::protocols::nec::{Timing, NecType, GENERIC_TIMING, SAMSUNG_TIMING};
 use crate::{Transmitter, TransmitterState};
-use crate::protocols::NecCommand;
-
 
 enum TransmitStateInternal {
     Idle,
@@ -27,10 +25,9 @@ pub struct NecTransmitter {
 struct TimeUnits {
     header_high: u32,
     header_low: u32,
+    data_high: u32,
     zero_low: u32,
-    zero_high: u32,
     one_low: u32,
-    one_high: u32,
 }
 
 impl TimeUnits {
@@ -39,17 +36,19 @@ impl TimeUnits {
             header_high: timing.header_high / period,
             header_low: timing.header_low / period,
             zero_low: timing.zero_low / period,
-            zero_high: timing.zero_high / period,
+            data_high: timing.data_high / period,
             one_low: timing.one_low / period,
-            one_high: timing.one_high / period,
         }
     }
 }
 
 impl NecTransmitter {
     pub fn new(nectype: NecType, period: u32) -> Self {
-        
-        let units = TimeUnits::new(period, &GENERIC_TIMING);
+
+        let units = match nectype {
+            NecType::Nec => TimeUnits::new(period, &GENERIC_TIMING),
+            NecType::Samsung => TimeUnits::new(period, &SAMSUNG_TIMING),
+        };
 
         Self {
             state: TransmitStateInternal::Idle,
@@ -58,11 +57,6 @@ impl NecTransmitter {
             cmd: 0,
         }
     }
-/*
-    pub fn serialize_cmd(&self, cmd: NecCommand) -> u32 {
-
-    }
-*/
 }
 
 impl Transmitter for NecTransmitter {
@@ -83,9 +77,7 @@ impl Transmitter for NecTransmitter {
         let tsdiff = ts.wrapping_sub(self.last_ts);
 
         self.state = match self.state {
-
             Start => {
-                // Start transimit
                 self.last_ts = ts;
                 HeaderHigh
             }
@@ -107,7 +99,7 @@ impl Transmitter for NecTransmitter {
             }
             DataLow(32) => Done,
             DataHigh(bidx) => {
-                if tsdiff >= self.units.zero_high {
+                if tsdiff >= self.units.data_high {
                     self.last_ts = ts;
                     DataLow(bidx)
                 } else {

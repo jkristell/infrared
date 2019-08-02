@@ -21,11 +21,12 @@ pub struct Timing {
     header_high: u32,
     header_low: u32,
     repeat_low: u32,
+
+    data_high: u32,
     zero_low: u32,
-    zero_high: u32,
-    zero: u32,
     one_low: u32,
-    one_high: u32,
+
+    zero: u32,
     one: u32,
 }
 
@@ -35,10 +36,9 @@ const GENERIC_TIMING: Timing = Timing {
     header_low: 4500,
     repeat_low: 2250,
     zero: 1250,
+    data_high: 560,
     zero_low: 560,
-    zero_high: 560,
     one: 2250,
-    one_high: 560,
     one_low: 1690,
 };
 
@@ -48,9 +48,8 @@ const SAMSUNG_TIMING: Timing = Timing {
     repeat_low: 2250,
     zero: 1250,
     zero_low: 560,
-    zero_high: 560,
+    data_high: 560,
     one: 2250,
-    one_high: 560,
     one_low: 1690,
 };
 
