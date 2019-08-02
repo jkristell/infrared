@@ -4,6 +4,7 @@ use core::ops::Range;
 use crate::{Receiver, ReceiverState};
 use crate::protocols::nec::Timing;
 use crate::protocols::nec::{SAMSUNG_TIMING, GENERIC_TIMING};
+use crate::protocols::NecType;
 
 #[derive(Clone)]
 /// The Command types
@@ -25,12 +26,6 @@ pub enum NecError {
     /// Receiving data but failed to read bit
     Data,
 }
-
-pub enum NecVariant {
-    Standard,
-    Samsung,
-}
-
 
 pub type NecResult<T> = ReceiverState<NecCommand<T>, NecError>;
 
@@ -69,11 +64,11 @@ impl<T> NecReceiver<T>
 where
     T: Clone + From<u32>,
 {
-    pub fn new(variant: NecVariant, freq: u32) -> Self {
+    pub fn new(variant: NecType, freq: u32) -> Self {
 
         let timing = match variant {
-            NecVariant::Standard => &GENERIC_TIMING,
-            NecVariant::Samsung => &SAMSUNG_TIMING,
+            NecType::Nec => &GENERIC_TIMING,
+            NecType::Samsung => &SAMSUNG_TIMING,
         };
 
         Self::new_from_timing(freq, timing)

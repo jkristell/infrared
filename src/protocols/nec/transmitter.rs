@@ -74,7 +74,7 @@ impl Transmitter for NecTransmitter {
     fn transmit(&mut self, ts: u32) -> TransmitterState {
         use TransmitStateInternal::*;
 
-        let tsdiff = ts.wrapping_sub(self.last_ts);
+        let interval = ts.wrapping_sub(self.last_ts);
 
         self.state = match self.state {
             Start => {
@@ -82,7 +82,7 @@ impl Transmitter for NecTransmitter {
                 HeaderHigh
             }
             HeaderHigh => {
-                if tsdiff >= self.units.header_high {
+                if interval >= self.units.header_high {
                     self.last_ts = ts;
                     HeaderLow
                 } else {
@@ -90,7 +90,7 @@ impl Transmitter for NecTransmitter {
                 }
             }
             HeaderLow => {
-                if tsdiff >= self.units.header_low {
+                if interval >= self.units.header_low {
                     self.last_ts = ts;
                     DataHigh(0)
                 } else {
@@ -99,7 +99,7 @@ impl Transmitter for NecTransmitter {
             }
             DataLow(32) => Done,
             DataHigh(bidx) => {
-                if tsdiff >= self.units.data_high {
+                if interval >= self.units.data_high {
                     self.last_ts = ts;
                     DataLow(bidx)
                 } else {
@@ -114,7 +114,7 @@ impl Transmitter for NecTransmitter {
                     self.units.zero_low
                 };
 
-                if tsdiff >= hightime {
+                if interval >= hightime {
                     self.last_ts = ts;
                     DataHigh(i+1)
                 } else {
