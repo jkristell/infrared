@@ -2,10 +2,12 @@ use crate::remote::RemoteControl;
 
 const ADDR: u8 = 0;
 
+pub struct SpecialForMp3;
+
 impl RemoteControl for SpecialForMp3 {
     type Action = SpecialForMp3Action;
 
-    fn decode(&self, raw: u32) -> Option<Self::Action> {
+    fn decode(&self, raw: u32) -> Option<SpecialForMp3Action> {
 
         let addr = (raw & 0xFF) as u8;
 
@@ -14,15 +16,28 @@ impl RemoteControl for SpecialForMp3 {
         }
 
         let cmd = ((raw >> 16) & 0xFF) as u8;
-        to_command(cmd)
+        to_action(cmd)
     }
 
-    fn encode(&self, cmd: Self::Action) -> u32 {
-        unimplemented!()
+    fn encode(&self, cmd: SpecialForMp3Action) -> u32 {
+        let cmd = to_command(cmd);
+
+        let addr = (ADDR as u32) | (!ADDR as u32) << 8;
+        let cmd = (cmd as u32) << 16 | (!cmd as u32) << 24;
+
+        addr | cmd
     }
 }
 
-fn to_command(raw: u8) -> Option<SpecialForMp3Action> {
+fn to_command(action: SpecialForMp3Action) -> u8 {
+    use SpecialForMp3Action::*;
+    match action {
+        Power => 69,
+        _ => 0,
+    }
+}
+
+fn to_action(raw: u8) -> Option<SpecialForMp3Action> {
     use SpecialForMp3Action::*;
 
     match raw {
@@ -78,6 +93,4 @@ pub enum SpecialForMp3Action {
     Nine,
 }
 
-#[derive(Debug, Clone)]
-pub struct SpecialForMp3;
 

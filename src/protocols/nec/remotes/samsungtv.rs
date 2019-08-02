@@ -6,7 +6,15 @@ impl RemoteControl for SamsungTv {
     type Action = SamsungTvAction;
 
     fn decode(&self, raw: u32) -> Option<SamsungTvAction> {
-        to_action(raw)
+
+        let addr = (raw & 0xff) as u16;
+        let cmd = ((raw >> 16) & 0xff) as u8;
+
+        if addr != SAMSUNGTV_ADDR {
+            return None;
+        }
+
+        to_action(cmd)
     }
 
     fn encode(&self, cmd: SamsungTvAction) -> u32 {
@@ -28,17 +36,8 @@ fn to_command(action: SamsungTvAction) -> u8 {
 }
 
 
-fn to_action(raw: u32) -> Option<SamsungTvAction> {
+fn to_action(cmd: u8) -> Option<SamsungTvAction> {
     use SamsungTvAction::*;
-
-    let addr = (raw & 0xff) as u16;
-    let cmd = (raw >> 16) as u16;
-
-    if addr != SAMSUNGTV_ADDR {
-        return None;
-    }
-
-    let cmd = cmd & 0xff;
 
     match cmd {
         2 => Some(Power),
@@ -88,14 +87,7 @@ fn to_action(raw: u32) -> Option<SamsungTvAction> {
 
 
 #[derive(Clone, Debug)]
-pub struct SamsungTv {
-}
-
-impl SamsungTv {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
+pub struct SamsungTv;
 
 
 #[derive(Clone, Debug)]

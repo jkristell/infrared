@@ -32,7 +32,7 @@ use infrared::{
     Receiver, ReceiverState,
     Transmitter, TransmitterState,
     remote::Remote,
-    //protocols::nec::remotes::SpecialForMp3,
+    protocols::nec::remotes::{SpecialForMp3, SpecialForMp3Action},
     protocols::nec::remotes::SamsungTv,
 };
 use infrared::remote::RemoteControl;
@@ -127,7 +127,7 @@ fn main() -> ! {
     let mut c4: Pwm<TIM4, C4> = device.TIM4.pwm(
         MyChannels(ir_tx),
         &mut afio.mapr,
-        100.hz(),
+        38.khz(),
         clocks,
         &mut rcc.apb1
     );
@@ -155,6 +155,11 @@ fn main() -> ! {
         EQ = Some(Queue::new());
         TXQ = Some(Queue::new());
     };
+
+
+    let remote = SpecialForMp3;
+    hprintln!("{}", remote.encode(SpecialForMp3Action::Power)).unwrap();
+
 
     let mut cmdq = unsafe { CQ.as_mut().unwrap().split().1 };
     let mut errq = unsafe { EQ.as_mut().unwrap().split().1 };
@@ -194,7 +199,6 @@ fn main() -> ! {
         }
 
 
-        let remote = SamsungTv::new();
 
 
         if let Some(cmd) = cmdq.dequeue() {
@@ -238,17 +242,23 @@ fn TIM2() {
             pwm.disable();
             // Check queue
             if let Some(txcmd) = txq.dequeue() {
-                nectx.set_command(txcmd);
+                let remote = SpecialForMp3;
+
+                nectx.set_command(remote.encode(SpecialForMp3Action::Power));
             }
         },
         TransmitterState::Transmit(true) => pwm.enable(),
         TransmitterState::Transmit(false) => pwm.disable(),
-        TransmitterState::Done => {},
-        TransmitterState::Err => {},
+        TransmitterState::Done => {
+            pwm.disable();
+        },
+        TransmitterState::Err => {
+            hprintln!("ERR").unwrap();
+        },
     }
 
 
-
+/*
     if *PINVAL != new_pinval {
         let rising = new_pinval;
 
@@ -260,11 +270,11 @@ fn TIM2() {
         if let ReceiverState::Done(cmd) = state {
             cmdq.enqueue(cmd).ok().unwrap();
         } else if let ReceiverState::Err(e) = state {
-            errq.enqueue(e).ok().unwrap();
+            //errq.enqueue(e).ok().unwrap();
             nec.reset();
         }
     }
-
+*/
     *PINVAL = new_pinval;
     *COUNT += 1;
 }
