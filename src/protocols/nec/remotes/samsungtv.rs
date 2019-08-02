@@ -20,8 +20,8 @@ impl RemoteControl for SamsungTv {
     fn encode(&self, cmd: SamsungTvAction) -> u32 {
         let cmd = to_command(cmd);
 
-        let addr = (SAMSUNGTV_ADDR as u32) << 16;
-        let cmd = (cmd as u32) << 8 | !cmd as u32;
+        let addr = SAMSUNGTV_ADDR as u32;
+        let cmd = (cmd as u32) << 16 | (!cmd as u32) << 24;
 
         addr | cmd
     }
@@ -31,6 +31,8 @@ fn to_command(action: SamsungTvAction) -> u8 {
     use SamsungTvAction::*;
     match action {
         Power => 2,
+        ChannelListNext => 18,
+        ChannelListPrev => 16,
         _ => 0,
     }
 }
