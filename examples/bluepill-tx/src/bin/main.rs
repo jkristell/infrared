@@ -25,7 +25,7 @@ use heapless::spsc::Queue;
 
 use infrared::{
     protocols::{NecCommand,
-                NecVariant, NecType,
+                NecType,
                 NecReceiver, NecResult, NecError,
                 NecTransmitter,
     },
@@ -36,6 +36,8 @@ use infrared::{
     protocols::nec::remotes::SamsungTv,
 };
 use infrared::remote::RemoteControl;
+use infrared::protocols::nec::NecType::Samsung;
+use infrared::protocols::nec::remotes::SamsungTvAction;
 
 const FREQ: u32 = 20_000;
 
@@ -139,10 +141,10 @@ fn main() -> ! {
     unsafe {
         TIMER.replace(timer);
         IRPIN.replace(irpin);
-        NEC.replace(NecReceiver::new(NecVariant::Standard, FREQ));
+        NEC.replace(NecReceiver::new(NecType::Nec, FREQ));
 
         let per: u32 = (1 * 1000) / (FREQ / 1000);
-        NECTX.replace(NecTransmitter::new(NecType::Nec, per));
+        NECTX.replace(NecTransmitter::new(NecType::Samsung, per));
 
         PWM.replace(c4);
     }
@@ -157,8 +159,7 @@ fn main() -> ! {
     };
 
 
-    let remote = SpecialForMp3;
-    hprintln!("{}", remote.encode(SpecialForMp3Action::Power)).unwrap();
+    let remote = SamsungTv;
 
 
     let mut cmdq = unsafe { CQ.as_mut().unwrap().split().1 };
@@ -242,9 +243,9 @@ fn TIM2() {
             pwm.disable();
             // Check queue
             if let Some(txcmd) = txq.dequeue() {
-                let remote = SpecialForMp3;
+                let remote = SamsungTv;
 
-                nectx.set_command(remote.encode(SpecialForMp3Action::Power));
+                nectx.set_command(remote.encode(SamsungTvAction::ChannelListNext));
             }
         },
         TransmitterState::Transmit(true) => pwm.enable(),
