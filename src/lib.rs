@@ -2,13 +2,19 @@
 
 use core::convert::Into;
 
+
 /// NEC protocol decoder
-pub mod protocols;
+pub use protocols::nec;
+
 /// Tracing protocol decoder
 pub mod trace;
 
 /// Remote controls
 pub mod remote;
+pub use remote::RemoteControl;
+
+mod protocols;
+
 
 #[derive(PartialEq)]
 /// Protocol decoder state
@@ -35,22 +41,23 @@ pub trait Receiver {
     fn disable(&mut self);
 }
 
-
 pub enum TransmitterState {
+    /// Transmitter is ready for transmitting
     Idle,
+    /// Transmitting
     Transmit(bool),
-    Done,
+    /// Error state
     Err,
 }
 
 pub trait Transmitter {
+    /// Initialize transfer
+    fn init<CMD: Into<u32>>(&mut self, cmd: CMD);
 
-    // Set command to be transmitted
-    fn set_command<CMD: Into<u32>>(&mut self, cmd: CMD);
+    /// Step the transfer loop
+    fn step(&mut self, ts: u32) -> TransmitterState;
 
-    // Step the transfer loop
-    fn transmit(&mut self, ts: u32) -> TransmitterState;
-
-    fn reset(&mut self) {}
+    /// Reset the transmitter
+    fn reset(&mut self);
 }
 

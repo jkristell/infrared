@@ -1,57 +1,43 @@
+#[macro_use]
 pub mod remotes;
 pub mod receiver;
 pub mod transmitter;
 
-// NEC Header
-//
-// _/'''''''''\_____ DATA
-//  |--- 9 ---| 4.5 |
-
-// Samsung TV Header
-//
-//_/'''''\_____
-// | 4.5 | 4.5 |
+pub use receiver::{NecReceiver, NecCommand, NecResult, NecError};
+pub use transmitter::{NecTransmitter};
 
 pub enum NecType {
-    Nec,
+    Standard,
     Samsung,
 }
 
 pub struct Timing {
-    header_high: u32,
-    header_low: u32,
-    repeat_low: u32,
+    header_htime: u32,
+    header_ltime: u32,
+    repeat_ltime: u32,
 
-    data_high: u32,
-    zero_low: u32,
-    one_low: u32,
-
-    zero: u32,
-    one: u32,
+    data_htime: u32,
+    zero_ltime: u32,
+    one_ltime: u32,
 }
 
 
-const GENERIC_TIMING: Timing = Timing {
-    header_high: 9000,
-    header_low: 4500,
-    repeat_low: 2250,
-    zero: 1250,
-    data_high: 560,
-    zero_low: 560,
-    one: 2250,
-    one_low: 1690,
+const STANDARD_TIMING: Timing = Timing {
+    header_htime: 9000,
+    header_ltime: 4500,
+    repeat_ltime: 2250,
+    data_htime: 560,
+    zero_ltime: 560,
+    one_ltime: 1690,
 };
 
 const SAMSUNG_TIMING: Timing = Timing {
-    header_high: 4500,
-    header_low: 4500,
-    repeat_low: 2250,
-    zero: 1250,
-    zero_low: 560,
-    data_high: 560,
-    one: 2250,
-    one_low: 1690,
+    header_htime: 4500,
+    header_ltime: 4500,
+    repeat_ltime: 2250,
+    zero_ltime: 560,
+    data_htime: 560,
+    one_ltime: 1690,
 };
-
 
 

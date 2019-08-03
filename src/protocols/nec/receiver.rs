@@ -2,9 +2,9 @@ use core::convert::From;
 use core::ops::Range;
 
 use crate::{Receiver, ReceiverState};
-use crate::protocols::nec::Timing;
-use crate::protocols::nec::{SAMSUNG_TIMING, GENERIC_TIMING};
-use crate::protocols::NecType;
+use crate::nec::Timing;
+use crate::nec::{SAMSUNG_TIMING, STANDARD_TIMING};
+use crate::nec::NecType;
 
 #[derive(Clone)]
 /// The Command types
@@ -57,25 +57,22 @@ enum InternalState<T: Clone + From<u32>> {
     Disabled,
 }
 
-
-
-
 impl<T> NecReceiver<T>
 where
     T: Clone + From<u32>,
 {
-    pub fn new(variant: NecType, freq: u32) -> Self {
+    pub fn new(variant: NecType, samplerate: u32) -> Self {
 
         let timing = match variant {
-            NecType::Nec => &GENERIC_TIMING,
+            NecType::Standard => &STANDARD_TIMING,
             NecType::Samsung => &SAMSUNG_TIMING,
         };
 
-        Self::new_from_timing(freq, timing)
+        Self::new_from_timing(samplerate, timing)
     }
 
-    pub fn new_from_timing(freq: u32, timing: &Timing) -> Self {
-        let tol = Tolerances::from_timing(timing, freq);
+    pub fn new_from_timing(samplerate: u32, timing: &Timing) -> Self {
+        let tol = Tolerances::from_timing(timing, samplerate);
         Self {
             state: InternalState::Idle,
             tolerance: tol,
@@ -100,8 +97,7 @@ where
             Disabled, Done, Error as InternalError, HeaderHigh, HeaderLow, Idle, Receiving,
         };
 
-        // Distance between edges
-        let tsdiff = timestamp.wrapping_sub(self.prev_timestamp);
+        let interval = timestamp.wrapping_sub(self.prev_timestamp);
         self.prev_timestamp = timestamp;
 
         self.state = match (self.state.clone(), rising) {
@@ -110,27 +106,27 @@ where
 
             (HeaderHigh, true) => unreachable!(),
             (HeaderHigh, false) => {
-                if self.tolerance.is_sync_high(tsdiff) {
+                if self.tolerance.is_sync_high(interval) {
                     HeaderLow
                 } else {
-                    InternalError(NecError::CommandType(tsdiff))
+                    InternalError(NecError::CommandType(interval))
                 }
             }
 
             (HeaderLow, false) => unreachable!(),
             (HeaderLow, true) => {
-                if self.tolerance.is_sync_low(tsdiff) {
+                if self.tolerance.is_sync_low(interval) {
                     Receiving(0)
-                } else if self.tolerance.is_repeat(tsdiff) {
+                } else if self.tolerance.is_repeat(interval) {
                     Done(NecCommand::Repeat)
                 } else {
-                    InternalError(NecError::CommandType(tsdiff))
+                    InternalError(NecError::CommandType(interval))
                 }
             }
 
-            (Receiving(_saved), false) => Receiving(tsdiff),
+            (Receiving(_saved), false) => Receiving(interval),
             (Receiving(saved), true) => {
-                let tsdiff = tsdiff + saved;
+                let tsdiff = interval + saved;
 
                 if let Some(one) = self.tolerance.is_value(tsdiff) {
                     if one {
@@ -186,14 +182,14 @@ pub struct Tolerances {
 }
 
 impl Tolerances {
-    pub const fn from_timing(t: &Timing, freq: u32) -> Self {
-        let per: u32 = (1 * 1000) / (freq / 1000);
+    pub const fn from_timing(t: &Timing, samplerate: u32) -> Self {
+        let per: u32 = 1000 / (samplerate / 1000);
         Tolerances {
-            sync_high: unit_range(t.header_high / per, 5),
-            sync_low: unit_range(t.header_low / per, 5),
-            repeat: unit_range(t.repeat_low / per, 5),
-            zero: unit_range(t.zero / per, 15),
-            one: unit_range(t.one / per, 15),
+            sync_high: unit_range(t.header_htime / per, 5),
+            sync_low: unit_range(t.header_ltime / per, 5),
+            repeat: unit_range(t.repeat_ltime / per, 5),
+            zero: unit_range((t.data_htime + t.zero_ltime) / per, 15),
+            one: unit_range((t.data_htime + t.one_ltime) / per, 15),
         }
     }
 

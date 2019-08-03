@@ -1,6 +1,6 @@
 use core::convert::Into;
 
-use crate::protocols::nec::{Timing, NecType, GENERIC_TIMING, SAMSUNG_TIMING};
+use crate::nec::{Timing, NecType, STANDARD_TIMING, SAMSUNG_TIMING};
 use crate::{Transmitter, TransmitterState};
 
 enum TransmitStateInternal {
@@ -8,21 +8,19 @@ enum TransmitStateInternal {
     Start,
     HeaderHigh,
     HeaderLow,
-    // Index, High/Low part
     DataLow(u32),
     DataHigh(u32),
     Done,
 }
 
-
 pub struct NecTransmitter {
     state: TransmitStateInternal,
-    units: TimeUnits,
+    samples: NSamples,
     last_ts: u32,
     cmd: u32,
 }
 
-struct TimeUnits {
+struct NSamples {
     header_high: u32,
     header_low: u32,
     data_high: u32,
@@ -30,29 +28,17 @@ struct TimeUnits {
     one_low: u32,
 }
 
-impl TimeUnits {
-    pub fn new(period: u32, timing: &Timing) -> Self {
-        Self {
-            header_high: timing.header_high / period,
-            header_low: timing.header_low / period,
-            zero_low: timing.zero_low / period,
-            data_high: timing.data_high / period,
-            one_low: timing.one_low / period,
-        }
-    }
-}
-
 impl NecTransmitter {
     pub fn new(nectype: NecType, period: u32) -> Self {
 
         let units = match nectype {
-            NecType::Nec => TimeUnits::new(period, &GENERIC_TIMING),
-            NecType::Samsung => TimeUnits::new(period, &SAMSUNG_TIMING),
+            NecType::Standard => NSamples::new(period, &STANDARD_TIMING),
+            NecType::Samsung => NSamples::new(period, &SAMSUNG_TIMING),
         };
 
         Self {
             state: TransmitStateInternal::Idle,
-            units,
+            samples: units,
             last_ts: 0,
             cmd: 0,
         }
@@ -60,18 +46,12 @@ impl NecTransmitter {
 }
 
 impl Transmitter for NecTransmitter {
-    fn set_command<CMD: Into<u32>>(&mut self, cmd: CMD) {
+    fn init<CMD: Into<u32>>(&mut self, cmd: CMD) {
         self.cmd = cmd.into();
         self.state = TransmitStateInternal::Start;
     }
 
-    fn reset(&mut self) {
-        self.cmd = 0;
-        self.state = TransmitStateInternal::Idle;
-        self.last_ts = 0;
-    }
-
-    fn transmit(&mut self, ts: u32) -> TransmitterState {
+    fn step(&mut self, ts: u32) -> TransmitterState {
         use TransmitStateInternal::*;
 
         let interval = ts.wrapping_sub(self.last_ts);
@@ -82,7 +62,7 @@ impl Transmitter for NecTransmitter {
                 HeaderHigh
             }
             HeaderHigh => {
-                if interval >= self.units.header_high {
+                if interval >= self.samples.header_high {
                     self.last_ts = ts;
                     HeaderLow
                 } else {
@@ -90,7 +70,7 @@ impl Transmitter for NecTransmitter {
                 }
             }
             HeaderLow => {
-                if interval >= self.units.header_low {
+                if interval >= self.samples.header_low {
                     self.last_ts = ts;
                     DataHigh(0)
                 } else {
@@ -99,7 +79,7 @@ impl Transmitter for NecTransmitter {
             }
             DataLow(32) => Done,
             DataHigh(bidx) => {
-                if interval >= self.units.data_high {
+                if interval >= self.samples.data_high {
                     self.last_ts = ts;
                     DataLow(bidx)
                 } else {
@@ -107,11 +87,10 @@ impl Transmitter for NecTransmitter {
                 }
             }
             DataLow(i) => {
-
                 let hightime = if (self.cmd & (1 << i)) != 0 {
-                    self.units.one_low
+                    self.samples.one_low
                 } else {
-                    self.units.zero_low
+                    self.samples.zero_low
                 };
 
                 if interval >= hightime {
@@ -125,12 +104,30 @@ impl Transmitter for NecTransmitter {
             Idle => Idle,
         };
 
-
         match self.state {
             HeaderHigh | DataHigh(_) => TransmitterState::Transmit(true),
             HeaderLow | DataLow(_) => TransmitterState::Transmit(false),
+            Done | Idle | Start => TransmitterState::Idle
+        }
+    }
 
-            _ => TransmitterState::Idle
+    fn reset(&mut self) {
+        self.cmd = 0;
+        self.state = TransmitStateInternal::Idle;
+        self.last_ts = 0;
+    }
+}
+
+impl NSamples {
+    pub const fn new(period: u32, timing: &Timing) -> Self {
+        Self {
+            header_high: timing.header_htime / period,
+            header_low: timing.header_ltime / period,
+            zero_low: timing.zero_ltime / period,
+            data_high: timing.data_htime / period,
+            one_low: timing.one_ltime / period,
         }
     }
 }
+
+

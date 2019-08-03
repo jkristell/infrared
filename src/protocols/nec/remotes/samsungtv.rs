@@ -2,6 +2,9 @@ use crate::remote::RemoteControl;
 
 const SAMSUNGTV_ADDR: u16 = 7;
 
+/// Samsung Tv Remote Control
+pub struct SamsungTv;
+
 impl RemoteControl for SamsungTv {
     type Action = SamsungTvAction;
 
@@ -17,8 +20,8 @@ impl RemoteControl for SamsungTv {
         to_action(cmd)
     }
 
-    fn encode(&self, cmd: SamsungTvAction) -> u32 {
-        let cmd = to_command(cmd);
+    fn encode(&self, action: SamsungTvAction) -> u32 {
+        let cmd = from_action(action);
 
         let addr = (SAMSUNGTV_ADDR as u32) | (SAMSUNGTV_ADDR as u32) << 8;
         let cmd = (cmd as u32) << 16 | (!cmd as u32) << 24;
@@ -26,71 +29,6 @@ impl RemoteControl for SamsungTv {
         addr | cmd
     }
 }
-
-fn to_command(action: SamsungTvAction) -> u8 {
-    use SamsungTvAction::*;
-    match action {
-        Power => 2,
-        ChannelListNext => 18,
-        ChannelListPrev => 16,
-        _ => 0,
-    }
-}
-
-
-fn to_action(cmd: u8) -> Option<SamsungTvAction> {
-    use SamsungTvAction::*;
-
-    match cmd {
-        2 => Some(Power),
-        1 => Some(Source),
-        4 => Some(One),
-        5 => Some(Two),
-        6 => Some(Three),
-        8 => Some(Four),
-        9 => Some(Five),
-        10 => Some(Six),
-        12 => Some(Seven),
-        13 => Some(Eight),
-        14 => Some(Nine),
-        17 => Some(Zero),
-        44 => Some(Teletext),
-        19 => Some(ChannelPrev),
-        7 => Some(VolumeUp),
-        11 => Some(VolumeDown),
-        15 => Some(VolumeMute),
-        107 => Some(ChannelList),
-        18 => Some(ChannelListNext),
-        16 => Some(ChannelListPrev),
-        75 => Some(Tools),
-        31 => Some(Info),
-        88 => Some(Return),
-        45 => Some(Exit),
-        104 => Some(Enter),
-        96 => Some(Up),
-        97 => Some(Down),
-        101 => Some(Left),
-        98 => Some(Right),
-        108 => Some(Red),
-        20 => Some(Green),
-        21 => Some(Yellow),
-        22 => Some(Blue),
-        63 => Some(Emanual),
-        62 => Some(PictureSize),
-        37 => Some(Subtitle),
-        70 => Some(Stop),
-        69 => Some(Rewind),
-        71 => Some(Play),
-        74 => Some(Paus),
-        72 => Some(Forward),
-        _ => None,
-    }
-}
-
-
-#[derive(Clone, Debug)]
-pub struct SamsungTv;
-
 
 #[derive(Clone, Debug)]
 pub enum SamsungTvAction {
@@ -136,3 +74,71 @@ pub enum SamsungTvAction {
     Paus,
     Forward,
 }
+
+macro_rules! generate_action_funcs {
+    ($out:ty, $t:path, $( ($x:expr, $y:expr, $z:pat) ),* ) => {
+
+        fn to_action(val: u8) -> Option<$out> {
+            use $t::*;
+            match val {
+                $($x => Some($y),)+
+                _ => None,
+            }
+        }
+
+        fn from_action(action: $out) -> u8 {
+            use $t::*;
+            match action {
+                $($z => $x,)+
+            }
+        }
+    };
+}
+
+
+
+
+generate_action_funcs!(SamsungTvAction, SamsungTvAction,
+    (2, Power, Power),
+    (1, Source, Source),
+    (4, One, One),
+    (5, Two, Two),
+    (6, Three, Three),
+    (8, Four, Four),
+    (9, Five, Five),
+    (10, Six, Six),
+    (12, Seven, Seven),
+    (13, Eight, Eight),
+    (14, Nine, Nine),
+    (17, Zero, Zero),
+    (44, Teletext, Teletext),
+    (19, ChannelPrev, ChannelPrev),
+    (7, VolumeUp, VolumeUp),
+    (11, VolumeDown, VolumeDown),
+    (15, VolumeMute, VolumeMute),
+    (107, ChannelList, ChannelList),
+    (18, ChannelListNext, ChannelListNext),
+    (16, ChannelListPrev, ChannelListPrev),
+    (75, Tools, Tools),
+    (31, Info, Info),
+    (88, Return, Return),
+    (45, Exit, Exit),
+    (104, Enter, Enter),
+    (96, Up, Up),
+    (97, Down, Down),
+    (101, Left, Left),
+    (98, Right, Right),
+    (108, Red, Red),
+    (20, Green, Green),
+    (21, Yellow, Yellow),
+    (22, Blue, Blue),
+    (63, Emanual, Emanual),
+    (62, PictureSize, PictureSize),
+    (37, Subtitle, Subtitle),
+    (70, Stop, Stop),
+    (69, Rewind, Rewind),
+    (71, Play, Play),
+    (74, Paus, Paus),
+    (72, Forward, Forward)
+);
+
