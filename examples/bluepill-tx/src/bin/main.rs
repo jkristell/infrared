@@ -7,15 +7,15 @@ use panic_semihosting as _;
 use cortex_m::asm::delay;
 use cortex_m_rt::entry;
 use cortex_m_semihosting::hprintln;
+use stm32_usbd::UsbBus;
 use stm32f1xx_hal::{
-    gpio::{gpiob::PB9, PushPull, Alternate},
-    pwm::{Pins, Pwm, C4},
+    gpio::{gpiob::PB9, Alternate, PushPull},
     pac,
     prelude::*,
+    pwm::{Pins, Pwm, C4},
     stm32::{interrupt, TIM2, TIM4},
     timer::{Event, Timer},
 };
-use stm32_usbd::UsbBus;
 use usb_device::prelude::*;
 use usbd_serial::{SerialPort, USB_CLASS_CDC};
 
@@ -23,10 +23,9 @@ use heapless::consts::*;
 use heapless::spsc::Queue;
 
 use infrared::{
-    nec::{NecType, NecTransmitter},
     nec::remotes::*,
-    Transmitter, TransmitterState,
-    RemoteControl,
+    nec::{NecTransmitter, NecType},
+    RemoteControl, Transmitter, TransmitterState,
 };
 
 const FREQ: u32 = 20_000;
@@ -46,7 +45,6 @@ impl Pins<TIM4> for PwmChannels {
     const C4: bool = true; // PB9
     type Channels = Pwm<TIM4, C4>;
 }
-
 
 #[entry]
 fn main() -> ! {
@@ -87,7 +85,6 @@ fn main() -> ! {
         .device_class(USB_CLASS_CDC)
         .build();
 
-
     let mut timer = Timer::tim2(device.TIM2, 20.khz(), clocks, &mut rcc.apb1);
     timer.listen(Event::Update);
 
@@ -101,7 +98,7 @@ fn main() -> ! {
         &mut afio.mapr,
         38.khz(),
         clocks,
-        &mut rcc.apb1
+        &mut rcc.apb1,
     );
     // Set the duty cycle of channel 0 to 50%
     c4.set_duty(c4.get_max_duty() / 2);
@@ -131,9 +128,7 @@ fn main() -> ! {
 
             match serial.read(&mut buf) {
                 Ok(count) if count > 0 => {
-
                     for c in buf[0..count].iter() {
-
                         // Keyboard key to Remote control action
                         let action = match *c as char {
                             'o' => SamsungTvAction::Power,
@@ -151,8 +146,8 @@ fn main() -> ! {
                         match serial.write(&buf[write_offset..count]) {
                             Ok(len) if len > 0 => {
                                 write_offset += len;
-                            },
-                            _ => {},
+                            }
+                            _ => {}
                         }
                     }
                 }
@@ -161,7 +156,6 @@ fn main() -> ! {
         }
     }
 }
-
 
 #[interrupt]
 fn TIM2() {
@@ -192,7 +186,7 @@ fn TIM2() {
                 // Initialize the transfer
                 transmitter.init(remote.encode(action));
             }
-        },
+        }
         // The state machine wants us to activate the pwm
         TransmitterState::Transmit(true) => pwm.enable(),
         // And disable it
@@ -203,5 +197,3 @@ fn TIM2() {
 
     *COUNT += 1;
 }
-
-
