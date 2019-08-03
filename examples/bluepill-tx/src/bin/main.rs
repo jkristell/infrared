@@ -122,20 +122,19 @@ fn main() -> ! {
         TXQ = Some(Queue::new());
     };
 
-    let mut txq = unsafe { TXQ.as_mut().unwrap().split().0 };
+    let mut action_queue = unsafe { TXQ.as_mut().unwrap().split().0 };
 
     loop {
         // Handle USB
         if usb_dev.poll(&mut [&mut serial]) {
-            let mut buf = [0u8; 64];
+            let mut buf = [0u8; 16];
 
             match serial.read(&mut buf) {
                 Ok(count) if count > 0 => {
 
-                    // Echo back in upper case
-                    for c in buf[0..count].iter_mut() {
-                        // Enqueue all commands
+                    for c in buf[0..count].iter() {
 
+                        // Keyboard key to Remote control action
                         let action = match *c as char {
                             'o' => SamsungTvAction::Power,
                             'n' => SamsungTvAction::ChannelListNext,
@@ -143,11 +142,8 @@ fn main() -> ! {
                             _ => SamsungTvAction::Teletext,
                         };
 
-                        txq.enqueue(action).ok().unwrap();
-
-                        if 0x61 <= *c && *c <= 0x7a {
-                            *c = *c + 1;
-                        }
+                        // Queue the action
+                        action_queue.enqueue(action).ok().unwrap();
                     }
 
                     let mut write_offset = 0;
