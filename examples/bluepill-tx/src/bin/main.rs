@@ -182,22 +182,27 @@ fn TIM2() {
     // Update the state in the transmitter
     let state = transmitter.step(*COUNT);
 
-    let mut txq = unsafe { TXQ.as_mut().unwrap().split().1 };
+    // Get a handle to our action queue
+    let mut action_queue = unsafe { TXQ.as_mut().unwrap().split().1 };
 
     match state {
         TransmitterState::Idle => {
+            // Make sure the Pwm is disabled
             pwm.disable();
-            // Check queue
-            if let Some(txcmd) = txq.dequeue() {
+            // Check queue for new commands
+            if let Some(action) = action_queue.dequeue() {
+                // The the remote for the given protocol (variant) we want to act as
                 let remote = SamsungTv;
-                transmitter.init(remote.encode(txcmd));
+                // Initialize the transfer
+                transmitter.init(remote.encode(action));
             }
         },
+        // The state machine wants us to activate the pwm
         TransmitterState::Transmit(true) => pwm.enable(),
+        // And disable it
         TransmitterState::Transmit(false) => pwm.disable(),
-        TransmitterState::Err => {
-            hprintln!("ERR").unwrap();
-        },
+        // Error when sendinf
+        TransmitterState::Err => hprintln!("Err!!").unwrap(),
     }
 
     *COUNT += 1;
