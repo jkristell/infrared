@@ -113,7 +113,7 @@ fn main() -> ! {
     unsafe {
         TIMER.replace(timer);
         let per: u32 = (1 * 1000) / (FREQ / 1000);
-        NECTX.replace(NecTransmitter::new(NecType::Standard, per));
+        NECTX.replace(NecTransmitter::new(NecType::Samsung, per));
         PWM.replace(c4);
     }
 
