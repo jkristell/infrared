@@ -1,6 +1,6 @@
 use core::convert::Into;
 
-use crate::nec::{Timing, NecType, STANDARD_TIMING, SAMSUNG_TIMING};
+use crate::nec::{NecType, Timing, SAMSUNG_TIMING, STANDARD_TIMING};
 use crate::{Transmitter, TransmitterState};
 
 enum TransmitStateInternal {
@@ -30,7 +30,6 @@ struct NSamples {
 
 impl NecTransmitter {
     pub fn new(nectype: NecType, period: u32) -> Self {
-
         let units = match nectype {
             NecType::Standard => NSamples::new(period, &STANDARD_TIMING),
             NecType::Samsung => NSamples::new(period, &SAMSUNG_TIMING),
@@ -77,7 +76,7 @@ impl Transmitter for NecTransmitter {
                     HeaderLow
                 }
             }
-            DataLow(32) => Done,
+
             DataHigh(bidx) => {
                 if interval >= self.samples.data_high {
                     self.last_ts = ts;
@@ -86,18 +85,19 @@ impl Transmitter for NecTransmitter {
                     DataHigh(bidx)
                 }
             }
-            DataLow(i) => {
-                let hightime = if (self.cmd & (1 << i)) != 0 {
+            DataLow(32) => Done,
+            DataLow(bidx) => {
+                let samples = if (self.cmd & (1 << bidx)) != 0 {
                     self.samples.one_low
                 } else {
                     self.samples.zero_low
                 };
 
-                if interval >= hightime {
+                if interval >= samples {
                     self.last_ts = ts;
-                    DataHigh(i+1)
+                    DataHigh(bidx + 1)
                 } else {
-                    DataLow(i)
+                    DataLow(bidx)
                 }
             }
             Done => Done,
@@ -107,7 +107,7 @@ impl Transmitter for NecTransmitter {
         match self.state {
             HeaderHigh | DataHigh(_) => TransmitterState::Transmit(true),
             HeaderLow | DataLow(_) => TransmitterState::Transmit(false),
-            Done | Idle | Start => TransmitterState::Idle
+            Done | Idle | Start => TransmitterState::Idle,
         }
     }
 
@@ -129,5 +129,3 @@ impl NSamples {
         }
     }
 }
-
-

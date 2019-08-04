@@ -30,11 +30,16 @@ use infrared::{
 
 const FREQ: u32 = 20_000;
 
+// Global timer
 static mut TIMER: Option<Timer<TIM2>> = None;
+// transmitter
 static mut NECTX: Option<NecTransmitter> = None;
+// Pwm channel
 static mut PWM: Option<Pwm<TIM4, C4>> = None;
-
-static mut TXQ: Option<Queue<SamsungTvAction, U8>> = None;
+// Our remote control we want to act like
+static REMOTECONTROL: SpecialForMp3 = SpecialForMp3;
+// Remote control action queue
+static mut TXQ: Option<Queue<SpecialForMp3Action, U8>> = None;
 
 struct PwmChannels(PB9<Alternate<PushPull>>);
 impl Pins<TIM4> for PwmChannels {
@@ -108,7 +113,7 @@ fn main() -> ! {
     unsafe {
         TIMER.replace(timer);
         let per: u32 = (1 * 1000) / (FREQ / 1000);
-        NECTX.replace(NecTransmitter::new(NecType::Samsung, per));
+        NECTX.replace(NecTransmitter::new(NecType::Standard, per));
         PWM.replace(c4);
     }
 
@@ -131,10 +136,10 @@ fn main() -> ! {
                     for c in buf[0..count].iter() {
                         // Keyboard key to Remote control action
                         let action = match *c as char {
-                            'o' => SamsungTvAction::Power,
-                            'n' => SamsungTvAction::ChannelListNext,
-                            'p' => SamsungTvAction::ChannelListPrev,
-                            _ => SamsungTvAction::Teletext,
+                            'o' => SpecialForMp3Action::Power,
+                            'n' => SpecialForMp3Action::Next,
+                            'p' => SpecialForMp3Action::Prev,
+                            _ => SpecialForMp3Action::Play_Paus,
                         };
 
                         // Queue the action
@@ -181,10 +186,8 @@ fn TIM2() {
             pwm.disable();
             // Check queue for new commands
             if let Some(action) = action_queue.dequeue() {
-                // The the remote for the given protocol (variant) we want to act as
-                let remote = SamsungTv;
                 // Initialize the transfer
-                transmitter.init(remote.encode(action));
+                transmitter.init(REMOTECONTROL.encode(action));
             }
         }
         // The state machine wants us to activate the pwm

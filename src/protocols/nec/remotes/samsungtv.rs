@@ -3,13 +3,13 @@ use crate::remote::RemoteControl;
 const SAMSUNGTV_ADDR: u16 = 7;
 
 /// Samsung Tv Remote Control
+#[derive(Copy, Clone)]
 pub struct SamsungTv;
 
 impl RemoteControl for SamsungTv {
     type Action = SamsungTvAction;
 
     fn decode(&self, raw: u32) -> Option<SamsungTvAction> {
-
         let addr = (raw & 0xff) as u16;
         let cmd = ((raw >> 16) & 0xff) as u8;
 
@@ -95,10 +95,9 @@ macro_rules! generate_action_funcs {
     };
 }
 
-
-
-
-generate_action_funcs!(SamsungTvAction, SamsungTvAction,
+generate_action_funcs!(
+    SamsungTvAction,
+    SamsungTvAction,
     (2, Power, Power),
     (1, Source, Source),
     (4, One, One),
@@ -141,4 +140,3 @@ generate_action_funcs!(SamsungTvAction, SamsungTvAction,
     (74, Paus, Paus),
     (72, Forward, Forward)
 );
-

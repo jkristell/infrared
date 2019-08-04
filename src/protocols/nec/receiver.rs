@@ -1,10 +1,10 @@
 use core::convert::From;
 use core::ops::Range;
 
-use crate::{Receiver, ReceiverState};
+use crate::nec::NecType;
 use crate::nec::Timing;
 use crate::nec::{SAMSUNG_TIMING, STANDARD_TIMING};
-use crate::nec::NecType;
+use crate::{Receiver, ReceiverState};
 
 #[derive(Clone)]
 /// The Command types
@@ -62,7 +62,6 @@ where
     T: Clone + From<u32>,
 {
     pub fn new(variant: NecType, samplerate: u32) -> Self {
-
         let timing = match variant {
             NecType::Standard => &STANDARD_TIMING,
             NecType::Samsung => &SAMSUNG_TIMING,
@@ -82,8 +81,6 @@ where
         }
     }
 }
-
-
 
 impl<T> Receiver for NecReceiver<T>
 where

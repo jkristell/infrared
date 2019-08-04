@@ -8,7 +8,6 @@ impl RemoteControl for SpecialForMp3 {
     type Action = SpecialForMp3Action;
 
     fn decode(&self, raw: u32) -> Option<SpecialForMp3Action> {
-
         let addr = (raw & 0xFF) as u8;
 
         if addr != ADDR {
@@ -76,9 +75,9 @@ macro_rules! generate_action_funcs {
     };
 }
 
-
-
-generate_action_funcs!(SpecialForMp3Action, SpecialForMp3Action,
+generate_action_funcs!(
+    SpecialForMp3Action,
+    SpecialForMp3Action,
     (69, Power, Power),
     (70, Mode, Mode),
     (71, Mute, Mute),
@@ -101,5 +100,3 @@ generate_action_funcs!(SpecialForMp3Action, SpecialForMp3Action,
     (82, Eight, Eight),
     (74, Nine, Nine)
 );
-
-

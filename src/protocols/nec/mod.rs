@@ -3,8 +3,8 @@ pub mod remotes;
 pub mod receiver;
 pub mod transmitter;
 
-pub use receiver::{NecReceiver, NecCommand, NecResult, NecError};
-pub use transmitter::{NecTransmitter};
+pub use receiver::{NecCommand, NecError, NecReceiver, NecResult};
+pub use transmitter::NecTransmitter;
 
 pub enum NecType {
     Standard,
@@ -20,7 +20,6 @@ pub struct Timing {
     zero_ltime: u32,
     one_ltime: u32,
 }
-
 
 const STANDARD_TIMING: Timing = Timing {
     header_htime: 9000,
@@ -39,5 +38,3 @@ const SAMSUNG_TIMING: Timing = Timing {
     data_htime: 560,
     one_ltime: 1690,
 };
-
-

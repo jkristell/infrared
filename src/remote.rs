@@ -1,5 +1,3 @@
-
-
 pub trait RemoteControl {
     type Action;
 
@@ -7,5 +5,3 @@ pub trait RemoteControl {
 
     fn encode(&self, cmd: Self::Action) -> u32;
 }
-
-

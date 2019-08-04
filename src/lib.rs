@@ -2,7 +2,6 @@
 
 use core::convert::Into;
 
-
 /// NEC protocol decoder
 pub use protocols::nec;
 
@@ -14,7 +13,6 @@ pub mod remote;
 pub use remote::RemoteControl;
 
 mod protocols;
-
 
 #[derive(PartialEq)]
 /// Protocol decoder state
@@ -34,7 +32,11 @@ pub trait Receiver {
     type ReceiveError;
 
     /// Register new event
-    fn event(&mut self, rising: bool, timestamp: u32) -> ReceiverState<Self::Command, Self::ReceiveError>;
+    fn event(
+        &mut self,
+        rising: bool,
+        timestamp: u32,
+    ) -> ReceiverState<Self::Command, Self::ReceiveError>;
     /// Reset receiver
     fn reset(&mut self);
     /// Disable receiver
@@ -60,4 +62,3 @@ pub trait Transmitter {
     /// Reset the transmitter
     fn reset(&mut self);
 }
-
