@@ -1,4 +1,4 @@
-use crate::{Receiver, State};
+use crate::{Receiver, ReceiverState};
 
 const BUF_LEN: usize = 32;
 
@@ -18,7 +18,7 @@ impl Receiver for TraceReceiver {
     type Command = TraceResult;
     type ReceiveError = ();
 
-    fn event(&mut self, _rising: bool, ts: u32) -> State<TraceResult, ()> {
+    fn event(&mut self, _rising: bool, ts: u32) -> ReceiverState<TraceResult, ()> {
         let t = if self.logdiffs {
             ts.wrapping_sub(self.ts_prev)
         } else {
@@ -30,9 +30,9 @@ impl Receiver for TraceReceiver {
         self.ts_prev = ts;
 
         if self.ts_idx == BUF_LEN {
-            State::Done(TraceResult { buf: self.data })
+            ReceiverState::Done(TraceResult { buf: self.data })
         } else {
-            State::Receiving
+            ReceiverState::Receiving
         }
     }
 

@@ -1,24 +1,10 @@
-use crate::{Receiver, State};
 use core::convert::From;
 use core::ops::Range;
 
-// NEC Header
-//
-// _/'''''''''\_____ DATA
-//  |--- 9 ---| 4.5 |
-
-// Samsung TV Header
-//
-//_/'''''\_____
-// | 4.5 | 4.5 |
-
-pub struct Timing {
-    header_high: u32,
-    header_low: u32,
-    repeat_low: u32,
-    one: u32,
-    zero: u32,
-}
+use crate::nec::NecType;
+use crate::nec::Timing;
+use crate::nec::{SAMSUNG_TIMING, STANDARD_TIMING};
+use crate::{Receiver, ReceiverState};
 
 #[derive(Clone)]
 /// The Command types
@@ -41,7 +27,7 @@ pub enum NecError {
     Data,
 }
 
-pub type NecResult<T> = State<NecCommand<T>, NecError>;
+pub type NecResult<T> = ReceiverState<NecCommand<T>, NecError>;
 
 pub struct NecReceiver<T: Clone + From<u32>> {
     // State
@@ -50,8 +36,7 @@ pub struct NecReceiver<T: Clone + From<u32>> {
     bitbuf_idx: u32,
     prev_timestamp: u32,
     // Timing and tolerances
-    generic: Tolerances,
-    samsung: Tolerances,
+    tolerance: Tolerances,
 }
 
 #[derive(Clone)]
@@ -72,34 +57,24 @@ enum InternalState<T: Clone + From<u32>> {
     Disabled,
 }
 
-const GENERIC_TIMING: Timing = Timing {
-    header_high: 9000,
-    header_low: 4500,
-    repeat_low: 2250,
-    one: 2250,
-    zero: 1250,
-};
-
-const SAMSUNG_TIMING: Timing = Timing {
-    header_high: 4500,
-    header_low: 4500,
-    repeat_low: 2250,
-    one: 2250,
-    zero: 1150,
-};
-
 impl<T> NecReceiver<T>
 where
     T: Clone + From<u32>,
 {
-    pub fn new(freq: u32) -> Self {
-        let generic = Tolerances::from_timing(&GENERIC_TIMING, freq);
-        let samsung = Tolerances::from_timing(&SAMSUNG_TIMING, freq);
+    pub fn new(variant: NecType, samplerate: u32) -> Self {
+        let timing = match variant {
+            NecType::Standard => &STANDARD_TIMING,
+            NecType::Samsung => &SAMSUNG_TIMING,
+        };
 
+        Self::new_from_timing(samplerate, timing)
+    }
+
+    fn new_from_timing(samplerate: u32, timing: &Timing) -> Self {
+        let tol = Tolerances::from_timing(timing, samplerate);
         Self {
             state: InternalState::Idle,
-            generic,
-            samsung,
+            tolerance: tol,
             prev_timestamp: 0,
             bitbuf_idx: 0,
             bitbuf: 0,
@@ -114,13 +89,12 @@ where
     type Command = NecCommand<T>;
     type ReceiveError = NecError;
 
-    fn event(&mut self, rising: bool, timestamp: u32) -> State<NecCommand<T>, NecError> {
+    fn event(&mut self, rising: bool, timestamp: u32) -> ReceiverState<NecCommand<T>, NecError> {
         use InternalState::{
             Disabled, Done, Error as InternalError, HeaderHigh, HeaderLow, Idle, Receiving,
         };
 
-        // Distance between positive edges
-        let tsdiff = timestamp.wrapping_sub(self.prev_timestamp);
+        let interval = timestamp.wrapping_sub(self.prev_timestamp);
         self.prev_timestamp = timestamp;
 
         self.state = match (self.state.clone(), rising) {
@@ -129,29 +103,29 @@ where
 
             (HeaderHigh, true) => unreachable!(),
             (HeaderHigh, false) => {
-                if self.generic.is_sync_high(tsdiff) || self.samsung.is_sync_high(tsdiff) {
+                if self.tolerance.is_sync_high(interval) {
                     HeaderLow
                 } else {
-                    InternalError(NecError::CommandType(tsdiff))
+                    InternalError(NecError::CommandType(interval))
                 }
             }
 
             (HeaderLow, false) => unreachable!(),
             (HeaderLow, true) => {
-                if self.generic.is_sync_low(tsdiff) || self.samsung.is_sync_low(tsdiff) {
+                if self.tolerance.is_sync_low(interval) {
                     Receiving(0)
-                } else if self.generic.is_repeat(tsdiff) {
+                } else if self.tolerance.is_repeat(interval) {
                     Done(NecCommand::Repeat)
                 } else {
-                    InternalError(NecError::CommandType(tsdiff))
+                    InternalError(NecError::CommandType(interval))
                 }
             }
 
-            (Receiving(_saved), false) => Receiving(tsdiff),
+            (Receiving(_saved), false) => Receiving(interval),
             (Receiving(saved), true) => {
-                let tsdiff = tsdiff + saved;
+                let tsdiff = interval + saved;
 
-                if let Some(one) = self.generic.is_value(tsdiff) {
+                if let Some(one) = self.tolerance.is_value(tsdiff) {
                     if one {
                         self.bitbuf |= 1 << self.bitbuf_idx;
                     }
@@ -170,14 +144,16 @@ where
             (Disabled, _) => Disabled,
         };
 
+        // Internalstate to ReceiverState
         match self.state.clone() {
-            InternalState::Idle => State::Idle,
+            InternalState::Idle => ReceiverState::Idle,
             InternalState::Done(cmd) => {
                 self.reset();
-                State::Done(cmd)
+                ReceiverState::Done(cmd)
             }
-            InternalState::Error(e) => State::Err(e),
-            _ => State::Receiving,
+            InternalState::Error(e) => ReceiverState::Err(e),
+            InternalState::Disabled => ReceiverState::Disabled,
+            _ => ReceiverState::Receiving,
         }
     }
 
@@ -203,14 +179,14 @@ pub struct Tolerances {
 }
 
 impl Tolerances {
-    pub const fn from_timing(t: &Timing, freq: u32) -> Self {
-        let per: u32 = (1 * 1000) / (freq / 1000);
+    pub const fn from_timing(t: &Timing, samplerate: u32) -> Self {
+        let per: u32 = 1000 / (samplerate / 1000);
         Tolerances {
-            sync_high: unit_range(t.header_high / per, 5),
-            sync_low: unit_range(t.header_low / per, 5),
-            repeat: unit_range(t.repeat_low / per, 5),
-            zero: unit_range(t.zero / per, 15),
-            one: unit_range(t.one / per, 15),
+            sync_high: unit_range(t.header_htime / per, 5),
+            sync_low: unit_range(t.header_ltime / per, 5),
+            repeat: unit_range(t.repeat_ltime / per, 5),
+            zero: unit_range((t.data_htime + t.zero_ltime) / per, 15),
+            one: unit_range((t.data_htime + t.one_ltime) / per, 15),
         }
     }
 
