@@ -70,7 +70,7 @@ where
         Self::new_from_timing(samplerate, timing)
     }
 
-    pub fn new_from_timing(samplerate: u32, timing: &Timing) -> Self {
+    fn new_from_timing(samplerate: u32, timing: &Timing) -> Self {
         let tol = Tolerances::from_timing(timing, samplerate);
         Self {
             state: InternalState::Idle,
