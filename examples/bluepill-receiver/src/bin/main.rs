@@ -2,9 +2,9 @@
 #![no_main]
 #![allow(deprecated)]
 
-use panic_semihosting as _;
 use cortex_m_rt::entry;
 use cortex_m_semihosting::hprintln;
+use panic_semihosting as _;
 use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Floating, Input},
     pac,
@@ -17,10 +17,9 @@ use heapless::consts::*;
 use heapless::spsc::Queue;
 
 use infrared::{
-    nec::{NecCommand, NecType, NecReceiver, NecError},
-    Receiver, ReceiverState,
-    RemoteControl,
     nec::remotes::*,
+    nec::{NecCommand, NecError, NecReceiver, NecType},
+    Receiver, ReceiverState, RemoteControl,
 };
 
 const FREQ: u32 = 20_000;
@@ -102,7 +101,6 @@ fn main() -> ! {
     }
 }
 
-
 #[interrupt]
 fn TIM2() {
     static mut COUNT: u32 = 0;
@@ -126,9 +124,7 @@ fn TIM2() {
 
         if let ReceiverState::Done(cmd) = state {
             cmdq.enqueue(cmd).ok().unwrap();
-        }
-
-        else if let ReceiverState::Err(e) = state {
+        } else if let ReceiverState::Err(e) = state {
             errq.enqueue(e).ok().unwrap();
             nec.reset();
         }
@@ -137,4 +133,3 @@ fn TIM2() {
     *PINVAL = new_pinval;
     *COUNT += 1;
 }
-
