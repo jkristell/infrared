@@ -37,9 +37,9 @@ static mut NECTX: Option<NecTransmitter> = None;
 // Pwm channel
 static mut PWM: Option<Pwm<TIM4, C4>> = None;
 // Our remote control we want to act like
-static REMOTECONTROL: SpecialForMp3 = SpecialForMp3;
+static REMOTECONTROL: SamsungTv = SamsungTv;
 // Remote control action queue
-static mut TXQ: Option<Queue<SpecialForMp3Action, U8>> = None;
+static mut TXQ: Option<Queue<SamsungTvAction, U8>> = None;
 
 struct PwmChannels(PB9<Alternate<PushPull>>);
 impl Pins<TIM4> for PwmChannels {
@@ -136,10 +136,10 @@ fn main() -> ! {
                     for c in buf[0..count].iter() {
                         // Keyboard key to Remote control action
                         let action = match *c as char {
-                            'o' => SpecialForMp3Action::Power,
-                            'n' => SpecialForMp3Action::Next,
-                            'p' => SpecialForMp3Action::Prev,
-                            _ => SpecialForMp3Action::Play_Paus,
+                            'o' => SamsungTvAction::Power,
+                            'n' => SamsungTvAction::ChannelListNext,
+                            'p' => SamsungTvAction::ChannelListPrev,
+                            _ => SamsungTvAction::Teletext,
                         };
 
                         // Queue the action
