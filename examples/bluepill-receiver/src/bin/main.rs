@@ -80,8 +80,6 @@ fn main() -> ! {
         if let Some(cmd) = cmdq.dequeue() {
             match cmd {
                 NecCommand::Payload(cmd) => {
-                    // Convert the u32 to a command for our remote
-
                     let remotecontrol = SpecialForMp3;
                     let cmd = remotecontrol.decode(cmd);
 
