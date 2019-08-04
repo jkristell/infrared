@@ -5,9 +5,9 @@ A library for using remote controls with embedded Rust!
 
 ### The good 
  - Receiving and decoding signals from remote controls that use the NEC protocol,
-   or the Samsung variant of it, should work.
+   or the Samsung variant of it, should work
  - Transmitting works! see ``examples/bluepill-tx``
- - Adding a mapping for a new Remote is doable
+ - Adding support for more NEC remotes is doable
  
 ### The bad
   - The API is to be considered WIP and will evolve as I add new
@@ -19,7 +19,7 @@ A library for using remote controls with embedded Rust!
   - Tested with bluepill board
   - Vishay TSOP382 IR receiver
   - Various ir leds
-  - "Special for MP3" and Samsung remotes.
+  - "Special for MP3" and Samsung remotes
 
 
 ![Boards](https://jott.se/wordpress/wp-content/uploads/2019/08/txrx_setup.jpg)
