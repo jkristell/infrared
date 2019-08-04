@@ -3,31 +3,24 @@
 #![allow(deprecated)]
 
 use panic_semihosting as _;
-use cortex_m::asm::delay;
 use cortex_m_rt::entry;
 use cortex_m_semihosting::hprintln;
 use stm32f1xx_hal::{
-    gpio::{gpiob::{PB8, PB9}, Floating, PushPull, Input, Alternate},
-    pwm::{Pins, Pwm, C4},
+    gpio::{gpiob::PB8, Floating, Input},
     pac,
     prelude::*,
-    stm32::{interrupt, TIM2, TIM4},
+    stm32::{interrupt, TIM2},
     timer::{Event, Timer},
 };
-
-use stm32_usbd::UsbBus;
-use usb_device::prelude::*;
-use usbd_serial::{SerialPort, USB_CLASS_CDC};
-
 
 use heapless::consts::*;
 use heapless::spsc::Queue;
 
 use infrared::{
-    protocols::{NecCommand, NecVariant, NecReceiver, NecError},
-    Receiver, State as ReceiverState,
-    Remote,
-    remotes::SpecialForMp3,
+    nec::{NecCommand, NecType, NecReceiver, NecError},
+    Receiver, ReceiverState,
+    RemoteControl,
+    nec::remotes::*,
 };
 
 const FREQ: u32 = 20_000;
@@ -40,22 +33,6 @@ static mut NEC: Option<NecReceiver<u32>> = None;
 static mut CQ: Option<Queue<NecCommand<u32>, U8>> = None;
 // Error Queue
 static mut EQ: Option<Queue<NecError, U8>> = None;
-
-
-
-
-// Using PB4 and PB5 channels for TIM3 PWM output
-struct MyChannels(PB9<Alternate<PushPull>>);
-impl Pins<TIM4> for MyChannels {
-    const REMAP: u8 = 0b00;
-    const C1: bool = false;
-    const C2: bool = false;
-    const C3: bool = false;
-    const C4: bool = true; // PB9
-    type Channels = (Pwm<TIM4, C4>);
-}
-
-
 
 #[entry]
 fn main() -> ! {
@@ -74,33 +51,6 @@ fn main() -> ! {
 
     assert!(clocks.usbclk_valid());
 
-
-    // Setup USB
-
-    let mut gpioa = device.GPIOA.split(&mut rcc.apb2);
-
-    // BluePill board has a pull-up resistor on the D+ line.
-    // Pull the D+ pin down to send a RESET condition to the USB bus.
-    let mut usb_dp = gpioa.pa12.into_push_pull_output(&mut gpioa.crh);
-    usb_dp.set_low();
-    delay(clocks.sysclk().0 / 100);
-
-    let usb_dm = gpioa.pa11;
-    let usb_dp = usb_dp.into_floating_input(&mut gpioa.crh);
-
-    let usb_bus = UsbBus::new(device.USB, (usb_dm, usb_dp));
-
-    let mut serial = SerialPort::new(&usb_bus);
-
-    let mut usb_dev = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x5824, 0x27dd))
-        .manufacturer("Fake company")
-        .product("Serial port")
-        .serial_number("TEST")
-        .device_class(USB_CLASS_CDC)
-        .build();
-
-    // End
-
     let mut gpiob = device.GPIOB.split(&mut rcc.apb2);
     let irpin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
 
@@ -111,7 +61,7 @@ fn main() -> ! {
     unsafe {
         TIMER.replace(timer);
         IRPIN.replace(irpin);
-        NEC.replace(NecReceiver::new(NecVariant::Standard, FREQ));
+        NEC.replace(NecReceiver::new(NecType::Standard, FREQ));
     }
 
     // Initialize the queues
@@ -128,49 +78,15 @@ fn main() -> ! {
 
     // Main loop
     loop {
-
-        // Handle USB
-        if usb_dev.poll(&mut [&mut serial]) {
-            let mut buf = [0u8; 64];
-
-            match serial.read(&mut buf) {
-                Ok(count) if count > 0 => {
-                    //led.set_low(); // Turn on
-
-                    // Echo back in upper case
-                    for c in buf[0..count].iter_mut() {
-                        if 0x61 <= *c && *c <= 0x7a {
-                            *c = *c + 1;
-                        }
-                    }
-
-                    let mut write_offset = 0;
-                    while write_offset < count {
-                        match serial.write(&buf[write_offset..count]) {
-                            Ok(len) if len > 0 => {
-                                write_offset += len;
-                            },
-                            _ => {},
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
-
-
-
-
         if let Some(cmd) = cmdq.dequeue() {
             match cmd {
                 NecCommand::Payload(cmd) => {
                     // Convert the u32 to a command for our remote
-                    let cmd = SpecialForMp3::from(cmd);
 
-                    if let Some(action) = cmd.action() {
-                        let buf = [cmd.cmd + b'a'];
-                        serial.write(&buf[..]).unwrap();
+                    let remotecontrol = SpecialForMp3;
+                    let cmd = remotecontrol.decode(cmd);
 
+                    if let Some(action) = cmd {
                         hprintln!("cmd: {:?}", action).unwrap();
                     } else {
                         hprintln!("unknown command").unwrap();
