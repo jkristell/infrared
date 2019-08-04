@@ -1,5 +1,5 @@
 # Infrared
-A library for using remote controls with embedded Rust!
+A library for using infrared remote controls with Rust.
 
 ## Status
 
