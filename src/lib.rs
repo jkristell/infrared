@@ -5,7 +5,7 @@ use core::convert::Into;
 /// NEC protocol decoder
 pub use protocols::nec;
 
-//pub mod trace;
+pub mod trace;
 
 /// Remote controls
 pub mod remote;
