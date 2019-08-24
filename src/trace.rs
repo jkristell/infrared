@@ -1,6 +1,6 @@
 use crate::{Receiver, ReceiverState};
 
-const BUF_LEN: usize = 32;
+const BUF_LEN: usize = 128;
 
 pub struct TraceReceiver {
     pub data: [u32; BUF_LEN],
@@ -10,9 +10,9 @@ pub struct TraceReceiver {
     pub enabled: bool,
 }
 
-#[derive(Debug, PartialEq)]
 pub struct TraceResult {
     pub buf: [u32; BUF_LEN],
+    pub buf_len: usize,
 }
 
 fn pin_xor(prev: bool, pinval: bool) -> Option<bool> {
@@ -38,27 +38,33 @@ impl Receiver for TraceReceiver {
         }
 
         // Number of  samples since last pin value change
-        let delta = match self.st_prev {
+        let sampledelta = match self.st_prev {
             0 => 0,
             _ => st.wrapping_sub(self.st_prev),
         };
 
-        if delta > TIMEOUT {
+        if sampledelta > TIMEOUT {
             // Set the receiver in disabled state but return the Done state
             self.enabled = false;
-            return ReceiverState::Done(TraceResult { buf: self.data });
+            return ReceiverState::Done(TraceResult {
+                buf: self.data,
+                buf_len: self.event_id,
+            });
         }
 
         if let Some(_rising) = pin_xor(self.prev_pinval, pinvalue) {
             // Change detected
-            self.data[self.event_id] = delta;
+            self.data[self.event_id] = sampledelta;
             self.event_id += 1;
             self.st_prev = st;
 
             self.prev_pinval = pinvalue;
 
             if self.event_id == BUF_LEN {
-                ReceiverState::Done(TraceResult { buf: self.data })
+                ReceiverState::Done(TraceResult {
+                    buf: self.data,
+                    buf_len: self.event_id,
+                })
             } else {
                 ReceiverState::Receiving
             }
