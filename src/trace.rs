@@ -4,7 +4,8 @@ const BUF_LEN: usize = 128;
 
 pub struct TraceReceiver {
     pub data: [u32; BUF_LEN],
-    prev_pinval: bool,
+    pub samplerate: u32,
+    pub prev_pinval: bool,
     pub st_prev: u32,
     pub event_id: usize,
     pub enabled: bool,
@@ -30,7 +31,6 @@ impl Receiver for TraceReceiver {
     type Command = TraceResult;
     type ReceiveError = ();
 
-    // st - sample time
     fn event(&mut self, pinvalue: bool, st: u32) -> ReceiverState<TraceResult, ()> {
 
         if !self.enabled {
@@ -88,11 +88,9 @@ impl Receiver for TraceReceiver {
 impl TraceReceiver {
     pub const fn new(samplerate: u32) -> Self {
 
-        // Define timeout to be 1 s
-        let _timeout = (1 * 1000) / (samplerate * 1000);
-
         Self {
             data: [0; BUF_LEN],
+            samplerate,
             prev_pinval: false,
             st_prev: 0,
             event_id: 0,
