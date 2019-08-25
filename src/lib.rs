@@ -4,6 +4,7 @@ use core::convert::Into;
 
 /// NEC protocol decoder
 pub use protocols::nec;
+pub use protocols::philips;
 
 pub mod trace;
 

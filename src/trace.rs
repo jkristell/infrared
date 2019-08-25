@@ -16,7 +16,7 @@ pub struct TraceResult {
     pub buf_len: usize,
 }
 
-fn pin_xor(prev: bool, pinval: bool) -> Option<bool> {
+fn pin_changed(prev: bool, pinval: bool) -> Option<bool> {
     match (pinval, prev) {
         (false, true) => Some(true),
         (true, false) => Some(false),
@@ -25,7 +25,7 @@ fn pin_xor(prev: bool, pinval: bool) -> Option<bool> {
 }
 
 
-const TIMEOUT: u32 = 10_000;
+const TIMEOUT: u32 = 1000;
 
 impl Receiver for TraceReceiver {
     type Command = TraceResult;
@@ -52,7 +52,7 @@ impl Receiver for TraceReceiver {
             });
         }
 
-        if let Some(_rising) = pin_xor(self.prev_pinval, pinvalue) {
+        if let Some(_rising) = pin_changed(self.prev_pinval, pinvalue) {
             // Change detected
             self.data[self.event_id] = sampledelta;
             self.event_id += 1;
