@@ -1,6 +1,7 @@
 use crate::{
     Receiver, ReceiverState,
 };
+use core::ops::Range;
 
 // Timing (us)
 const HEADER_LEADING: u32 = 2666;
@@ -15,12 +16,17 @@ pub struct PhilipsReceiver {
     pinval: bool,
 }
 
-enum DataType {
-    Leading,
-    Trailing,
+enum PulseType {
+    HeaderLeading,
+    HeaderTrailing,
     DataZero,
     DataOne,
+
+    Multiple(u32),
+
+    None,
 }
+
 
 impl PhilipsReceiver {
 
@@ -33,11 +39,16 @@ impl PhilipsReceiver {
         }
     }
 
-    fn match_delta(&self, delta: u32) -> DataType {
+    // How many RC6 base units is this pulse composed of
+    fn rc6_units(&self, interval: u32) -> Some(u32) {
 
+        for i in 1..=6 {
+            if rc6_multiplier(self.samplerate, i).contains(&interval) {
+                Some(i)
+            }
+        }
 
-
-        DataType::Leading
+        None
     }
 }
 
@@ -60,6 +71,12 @@ impl Receiver for PhilipsReceiver {
 
         if self.pinval != rising {
 
+            let len = self.last.wrapping_sub(timestamp);
+
+            if let Some(units) = self.rc6_units(len) {
+
+            }
+
             let intern = match (self.state, rising) {
                 (InternalState::Idle, false) => {
                     //TODO: Unreachable
@@ -71,7 +88,6 @@ impl Receiver for PhilipsReceiver {
                 },
                 (InternalState::Leading, false) => {
                     // Leading header
-                    let delta = timestamp - self.last;
                     //self.is_leader(delta)
                     InternalState::Header
                 },
@@ -98,3 +114,18 @@ impl Receiver for PhilipsReceiver {
         unimplemented!()
     }
 }
+
+const fn rc6_multiplier(samplerate: u32, multiplier: u32) -> Range<u32> {
+    let base = (samplerate * 444 * multiplier) / 1000_000;
+    range(base, 5)
+}
+
+const fn range(len: u32, percent: u32) -> Range<u32> {
+    let tol = (len * percent) / 100;
+
+     Range {
+        start: len - tol,
+        end: len + tol,
+    }
+}
+
