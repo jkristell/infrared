@@ -3,10 +3,6 @@ use crate::{
 };
 use core::ops::Range;
 
-// Timing (us)
-const HEADER_LEADING: u32 = 2666;
-const HEADER_TRAILING: u32 = 1350;
-const DATA: u32 = 444;
 
 
 pub struct PhilipsReceiver {
@@ -14,19 +10,9 @@ pub struct PhilipsReceiver {
     state: InternalState,
     last: u32,
     pinval: bool,
+    pub data: u32,
+    pub data_idx: usize,
 }
-
-enum PulseType {
-    HeaderLeading,
-    HeaderTrailing,
-    DataZero,
-    DataOne,
-
-    Multiple(u32),
-
-    None,
-}
-
 
 impl PhilipsReceiver {
 
@@ -36,15 +22,17 @@ impl PhilipsReceiver {
             last: 0,
             state: InternalState::Idle,
             pinval: false,
+            data: 0,
+            data_idx: 0
         }
     }
 
     // How many RC6 base units is this pulse composed of
-    fn rc6_units(&self, interval: u32) -> Some(u32) {
+    fn rc6_units(&self, interval: u32) -> Option<u32> {
 
         for i in 1..=6 {
             if rc6_multiplier(self.samplerate, i).contains(&interval) {
-                Some(i)
+                return Some(i);
             }
         }
 
@@ -54,14 +42,19 @@ impl PhilipsReceiver {
 
 
 
+#[derive(Clone, Copy)]
 enum InternalState {
     Idle,
     Leading,
-    Header,
+    LeadingPaus,
+    HeaderData(u32),
     Trailing,
-    Data,
+    Data(bool),
     Done,
 }
+
+const RISING: bool = true;
+const FALLING: bool = false;
 
 impl Receiver for PhilipsReceiver {
     type Command = ();
@@ -70,34 +63,54 @@ impl Receiver for PhilipsReceiver {
     fn event(&mut self, rising: bool, timestamp: u32) -> ReceiverState<Self::Command, Self::ReceiveError> {
 
         if self.pinval != rising {
+            use InternalState::*;
 
-            let len = self.last.wrapping_sub(timestamp);
+            //TODO: Check if alright in all situations
+            let interval = self.last.wrapping_sub(timestamp);
+            self.last = timestamp;
 
-            if let Some(units) = self.rc6_units(len) {
+            let rc6_units = self.rc6_units(interval);
 
-            }
+            let intern = match (self.state, rising, rc6_units) {
+                (Idle, false, _)                => Idle,        //TODO: Unreachable
+                (Idle, true, _)                 => Leading,
+                (Leading, false, Some(6))       => LeadingPaus,
+                (Leading, _, _)                 => Idle,
+                (LeadingPaus, true, Some(2))    => HeaderData(0),
+                (LeadingPaus, _, _)             => Idle,
 
-            let intern = match (self.state, rising) {
-                (InternalState::Idle, false) => {
-                    //TODO: Unreachable
-                    InternalState::Idle
-                },
-                (InternalState::Idle, true) => {
-                    self.last = timestamp;
-                    InternalState::Leading
-                },
-                (InternalState::Leading, false) => {
-                    // Leading header
-                    //self.is_leader(delta)
-                    InternalState::Header
-                },
-                (InternalState::Leading, _) => InternalState::Header,
-                (InternalState::Header, _) => InternalState::Trailing,
-                (InternalState::Trailing, _) => InternalState::Data,
-                (InternalState::Data, _) => InternalState::Done,
-                (InternalState::Done, _) => InternalState::Done,
+                // Header Data 1 0 0 0
+                (HeaderData(0), RISING,  Some(1))   => HeaderData(1),
+                (HeaderData(1), FALLING, Some(1))   => HeaderData(1),
+                (HeaderData(1), RISING,  Some(2))   => HeaderData(2),
+                (HeaderData(2), FALLING, Some(1))   => HeaderData(2),
+                (HeaderData(2), RISING,  Some(1))   => HeaderData(3),
+                (HeaderData(3), FALLING, Some(1))   => HeaderData(3),
+                (HeaderData(3), RISING,  Some(1))   => HeaderData(4),
+                (HeaderData(4), FALLING, Some(1))   => Trailing,
+                (HeaderData(_), _, _)               => Idle,
+
+                (Trailing, _, _) => InternalState::Data(false),
+
+                (Data(_), RISING, Some(1)) => Data(false),
+                (Data(_), FALLING, Some(2)) => Data(true),
+                (Data(_), RISING, Some(2)) => Data(false),
+                (Data(_), FALLING, Some(1)) => Data(true),
+
+
+                (Data(_), _, _) => InternalState::Done,
+
+                (Done, _, _) => InternalState::Done,
             };
 
+            if let Data(v) = intern {
+                if v {
+                    self.data |= 1 << self.data_idx;
+                }
+                self.data_idx += 1;
+            }
+
+            self.pinval = rising;
             self.state = intern;
         }
 
@@ -107,7 +120,11 @@ impl Receiver for PhilipsReceiver {
     }
 
     fn reset(&mut self) {
-        unimplemented!()
+
+        self.state = InternalState::Idle;
+        self.pinval = false;
+        self.data = 0;
+        self.data_idx = 0;
     }
 
     fn disable(&mut self) {
