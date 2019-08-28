@@ -4,11 +4,17 @@ use crate::{
 use core::ops::Range;
 
 
+pub struct PhilipsCommand {
+    pub data: u32,
+}
 
 pub struct PhilipsReceiver {
     samplerate: u32,
-    state: InternalState,
-    last: u32,
+    pub state: InternalState,
+    pub rc6_debug: Option<u32>,
+    pub last: u32,
+    pub last_interval: u32,
+    pub last_state: InternalState,
     pinval: bool,
     pub data: u32,
     pub data_idx: usize,
@@ -20,7 +26,10 @@ impl PhilipsReceiver {
         Self {
             samplerate,
             last: 0,
+            last_interval: 0,
             state: InternalState::Idle,
+            last_state: InternalState::Idle,
+            rc6_debug: None,
             pinval: false,
             data: 0,
             data_idx: 0
@@ -28,7 +37,7 @@ impl PhilipsReceiver {
     }
 
     // How many RC6 base units is this pulse composed of
-    fn rc6_units(&self, interval: u32) -> Option<u32> {
+    pub fn rc6_units(&self, interval: u32) -> Option<u32> {
 
         for i in 1..=6 {
             if rc6_multiplier(self.samplerate, i).contains(&interval) {
@@ -42,8 +51,8 @@ impl PhilipsReceiver {
 
 
 
-#[derive(Clone, Copy)]
-enum InternalState {
+#[derive(Clone, Copy, Debug)]
+pub enum InternalState {
     Idle,
     Leading,
     LeadingPaus,
@@ -57,7 +66,7 @@ const RISING: bool = true;
 const FALLING: bool = false;
 
 impl Receiver for PhilipsReceiver {
-    type Command = ();
+    type Command = PhilipsCommand;
     type ReceiveError = ();
 
     fn event(&mut self, rising: bool, timestamp: u32) -> ReceiverState<Self::Command, Self::ReceiveError> {
@@ -66,31 +75,38 @@ impl Receiver for PhilipsReceiver {
             use InternalState::*;
 
             //TODO: Check if alright in all situations
-            let interval = self.last.wrapping_sub(timestamp);
+            let interval = timestamp.wrapping_sub(self.last);
             self.last = timestamp;
+            self.last_interval = interval;
+            self.last_state = self.state;
 
             let rc6_units = self.rc6_units(interval);
 
+            self.rc6_debug = rc6_units;
+
             let intern = match (self.state, rising, rc6_units) {
-                (Idle, false, _)                => Idle,        //TODO: Unreachable
-                (Idle, true, _)                 => Leading,
-                (Leading, false, Some(6))       => LeadingPaus,
-                (Leading, _, _)                 => Idle,
-                (LeadingPaus, true, Some(2))    => HeaderData(0),
-                (LeadingPaus, _, _)             => Idle,
+                (Idle,          FALLING,    _)      => Idle,        // Unrechable
+                (Idle,          RISING,     _)      => Leading,
+                (Leading,       FALLING, Some(6))   => LeadingPaus,
+                (Leading, _, _)                     => Idle,
+                (LeadingPaus,   RISING,  Some(2))   => HeaderData(0),
+                (LeadingPaus, _, _)                 => Idle,
 
                 // Header Data 1 0 0 0
-                (HeaderData(0), RISING,  Some(1))   => HeaderData(1),
+                (HeaderData(0), FALLING, Some(1))   => HeaderData(1),
                 (HeaderData(1), FALLING, Some(1))   => HeaderData(1),
                 (HeaderData(1), RISING,  Some(2))   => HeaderData(2),
                 (HeaderData(2), FALLING, Some(1))   => HeaderData(2),
                 (HeaderData(2), RISING,  Some(1))   => HeaderData(3),
                 (HeaderData(3), FALLING, Some(1))   => HeaderData(3),
                 (HeaderData(3), RISING,  Some(1))   => HeaderData(4),
-                (HeaderData(4), FALLING, Some(1))   => Trailing,
+                (HeaderData(4), FALLING, Some(3))   => Trailing,
                 (HeaderData(_), _, _)               => Idle,
 
-                (Trailing, _, _) => InternalState::Data(false),
+                (Trailing, RISING, Some(3)) => Data(false),
+                (Trailing, RISING, Some(2)) => Data(true),
+                //(Trailing, FALLING, Some(3)) => Data(false),
+                (Trailing, _, _) => Idle,
 
                 (Data(_), RISING, Some(1)) => Data(false),
                 (Data(_), FALLING, Some(2)) => Data(true),
@@ -115,6 +131,8 @@ impl Receiver for PhilipsReceiver {
         }
 
         match self.state {
+            InternalState::Idle => ReceiverState::Idle,
+            InternalState::Done => ReceiverState::Done(PhilipsCommand {data: self.data}),
             _ => ReceiverState::Receiving
         }
     }
@@ -134,7 +152,7 @@ impl Receiver for PhilipsReceiver {
 
 const fn rc6_multiplier(samplerate: u32, multiplier: u32) -> Range<u32> {
     let base = (samplerate * 444 * multiplier) / 1000_000;
-    range(base, 5)
+    range(base, 10)
 }
 
 const fn range(len: u32, percent: u32) -> Range<u32> {
@@ -142,7 +160,7 @@ const fn range(len: u32, percent: u32) -> Range<u32> {
 
      Range {
         start: len - tol,
-        end: len + tol,
+        end: len + tol + 2,
     }
 }
 
