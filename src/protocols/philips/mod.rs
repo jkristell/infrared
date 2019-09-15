@@ -17,8 +17,11 @@ pub struct PhilipsReceiver {
     pub last_state: InternalState,
     pinval: bool,
     pub data: u32,
-    pub data_idx: usize,
+
+    pub rc6_counter: u32,
+    pub headerdata: u32,
 }
+
 
 impl PhilipsReceiver {
 
@@ -32,14 +35,15 @@ impl PhilipsReceiver {
             rc6_debug: None,
             pinval: false,
             data: 0,
-            data_idx: 0
+            rc6_counter: 0,
+            headerdata: 0,
         }
     }
 
     // How many RC6 base units is this pulse composed of
     pub fn rc6_units(&self, interval: u32) -> Option<u32> {
 
-        for i in 1..=6 {
+        for i in 1..=8 {
             if rc6_multiplier(self.samplerate, i).contains(&interval) {
                 return Some(i);
             }
@@ -58,7 +62,7 @@ pub enum InternalState {
     LeadingPaus,
     HeaderData(u32),
     Trailing,
-    Data(bool),
+    Data(u32),
     Done,
 }
 
@@ -74,57 +78,62 @@ impl Receiver for PhilipsReceiver {
         if self.pinval != rising {
             use InternalState::*;
 
-            //TODO: Check if alright in all situations
             let interval = timestamp.wrapping_sub(self.last);
             self.last = timestamp;
+            // Debug:
             self.last_interval = interval;
+            // Debug: Save the last state
             self.last_state = self.state;
 
             let rc6_units = self.rc6_units(interval);
 
+            if let Some(units) = rc6_units {
+                self.rc6_counter += units;
+            }
+
             self.rc6_debug = rc6_units;
 
+            let odd = self.rc6_counter & 1 == 1;
+
             let intern = match (self.state, rising, rc6_units) {
-                (Idle,          FALLING,    _)      => Idle,        // Unrechable
+                (Idle,          FALLING,    _)      => Idle,
                 (Idle,          RISING,     _)      => Leading,
                 (Leading,       FALLING, Some(6))   => LeadingPaus,
                 (Leading, _, _)                     => Idle,
-                (LeadingPaus,   RISING,  Some(2))   => HeaderData(0),
+                (LeadingPaus,   RISING,  Some(2))   => HeaderData(3),
                 (LeadingPaus, _, _)                 => Idle,
 
                 // Header Data 1 0 0 0
-                (HeaderData(0), FALLING, Some(1))   => HeaderData(1),
-                (HeaderData(1), FALLING, Some(1))   => HeaderData(1),
-                (HeaderData(1), RISING,  Some(2))   => HeaderData(2),
-                (HeaderData(2), FALLING, Some(1))   => HeaderData(2),
-                (HeaderData(2), RISING,  Some(1))   => HeaderData(3),
-                (HeaderData(3), FALLING, Some(1))   => HeaderData(3),
-                (HeaderData(3), RISING,  Some(1))   => HeaderData(4),
-                (HeaderData(4), FALLING, Some(3))   => Trailing,
-                (HeaderData(_), _, _)               => Idle,
+                (HeaderData(n), _, Some(_)) if odd => {
+                    self.headerdata |= if rising {0} else {1} << n;
+                    if n == 0 {
+                        Trailing
+                    } else {
+                        HeaderData(n-1)
+                    }
+                },
+                (HeaderData(n), _, Some(_)) => HeaderData(n),
+                (HeaderData(_),         _,      None) => Idle,
 
-                (Trailing, RISING, Some(3)) => Data(false),
-                (Trailing, RISING, Some(2)) => Data(true),
-                //(Trailing, FALLING, Some(3)) => Data(false),
+                (Trailing, FALLING, Some(3))    => Data(15),
+                (Trailing, RISING, Some(_))     => Data(15), //TODO
+                (Trailing, FALLING, Some(1))    => Trailing,
                 (Trailing, _, _) => Idle,
 
-                (Data(_), RISING, Some(1)) => Data(false),
-                (Data(_), FALLING, Some(2)) => Data(true),
-                (Data(_), RISING, Some(2)) => Data(false),
-                (Data(_), FALLING, Some(1)) => Data(true),
-
-
-                (Data(_), _, _) => InternalState::Done,
+                (Data(0), _, Some(_)) if odd => {
+                    self.data |= if rising {0} else {1} << 0;
+                    Done
+                },
+                (Data(0), _, Some(_)) => Data(0),
+                (Data(n), _, Some(_)) if odd => {
+                    self.data |= if rising {0} else {1} << n;
+                    Data(n-1)
+                },
+                (Data(n), _, Some(_)) => Data(n),
+                (Data(_),      _,      None)   => Idle,
 
                 (Done, _, _) => InternalState::Done,
             };
-
-            if let Data(v) = intern {
-                if v {
-                    self.data |= 1 << self.data_idx;
-                }
-                self.data_idx += 1;
-            }
 
             self.pinval = rising;
             self.state = intern;
@@ -138,11 +147,11 @@ impl Receiver for PhilipsReceiver {
     }
 
     fn reset(&mut self) {
-
         self.state = InternalState::Idle;
         self.pinval = false;
         self.data = 0;
-        self.data_idx = 0;
+        self.headerdata = 0;
+        self.rc6_counter = 0;
     }
 
     fn disable(&mut self) {
