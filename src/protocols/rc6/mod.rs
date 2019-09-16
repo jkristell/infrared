@@ -21,14 +21,12 @@ impl Rc6Command {
     }
 }
 
-
 #[derive(Clone, Copy, Debug)]
 pub enum Rc6Error {
     Header(u32),
     Data(u32),
     Rc6Version(u32),
 }
-
 
 pub struct Rc6Receiver {
     samplerate: u32,
@@ -44,9 +42,7 @@ pub struct Rc6Receiver {
     pub last_state: InternalState,
 }
 
-
 impl Rc6Receiver {
-
     pub fn new(samplerate: u32) -> Self {
         Self {
             samplerate,
@@ -71,8 +67,6 @@ impl Rc6Receiver {
         None
     }
 }
-
-
 
 #[derive(Clone, Copy, Debug)]
 pub enum InternalState {
@@ -131,8 +125,8 @@ impl Receiver for Rc6Receiver {
                         HeaderData(n-1)
                     }
                 },
-                (HeaderData(n), _, Some(_)) => HeaderData(n),
-                (HeaderData(_),         _,      None) => Idle,
+                (HeaderData(n), _, Some(_))     => HeaderData(n),
+                (HeaderData(_), _, None)        => Idle,
 
                 (Trailing, FALLING, Some(3))    => {
                     self.repeat = false;
@@ -145,20 +139,20 @@ impl Receiver for Rc6Receiver {
                 (Trailing, FALLING, Some(1))    => Trailing,
                 (Trailing, _, _) => Idle,
 
-                (Data(0), _, Some(_)) if odd => {
+                (Data(0), _, Some(_)) if odd    => {
                     self.data |= if rising {0} else {1} ;
                     Done
                 },
                 (Data(0), _, Some(_)) => Data(0),
-                (Data(n), _, Some(_)) if odd => {
+                (Data(n), _, Some(_)) if odd    => {
                     self.data |= if rising {0} else {1} << n;
                     Data(n-1)
                 },
                 (Data(n), _, Some(_)) => Data(n),
-                (Data(_),      _,      None)   => Error(Rc6Error::Data(interval)),     // Data Error
+                (Data(_),      _,      None)    => Error(Rc6Error::Data(interval)),     // Data Error
 
-                (Done, _, _) => InternalState::Done,
-                (Error(err), _, _) => InternalState::Error(err),
+                (Done, _, _)        => InternalState::Done,
+                (Error(err), _, _)  => InternalState::Error(err),
             };
 
             self.state = next;
