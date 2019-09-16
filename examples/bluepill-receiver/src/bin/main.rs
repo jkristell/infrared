@@ -17,21 +17,22 @@ use heapless::consts::*;
 use heapless::spsc::Queue;
 
 use infrared::{
-    nec::remotes::*,
-    nec::{NecCommand, NecError, NecReceiver, NecType},
     Receiver, ReceiverState, RemoteControl,
+    nec::remotes::*,
+    //nec::{NecCommand, NecError, NecReceiver, NecType},
+    rc6::{Rc6Command, Rc6Error, Rc6Receiver},
 };
 
 const FREQ: u32 = 20_000;
 
 static mut TIMER: Option<Timer<TIM2>> = None;
 static mut IRPIN: Option<PB8<Input<Floating>>> = None;
-static mut NEC: Option<NecReceiver<u32>> = None;
+static mut NEC: Option<Rc6Receiver> = None;
 
 // Command Queue
-static mut CQ: Option<Queue<NecCommand<u32>, U8>> = None;
+static mut CQ: Option<Queue<Rc6Command, U8>> = None;
 // Error Queue
-static mut EQ: Option<Queue<NecError, U8>> = None;
+static mut EQ: Option<Queue<Rc6Error, U8>> = None;
 
 #[entry]
 fn main() -> ! {
@@ -60,7 +61,7 @@ fn main() -> ! {
     unsafe {
         TIMER.replace(timer);
         IRPIN.replace(irpin);
-        NEC.replace(NecReceiver::new(NecType::Standard, FREQ));
+        NEC.replace(Rc6Receiver::new(FREQ));
     }
 
     // Initialize the queues
@@ -78,19 +79,7 @@ fn main() -> ! {
     // Main loop
     loop {
         if let Some(cmd) = cmdq.dequeue() {
-            match cmd {
-                NecCommand::Payload(cmd) => {
-                    let remotecontrol = SpecialForMp3;
-                    let cmd = remotecontrol.decode(cmd);
-
-                    if let Some(action) = cmd {
-                        hprintln!("cmd: {:?}", action).unwrap();
-                    } else {
-                        hprintln!("unknown command").unwrap();
-                    }
-                }
-                NecCommand::Repeat => hprintln!("REPEAT").unwrap(),
-            }
+            hprintln!("{:?}", cmd).unwrap();
         }
 
         if let Some(err) = errq.dequeue() {
