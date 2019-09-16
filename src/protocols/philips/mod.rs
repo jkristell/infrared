@@ -1,16 +1,14 @@
-use crate::{
-    Receiver, ReceiverState,
-};
 use core::ops::Range;
+use crate::{Receiver, ReceiverState};
 
 #[derive(Debug)]
-pub struct PhilipsCommand {
+pub struct Rc6Command {
     pub addr: u8,
     pub cmd: u8,
     pub repeat: bool,
 }
 
-impl PhilipsCommand {
+impl Rc6Command {
     pub fn new(data: u32, repeat: bool) -> Self {
         let addr = (data >> 8) as u8;
         let cmd = (data & 0xFF) as u8;
@@ -25,14 +23,14 @@ impl PhilipsCommand {
 
 
 #[derive(Clone, Copy, Debug)]
-pub enum PhilipsError {
+pub enum Rc6Error {
     Header(u32),
     Data(u32),
     Rc6Version(u32),
 }
 
 
-pub struct PhilipsReceiver {
+pub struct Rc6Receiver {
     samplerate: u32,
     state: InternalState,
     pinval: bool,
@@ -47,7 +45,7 @@ pub struct PhilipsReceiver {
 }
 
 
-impl PhilipsReceiver {
+impl Rc6Receiver {
 
     pub fn new(samplerate: u32) -> Self {
         Self {
@@ -64,7 +62,7 @@ impl PhilipsReceiver {
         }
     }
 
-    fn rc6_units(&self, interval: u32) -> Option<u32> {
+    fn interval_to_units(&self, interval: u32) -> Option<u32> {
         for i in 1..=8 {
             if rc6_multiplier(self.samplerate, i).contains(&interval) {
                 return Some(i);
@@ -85,15 +83,15 @@ pub enum InternalState {
     Trailing,
     Data(u32),
     Done,
-    Error(PhilipsError),
+    Error(Rc6Error),
 }
 
 const RISING: bool = true;
 const FALLING: bool = false;
 
-impl Receiver for PhilipsReceiver {
-    type Command = PhilipsCommand;
-    type ReceiveError = PhilipsError;
+impl Receiver for Rc6Receiver {
+    type Command = Rc6Command;
+    type ReceiveError = Rc6Error;
 
     fn event(&mut self, rising: bool, timestamp: u32) -> ReceiverState<Self::Command, Self::ReceiveError> {
 
@@ -104,13 +102,12 @@ impl Receiver for PhilipsReceiver {
             self.last = timestamp;
             self.pinval = rising;
 
-            // Nbr of rc6_units since last pin edge
-            let n_units = self.rc6_units(interval);
+            // Number of rc6 units since last pin edge
+            let n_units = self.interval_to_units(interval);
 
-            // Debug
+            // For debug use
             self.last_interval = interval;
             self.last_state = self.state;
-
 
             if let Some(units) = n_units {
                 self.rc6_counter += units;
@@ -141,7 +138,7 @@ impl Receiver for PhilipsReceiver {
                     self.repeat = false;
                     Data(15)
                 },
-                (Trailing, RISING, Some(_))     => {
+                (Trailing, RISING, Some(2))     => {
                     self.repeat = true;
                     Data(15)
                 },
@@ -158,7 +155,7 @@ impl Receiver for PhilipsReceiver {
                     Data(n-1)
                 },
                 (Data(n), _, Some(_)) => Data(n),
-                (Data(_),      _,      None)   => Error(PhilipsError::Data(interval)),     // Data Error
+                (Data(_),      _,      None)   => Error(Rc6Error::Data(interval)),     // Data Error
 
                 (Done, _, _) => InternalState::Done,
                 (Error(err), _, _) => InternalState::Error(err),
@@ -170,7 +167,7 @@ impl Receiver for PhilipsReceiver {
         match self.state {
             InternalState::Idle => ReceiverState::Idle,
             InternalState::Done => {
-                let cmd = PhilipsCommand::new(self.data, self.repeat);
+                let cmd = Rc6Command::new(self.data, self.repeat);
                 ReceiverState::Done(cmd)
             },
             InternalState::Error(err) => ReceiverState::Err(err),
