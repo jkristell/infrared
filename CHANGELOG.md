@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.3.1] - 2019-09-16
+ - Added support for Philips Rc6-0 Protocol
+ - Added trace support
+
 ## [0.3.0] - 2019-08-04
  - Added transmit support
  - Added bluepill transmit example
