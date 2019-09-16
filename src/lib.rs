@@ -4,7 +4,7 @@ use core::convert::Into;
 
 /// NEC protocol decoder
 pub use protocols::nec;
-pub use protocols::philips;
+pub use protocols::rc6;
 
 pub mod trace;
 
@@ -34,7 +34,7 @@ pub trait Receiver {
     /// Register new event
     fn event(
         &mut self,
-        rising: bool,
+        pinvalue: bool,
         timestamp: u32,
     ) -> ReceiverState<Self::Command, Self::ReceiveError>;
     /// Reset receiver

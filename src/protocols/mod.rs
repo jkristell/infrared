@@ -1,2 +1,2 @@
 pub mod nec;
-pub mod philips;
+pub mod rc6;
