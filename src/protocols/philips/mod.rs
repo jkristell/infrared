@@ -3,23 +3,47 @@ use crate::{
 };
 use core::ops::Range;
 
-
+#[derive(Debug)]
 pub struct PhilipsCommand {
-    pub data: u32,
+    pub addr: u8,
+    pub cmd: u8,
+    pub repeat: bool,
 }
+
+impl PhilipsCommand {
+    pub fn new(data: u32, repeat: bool) -> Self {
+        let addr = (data >> 8) as u8;
+        let cmd = (data & 0xFF) as u8;
+
+        Self {
+            addr,
+            cmd,
+            repeat,
+        }
+    }
+}
+
+
+#[derive(Clone, Copy, Debug)]
+pub enum PhilipsError {
+    Header(u32),
+    Data(u32),
+    Rc6Version(u32),
+}
+
 
 pub struct PhilipsReceiver {
     samplerate: u32,
-    pub state: InternalState,
-    pub rc6_debug: Option<u32>,
-    pub last: u32,
-    pub last_interval: u32,
-    pub last_state: InternalState,
+    state: InternalState,
     pinval: bool,
     pub data: u32,
-
-    pub rc6_counter: u32,
     pub headerdata: u32,
+    pub repeat: bool,
+    pub last: u32,
+    pub rc6_counter: u32,
+
+    pub last_interval: u32,
+    pub last_state: InternalState,
 }
 
 
@@ -32,23 +56,20 @@ impl PhilipsReceiver {
             last_interval: 0,
             state: InternalState::Idle,
             last_state: InternalState::Idle,
-            rc6_debug: None,
             pinval: false,
             data: 0,
             rc6_counter: 0,
             headerdata: 0,
+            repeat: false,
         }
     }
 
-    // How many RC6 base units is this pulse composed of
-    pub fn rc6_units(&self, interval: u32) -> Option<u32> {
-
+    fn rc6_units(&self, interval: u32) -> Option<u32> {
         for i in 1..=8 {
             if rc6_multiplier(self.samplerate, i).contains(&interval) {
                 return Some(i);
             }
         }
-
         None
     }
 }
@@ -64,6 +85,7 @@ pub enum InternalState {
     Trailing,
     Data(u32),
     Done,
+    Error(PhilipsError),
 }
 
 const RISING: bool = true;
@@ -71,7 +93,7 @@ const FALLING: bool = false;
 
 impl Receiver for PhilipsReceiver {
     type Command = PhilipsCommand;
-    type ReceiveError = ();
+    type ReceiveError = PhilipsError;
 
     fn event(&mut self, rising: bool, timestamp: u32) -> ReceiverState<Self::Command, Self::ReceiveError> {
 
@@ -82,20 +104,18 @@ impl Receiver for PhilipsReceiver {
             self.last = timestamp;
             // Debug:
             self.last_interval = interval;
-            // Debug: Save the last state
             self.last_state = self.state;
 
-            let rc6_units = self.rc6_units(interval);
+            // Nbr of rc6_units since last pin edge
+            let n_units = self.rc6_units(interval);
 
-            if let Some(units) = rc6_units {
+            if let Some(units) = n_units {
                 self.rc6_counter += units;
             }
 
-            self.rc6_debug = rc6_units;
-
             let odd = self.rc6_counter & 1 == 1;
 
-            let intern = match (self.state, rising, rc6_units) {
+            let next = match (self.state, rising, n_units) {
                 (Idle,          FALLING,    _)      => Idle,
                 (Idle,          RISING,     _)      => Leading,
                 (Leading,       FALLING, Some(6))   => LeadingPaus,
@@ -103,7 +123,6 @@ impl Receiver for PhilipsReceiver {
                 (LeadingPaus,   RISING,  Some(2))   => HeaderData(3),
                 (LeadingPaus, _, _)                 => Idle,
 
-                // Header Data 1 0 0 0
                 (HeaderData(n), _, Some(_)) if odd => {
                     self.headerdata |= if rising {0} else {1} << n;
                     if n == 0 {
@@ -115,13 +134,19 @@ impl Receiver for PhilipsReceiver {
                 (HeaderData(n), _, Some(_)) => HeaderData(n),
                 (HeaderData(_),         _,      None) => Idle,
 
-                (Trailing, FALLING, Some(3))    => Data(15),
-                (Trailing, RISING, Some(_))     => Data(15), //TODO
+                (Trailing, FALLING, Some(3))    => {
+                    self.repeat = false;
+                    Data(15)
+                },
+                (Trailing, RISING, Some(_))     => {
+                    self.repeat = true;
+                    Data(15)
+                },
                 (Trailing, FALLING, Some(1))    => Trailing,
                 (Trailing, _, _) => Idle,
 
                 (Data(0), _, Some(_)) if odd => {
-                    self.data |= if rising {0} else {1} << 0;
+                    self.data |= if rising {0} else {1} ;
                     Done
                 },
                 (Data(0), _, Some(_)) => Data(0),
@@ -130,18 +155,23 @@ impl Receiver for PhilipsReceiver {
                     Data(n-1)
                 },
                 (Data(n), _, Some(_)) => Data(n),
-                (Data(_),      _,      None)   => Idle,
+                (Data(_),      _,      None)   => Error(PhilipsError::Data(interval)),     // Data Error
 
                 (Done, _, _) => InternalState::Done,
+                (Error(err), _, _) => InternalState::Error(err),
             };
 
             self.pinval = rising;
-            self.state = intern;
+            self.state = next;
         }
 
         match self.state {
             InternalState::Idle => ReceiverState::Idle,
-            InternalState::Done => ReceiverState::Done(PhilipsCommand {data: self.data}),
+            InternalState::Done => {
+                let cmd = PhilipsCommand::new(self.data, self.repeat);
+                ReceiverState::Done(cmd)
+            },
+            InternalState::Error(err) => ReceiverState::Err(err),
             _ => ReceiverState::Receiving
         }
     }
@@ -168,8 +198,8 @@ const fn range(len: u32, percent: u32) -> Range<u32> {
     let tol = (len * percent) / 100;
 
      Range {
-        start: len - tol,
-        end: len + tol + 2,
+        start: len - tol - 2,
+        end: len + tol + 4,
     }
 }
 
