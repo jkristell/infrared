@@ -6,7 +6,7 @@ use crate::nec::Timing;
 use crate::nec::{SAMSUNG_TIMING, STANDARD_TIMING};
 use crate::{Receiver, ReceiverState};
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 /// The Command types
 pub enum NecCommand<T>
 where
