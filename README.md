@@ -8,14 +8,15 @@ A library for using infrared remote controls with Rust.
  - Philips Rc6
 
 ### Examples
- - Transmitting works! see ``examples/bluepill-tx``
+ - Receiving, both NEC and Rc6 ``examples/bluepill-receiver``
+ - Transmitting NEC ``examples/bluepill-tx``
   
 ## Tested with
   - Tested with bluepill board
   - Vishay TSOP382 IR receiver
   - Various ir leds
-  - NEC "Special for MP3" and Samsung remotes
-  - Rc6 Tested with a Philips Bluray player remote
+  - NEC Generic "Special for MP3" and Samsung remotes
+  - Rc6 tested with a Philips Bluray player remote
 
 
 ![Boards](http://jott.se/wp-content/uploads/2019/09/txrx_setup.jpg)
