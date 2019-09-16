@@ -97,7 +97,6 @@ fn main() -> ! {
 fn TIM2() {
     static mut COUNT: u32 = 0;
     static mut PINVAL: bool = false;
-    //let mut necq2 = unsafe { NECQ.as_mut().unwrap().split().0 };
 
     // Clear the interrupt
     let timer = unsafe { &mut TIMER.as_mut().unwrap() };
