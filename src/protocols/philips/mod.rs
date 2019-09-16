@@ -102,12 +102,15 @@ impl Receiver for PhilipsReceiver {
 
             let interval = timestamp.wrapping_sub(self.last);
             self.last = timestamp;
-            // Debug:
-            self.last_interval = interval;
-            self.last_state = self.state;
+            self.pinval = rising;
 
             // Nbr of rc6_units since last pin edge
             let n_units = self.rc6_units(interval);
+
+            // Debug
+            self.last_interval = interval;
+            self.last_state = self.state;
+
 
             if let Some(units) = n_units {
                 self.rc6_counter += units;
@@ -161,7 +164,6 @@ impl Receiver for PhilipsReceiver {
                 (Error(err), _, _) => InternalState::Error(err),
             };
 
-            self.pinval = rising;
             self.state = next;
         }
 
