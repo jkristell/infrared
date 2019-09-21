@@ -126,7 +126,6 @@ impl Receiver for Rc5Receiver {
                 },
                 (Data(n), _, Some(_)) => Data(n),
                 (Data(_), _, None)    => Error(Rc5Error::Data(interval)),
-
                 (Done, _, _)        => Done,
                 (Error(err), _, _)  => Error(err),
             };
