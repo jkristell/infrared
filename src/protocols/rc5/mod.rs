@@ -120,7 +120,6 @@ impl Receiver for Rc5Receiver {
                     self.data |= if pinval {1} else {0};
                     Done
                 },
-                (Data(0), _, Some(_)) => Data(0),
                 (Data(n), _, Some(_)) if odd => {
                     self.data |= if pinval {1} else {0} << n;
                     Data(n-1)
