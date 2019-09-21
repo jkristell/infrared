@@ -88,14 +88,14 @@ impl Receiver for Rc5Receiver {
     type Command = Rc5Command;
     type ReceiveError = Rc5Error;
 
-    fn event(&mut self, rising: bool, timestamp: u32) -> ReceiverState<Self::Command, Self::ReceiveError> {
+    fn event(&mut self, pinval: bool, timestamp: u32) -> ReceiverState<Self::Command, Self::ReceiveError> {
 
-        if self.pinval != rising {
+        if self.pinval != pinval {
             use InternalState::*;
 
             let interval = timestamp.wrapping_sub(self.last);
             self.last = timestamp;
-            self.pinval = rising;
+            self.pinval = pinval;
 
             // Number of rc5 units since last pin edge
             let n_units = self.interval_to_units(interval);
@@ -110,19 +110,19 @@ impl Receiver for Rc5Receiver {
 
             let odd = self.rc5_counter & 1 == 0;
 
-            let next = match (self.state, rising, n_units) {
+            let next = match (self.state, pinval, n_units) {
                 (Idle, FALLING, _) => Idle,
                 (Idle, RISING, _) => {
                     self.data |= 1 << 13;
                     Data(12)
                 },
                 (Data(0), _, Some(_)) if odd => {
-                    self.data |= if rising {1} else {0} ;
+                    self.data |= if pinval {1} else {0};
                     Done
                 },
                 (Data(0), _, Some(_)) => Data(0),
                 (Data(n), _, Some(_)) if odd => {
-                    self.data |= if rising {1} else {0} << n;
+                    self.data |= if pinval {1} else {0} << n;
                     Data(n-1)
                 },
                 (Data(n), _, Some(_)) => Data(n),
@@ -158,7 +158,7 @@ impl Receiver for Rc5Receiver {
     }
 }
 
-pub const fn rc5_multiplier(samplerate: u32, multiplier: u32) -> Range<u32> {
+const fn rc5_multiplier(samplerate: u32, multiplier: u32) -> Range<u32> {
     let base = (samplerate * 889 * multiplier) / 1000_000;
     range(base, 10)
 }
