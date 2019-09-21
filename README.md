@@ -5,10 +5,11 @@ A library for using infrared remote controls with Rust.
 
 ### Supported protocols
  - The NEC Protocol and the Samsung variant of it
+ - Philips Rc5
  - Philips Rc6
 
 ### Examples
- - Receiving, both NEC and Rc6 ``examples/bluepill-receiver``
+ - Receiving, NEC, Rc5 and Rc6 ``examples/bluepill-receiver``
  - Transmitting NEC ``examples/bluepill-tx``
   
 ## Tested with

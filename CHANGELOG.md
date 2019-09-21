@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.3.2] - 2019-09-21
+ - Added support for Philips Rc5 Protocol
+
 ## [0.3.1] - 2019-09-16
  - Added support for Philips Rc6-0 Protocol
  - Added trace support
