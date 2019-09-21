@@ -2,8 +2,11 @@
 
 use core::convert::Into;
 
-/// NEC protocol decoder
+/// NEC protocol
 pub use protocols::nec;
+/// Rc5 Protocol
+pub use protocols::rc5;
+/// Rc6 Protocol
 pub use protocols::rc6;
 
 pub mod trace;
