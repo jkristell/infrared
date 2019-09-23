@@ -121,11 +121,11 @@ impl Transmitter for NecTransmitter {
 impl NSamples {
     pub const fn new(period: u32, timing: &Timing) -> Self {
         Self {
-            header_high: timing.header_htime / period,
-            header_low: timing.header_ltime / period,
-            zero_low: timing.zero_ltime / period,
-            data_high: timing.data_htime / period,
-            one_low: timing.one_ltime / period,
+            header_high: timing.header_high / period,
+            header_low: timing.header_low / period,
+            zero_low: timing.zero_low / period,
+            data_high: timing.data_high / period,
+            one_low: timing.one_low / period,
         }
     }
 }

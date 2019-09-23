@@ -12,29 +12,28 @@ pub enum NecType {
 }
 
 pub struct Timing {
-    header_htime: u32,
-    header_ltime: u32,
-    repeat_ltime: u32,
-
-    data_htime: u32,
-    zero_ltime: u32,
-    one_ltime: u32,
+    header_high: u32,
+    header_low: u32,
+    repeat_low: u32,
+    data_high: u32,
+    zero_low: u32,
+    one_low: u32,
 }
 
 const STANDARD_TIMING: Timing = Timing {
-    header_htime: 9000,
-    header_ltime: 4500,
-    repeat_ltime: 2250,
-    data_htime: 560,
-    zero_ltime: 560,
-    one_ltime: 1690,
+    header_high: 9000,
+    header_low: 4500,
+    repeat_low: 2250,
+    data_high: 560,
+    zero_low: 560,
+    one_low: 1690,
 };
 
 const SAMSUNG_TIMING: Timing = Timing {
-    header_htime: 4500,
-    header_ltime: 4500,
-    repeat_ltime: 2250,
-    zero_ltime: 560,
-    data_htime: 560,
-    one_ltime: 1690,
+    header_high: 4500,
+    header_low: 4500,
+    repeat_low: 2250,
+    zero_low: 560,
+    data_high: 560,
+    one_low: 1690,
 };

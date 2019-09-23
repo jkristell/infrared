@@ -84,8 +84,7 @@ impl NecReceiver {
     }
 }
 
-impl Receiver for NecReceiver
-{
+impl Receiver for NecReceiver {
     type Cmd = NecCommand;
     type Err = NecError;
 
@@ -175,21 +174,20 @@ pub enum PulseWidth {
     Repeat,
     Zero,
     One,
-
     NotAPulseWidth,
 }
 
 impl Tolerances {
-    pub const fn from_timing(t: &Timing, samplerate: u32) -> Self {
+    pub const fn from_timing(timing: &Timing, samplerate: u32) -> Self {
         let per: u32 = 1000 / (samplerate / 1000);
         Tolerances {
-            sync: sample_range((t.header_htime + t.header_ltime) / per, 5),
-            repeat: sample_range((t.header_htime + t.repeat_ltime) / per, 5),
-            zero: sample_range((t.data_htime + t.zero_ltime) / per, 5),
-            one: sample_range((t.data_htime + t.one_ltime) / per, 5),
+            sync: sample_range((timing.header_high + timing.header_low) / per, 5),
+            repeat: sample_range((timing.header_high + timing.repeat_low) / per, 5),
+            zero: sample_range((timing.data_high + timing.zero_low) / per, 5),
+            one: sample_range((timing.data_high + timing.one_low) / per, 5),
         }
-
     }
+
     pub fn pulsewidth(&self, samples: u32) -> PulseWidth {
         if self.sync.contains(&samples) {
             return PulseWidth::Sync;
