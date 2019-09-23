@@ -101,13 +101,12 @@ impl Receiver for Rc5Receiver {
     fn sample(&mut self, pinval: bool, timestamp: u32) -> ReceiverState<Self::Cmd, Self::Err> {
 
         if self.pinval != pinval {
-
-            let interval = timestamp.wrapping_sub(self.last);
+            let mut interval = timestamp.wrapping_sub(self.last);
             self.last = timestamp;
             self.pinval = pinval;
 
-            if interval == 0 || interval == timestamp ||  interval >= core::u16::MAX.into() {
-                return self.internal_state_to_receiver_state();
+            if interval >= core::u16::MAX.into() {
+                interval = 0;
             }
 
             let interval = interval as u16;

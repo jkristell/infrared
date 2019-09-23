@@ -107,16 +107,14 @@ impl Receiver for Rc6Receiver {
     fn sample(&mut self, pinval: bool, timestamp: u32) -> ReceiverState<Self::Cmd, Self::Err> {
 
         if self.pinval != pinval {
-            let interval = timestamp.wrapping_sub(self.last);
+            let mut interval = timestamp.wrapping_sub(self.last);
 
             self.last = timestamp;
             self.pinval = pinval;
 
-            /*
-            if interval >= core::u16::MAX {
-                return self.state();
+            if interval >= core::u16::MAX.into() {
+                interval = 0;
             }
-            */
 
             let interval = interval as u16;
             return self.sample_edge_delta(pinval, interval);
