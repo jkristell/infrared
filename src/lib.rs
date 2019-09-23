@@ -35,10 +35,13 @@ pub trait Receiver {
     type Err;
 
     /// Sample
-    fn sample(&mut self, pinval: bool, timestamp: u32) -> ReceiverState<Self::Cmd, Self::Err>;
+    fn sample(&mut self, pinval: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err>;
 
-    /// Register and edge
-    fn edge(&mut self, rising: bool, sampledelta: u16) -> ReceiverState<Self::Cmd, Self::Err>;
+    /// Sample known edge
+    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err>;
+
+    /// Sample on edge with delta samples
+    fn sample_edge_delta(&mut self, rising: bool, sampledelta: u16) -> ReceiverState<Self::Cmd, Self::Err>;
 
     /// Reset receiver
     fn reset(&mut self);

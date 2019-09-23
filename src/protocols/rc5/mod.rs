@@ -111,13 +111,17 @@ impl Receiver for Rc5Receiver {
             }
 
             let interval = interval as u16;
-            return self.edge(pinval, interval);
+            return self.sample_edge_delta(pinval, interval);
         }
 
         self.internal_state_to_receiver_state()
     }
 
-    fn edge(&mut self, rising: bool, sampledelta: u16) -> ReceiverState<Self::Cmd, Self::Err> {
+    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err> {
+        unimplemented!()
+    }
+
+    fn sample_edge_delta(&mut self, rising: bool, sampledelta: u16) -> ReceiverState<Self::Cmd, Self::Err> {
         use InternalState::*;
 
         // Number of rc5 units since last pin edge

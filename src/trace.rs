@@ -5,7 +5,7 @@ const BUF_LEN: usize = 128;
 pub struct TraceReceiver {
     pub buffer: [u16; BUF_LEN],
     pub samplerate: u32,
-    pub timeout: u32,
+    pub timeout: u16,
     pub prev_pinval: bool,
     pub prev_samplenum: u32,
     pub buffer_index: usize,
@@ -24,24 +24,40 @@ impl Receiver for TraceReceiver {
             return self.state;
         }
 
-        let delta = self.delta(samplenum);
-
-        if delta as u32 > self.timeout {
-            // Set the receiver in disabled state but return the Done state
+        if self.state == ReceiverState::Receiving && self.delta(samplenum) > self.timeout {
             self.state = ReceiverState::Done(());
         }
+
+
         else if self.prev_pinval != pinval {
             // Change detected
-            self.state = ReceiverState::Receiving;  // Idle and Receiving doesn't really matter in this receiver
-            self.prev_samplenum = samplenum;
-            self.prev_pinval = pinval;
-            self.state = self.edge(pinval, delta)
+            return self.sample_edge(pinval, samplenum);
         }
 
         self.state
     }
 
-    fn edge(&mut self, _rising: bool, sampledelta: u16) -> ReceiverState<Self::Cmd, Self::Err> {
+    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err> {
+
+        if !self.ready() {
+            return self.state;
+        }
+
+        let delta = self.delta(sampletime);
+
+        if delta > self.timeout {
+            // Set the receiver in disabled state but return the Done state
+            self.state = ReceiverState::Done(());
+        }
+
+        self.state = ReceiverState::Receiving;  // Idle or Receiving doesn't really matter in this receiver
+        self.prev_samplenum = sampletime;
+        self.prev_pinval = rising;
+
+        self.sample_edge_delta(rising, delta)
+    }
+
+    fn sample_edge_delta(&mut self, _rising: bool, sampledelta: u16) -> ReceiverState<Self::Cmd, Self::Err> {
 
         if !self.ready() {
             return self.state;
@@ -74,7 +90,7 @@ impl Receiver for TraceReceiver {
 }
 
 impl TraceReceiver {
-    pub const fn new(samplerate: u32, timeout: u32) -> Self {
+    pub const fn new(samplerate: u32, timeout: u16) -> Self {
         Self {
             buffer: [0; BUF_LEN],
             samplerate,

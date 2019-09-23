@@ -31,15 +31,16 @@ pub enum Rc6Error {
 pub struct Rc6Receiver {
     samplerate: u32,
     state: InternalState,
-    pinval: bool,
+    pub pinval: bool,
     data: u32,
     headerdata: u32,
     repeat: bool,
-    last: u32,
+    pub last: u32,
     pub rc6_counter: u32,
 
     pub last_interval: u16,
     pub last_state: InternalState,
+    pub n_units: Option<u32>,
 }
 
 impl Rc6Receiver {
@@ -55,6 +56,7 @@ impl Rc6Receiver {
             rc6_counter: 0,
             headerdata: 0,
             repeat: false,
+            n_units: None,
         }
     }
 
@@ -110,18 +112,24 @@ impl Receiver for Rc6Receiver {
             self.last = timestamp;
             self.pinval = pinval;
 
-            if interval == 0 || interval == timestamp ||  interval >= core::u16::MAX.into() {
+            /*
+            if interval >= core::u16::MAX {
                 return self.state();
             }
+            */
 
             let interval = interval as u16;
-            return self.edge(pinval, interval);
+            return self.sample_edge_delta(pinval, interval);
         }
 
         self.state()
     }
 
-    fn edge(&mut self, rising: bool, interval: u16) -> ReceiverState<Self::Cmd, Self::Err> {
+    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err> {
+        unimplemented!()
+    }
+
+    fn sample_edge_delta(&mut self, rising: bool, interval: u16) -> ReceiverState<Self::Cmd, Self::Err> {
         use InternalState::*;
 
         // Number of rc6 units since last pin edge
@@ -130,6 +138,7 @@ impl Receiver for Rc6Receiver {
         // For debug use
         self.last_interval = interval;
         self.last_state = self.state;
+        self.n_units = n_units;
 
         if let Some(units) = n_units {
             self.rc6_counter += units;
@@ -190,6 +199,8 @@ impl Receiver for Rc6Receiver {
         self.state = InternalState::Idle;
         self.pinval = false;
         self.data = 0;
+        self.last = 0;
+        self.last_interval = 0;
         self.headerdata = 0;
         self.rc6_counter = 0;
     }
@@ -199,7 +210,7 @@ impl Receiver for Rc6Receiver {
     }
 }
 
-const fn rc6_multiplier(samplerate: u32, multiplier: u32) -> Range<u32> {
+pub const fn rc6_multiplier(samplerate: u32, multiplier: u32) -> Range<u32> {
     let base = (samplerate * 444 * multiplier) / 1000_000;
     range(base, 10)
 }
