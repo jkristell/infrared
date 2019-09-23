@@ -86,10 +86,10 @@ impl<T> Receiver for NecReceiver<T>
 where
     T: Clone + From<u32>,
 {
-    type Command = NecCommand<T>;
-    type ReceiveError = NecError;
+    type Cmd = NecCommand<T>;
+    type Err = NecError;
 
-    fn event(&mut self, rising: bool, timestamp: u32) -> ReceiverState<NecCommand<T>, NecError> {
+    fn sample(&mut self, rising: bool, timestamp: u32) -> ReceiverState<NecCommand<T>, NecError> {
         use InternalState::{
             Disabled, Done, Error as InternalError, HeaderHigh, HeaderLow, Idle, Receiving,
         };
@@ -151,10 +151,14 @@ where
                 self.reset();
                 ReceiverState::Done(cmd)
             }
-            InternalState::Error(e) => ReceiverState::Err(e),
+            InternalState::Error(e) => ReceiverState::Error(e),
             InternalState::Disabled => ReceiverState::Disabled,
             _ => ReceiverState::Receiving,
         }
+    }
+
+    fn edge(&mut self, rising: bool, sampledelta: u16) -> ReceiverState<Self::Cmd, Self::Err> {
+        unimplemented!()
     }
 
     fn reset(&mut self) {

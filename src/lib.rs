@@ -17,29 +17,29 @@ pub use remote::RemoteControl;
 
 mod protocols;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Copy, Clone)]
 /// Protocol decoder state
 pub enum ReceiverState<CMD, ERR> {
     Idle,
     Receiving,
     Done(CMD),
-    Err(ERR),
+    Error(ERR),
     Disabled,
 }
 
 /// Receiver trait
 pub trait Receiver {
     /// The resulting command type
-    type Command;
+    type Cmd;
     /// Receive Error
-    type ReceiveError;
+    type Err;
 
-    /// Register new event
-    fn event(
-        &mut self,
-        pinvalue: bool,
-        timestamp: u32,
-    ) -> ReceiverState<Self::Command, Self::ReceiveError>;
+    /// Sample
+    fn sample(&mut self, pinval: bool, timestamp: u32) -> ReceiverState<Self::Cmd, Self::Err>;
+
+    /// Register and edge
+    fn edge(&mut self, rising: bool, sampledelta: u16) -> ReceiverState<Self::Cmd, Self::Err>;
+
     /// Reset receiver
     fn reset(&mut self);
     /// Disable receiver

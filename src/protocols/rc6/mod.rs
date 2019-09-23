@@ -23,9 +23,9 @@ impl Rc6Command {
 
 #[derive(Clone, Copy, Debug)]
 pub enum Rc6Error {
-    Header(u32),
-    Data(u32),
-    Rc6Version(u32),
+    Header(u16),
+    Data(u16),
+    Rc6Version(u16),
 }
 
 pub struct Rc6Receiver {
@@ -38,7 +38,7 @@ pub struct Rc6Receiver {
     last: u32,
     pub rc6_counter: u32,
 
-    pub last_interval: u32,
+    pub last_interval: u16,
     pub last_state: InternalState,
 }
 
@@ -58,13 +58,28 @@ impl Rc6Receiver {
         }
     }
 
-    fn interval_to_units(&self, interval: u32) -> Option<u32> {
+    fn interval_to_units(&self, interval: u16) -> Option<u32> {
+
+        let interval = interval as u32;
+
         for i in 1..=8 {
             if rc6_multiplier(self.samplerate, i).contains(&interval) {
                 return Some(i);
             }
         }
         None
+    }
+
+    fn state(&self) -> ReceiverState<Rc6Command, Rc6Error> {
+        match self.state {
+            InternalState::Idle => ReceiverState::Idle,
+            InternalState::Done => {
+                let cmd = Rc6Command::new(self.data, self.repeat);
+                ReceiverState::Done(cmd)
+            },
+            InternalState::Error(err) => ReceiverState::Error(err),
+            _ => ReceiverState::Receiving
+        }
     }
 }
 
@@ -84,89 +99,91 @@ const RISING: bool = true;
 const FALLING: bool = false;
 
 impl Receiver for Rc6Receiver {
-    type Command = Rc6Command;
-    type ReceiveError = Rc6Error;
+    type Cmd = Rc6Command;
+    type Err = Rc6Error;
 
-    fn event(&mut self, rising: bool, timestamp: u32) -> ReceiverState<Self::Command, Self::ReceiveError> {
+    fn sample(&mut self, pinval: bool, timestamp: u32) -> ReceiverState<Self::Cmd, Self::Err> {
 
-        if self.pinval != rising {
-            use InternalState::*;
-
+        if self.pinval != pinval {
             let interval = timestamp.wrapping_sub(self.last);
+
             self.last = timestamp;
-            self.pinval = rising;
+            self.pinval = pinval;
 
-            // Number of rc6 units since last pin edge
-            let n_units = self.interval_to_units(interval);
-
-            // For debug use
-            self.last_interval = interval;
-            self.last_state = self.state;
-
-            if let Some(units) = n_units {
-                self.rc6_counter += units;
+            if interval == 0 || interval == timestamp ||  interval >= core::u16::MAX.into() {
+                return self.state();
             }
 
-            let odd = self.rc6_counter & 1 == 1;
-
-            let next = match (self.state, rising, n_units) {
-                (Idle,          FALLING,    _)      => Idle,
-                (Idle,          RISING,     _)      => Leading,
-                (Leading,       FALLING, Some(6))   => LeadingPaus,
-                (Leading, _, _)                     => Idle,
-                (LeadingPaus,   RISING,  Some(2))   => HeaderData(3),
-                (LeadingPaus, _, _)                 => Idle,
-
-                (HeaderData(n), _, Some(_)) if odd => {
-                    self.headerdata |= if rising {0} else {1} << n;
-                    if n == 0 {
-                        Trailing
-                    } else {
-                        HeaderData(n-1)
-                    }
-                },
-                (HeaderData(n), _, Some(_))     => HeaderData(n),
-                (HeaderData(_), _, None)        => Idle,
-
-                (Trailing, FALLING, Some(3))    => {
-                    self.repeat = false;
-                    Data(15)
-                },
-                (Trailing, RISING, Some(2))     => {
-                    self.repeat = true;
-                    Data(15)
-                },
-                (Trailing, FALLING, Some(1))    => Trailing,
-                (Trailing, _, _) => Idle,
-
-                (Data(0), _, Some(_)) if odd    => {
-                    self.data |= if rising {0} else {1} ;
-                    Done
-                },
-                (Data(0), _, Some(_)) => Data(0),
-                (Data(n), _, Some(_)) if odd    => {
-                    self.data |= if rising {0} else {1} << n;
-                    Data(n-1)
-                },
-                (Data(n), _, Some(_)) => Data(n),
-                (Data(_),      _,      None)    => Error(Rc6Error::Data(interval)),     // Data Error
-
-                (Done, _, _)        => InternalState::Done,
-                (Error(err), _, _)  => InternalState::Error(err),
-            };
-
-            self.state = next;
+            let interval = interval as u16;
+            return self.edge(pinval, interval);
         }
 
-        match self.state {
-            InternalState::Idle => ReceiverState::Idle,
-            InternalState::Done => {
-                let cmd = Rc6Command::new(self.data, self.repeat);
-                ReceiverState::Done(cmd)
+        self.state()
+    }
+
+    fn edge(&mut self, rising: bool, interval: u16) -> ReceiverState<Self::Cmd, Self::Err> {
+        use InternalState::*;
+
+        // Number of rc6 units since last pin edge
+        let n_units = self.interval_to_units(interval);
+
+        // For debug use
+        self.last_interval = interval;
+        self.last_state = self.state;
+
+        if let Some(units) = n_units {
+            self.rc6_counter += units;
+        }
+
+        let odd = self.rc6_counter & 1 == 1;
+
+        self.state = match (self.state, rising, n_units) {
+            (Idle,          FALLING,    _)      => Idle,
+            (Idle,          RISING,     _)      => Leading,
+            (Leading,       FALLING, Some(6))   => LeadingPaus,
+            (Leading, _, _)                     => Idle,
+            (LeadingPaus,   RISING,  Some(2))   => HeaderData(3),
+            (LeadingPaus, _, _)                 => Idle,
+
+            (HeaderData(n), _, Some(_)) if odd => {
+                self.headerdata |= if rising {0} else {1} << n;
+                if n == 0 {
+                    Trailing
+                } else {
+                    HeaderData(n-1)
+                }
             },
-            InternalState::Error(err) => ReceiverState::Err(err),
-            _ => ReceiverState::Receiving
-        }
+            (HeaderData(n), _, Some(_))     => HeaderData(n),
+            (HeaderData(_), _, None)        => Idle,
+
+            (Trailing, FALLING, Some(3))    => {
+                self.repeat = false;
+                Data(15)
+            },
+            (Trailing, RISING, Some(2))     => {
+                self.repeat = true;
+                Data(15)
+            },
+            (Trailing, FALLING, Some(1))    => Trailing,
+            (Trailing, _, _) => Idle,
+
+            (Data(0), _, Some(_)) if odd    => {
+                self.data |= if rising {0} else {1} ;
+                Done
+            },
+            (Data(0), _, Some(_)) => Data(0),
+            (Data(n), _, Some(_)) if odd    => {
+                self.data |= if rising {0} else {1} << n;
+                Data(n-1)
+            },
+            (Data(n), _, Some(_)) => Data(n),
+            (Data(_),      _,      None)    => Error(Rc6Error::Data(interval)),     // Data Error
+
+            (Done, _, _)        => InternalState::Done,
+            (Error(err), _, _)  => InternalState::Error(err),
+        };
+
+        self.state()
     }
 
     fn reset(&mut self) {

@@ -21,20 +21,15 @@ impl Rc5Command {
         let start = (data >> 12) as u8;
         let toggle = ((data >> 11) & 1) as u8;
 
-        Self {
-            addr,
-            cmd,
-            start,
-            toggle
-        }
+        Self {addr, cmd, start, toggle}
     }
 }
 
 #[derive(Clone, Copy, Debug)]
 pub enum Rc5Error {
-    Header(u32),
-    Data(u32),
-    Rc5Version(u32),
+    Header(u16),
+    Data(u16),
+    Rc5Version(u16),
 }
 
 pub struct Rc5Receiver {
@@ -45,7 +40,7 @@ pub struct Rc5Receiver {
     last: u32,
     pub rc5_counter: u32,
 
-    pub last_interval: u32,
+    pub last_interval: u16,
     pub last_state: InternalState,
 }
 
@@ -63,13 +58,25 @@ impl Rc5Receiver {
         }
     }
 
-    pub fn interval_to_units(&self, interval: u32) -> Option<u32> {
+    pub fn interval_to_units(&self, interval: u16) -> Option<u32> {
         for i in 1..=2 {
-            if rc5_multiplier(self.samplerate, i).contains(&interval) {
+            if rc5_multiplier(self.samplerate, i).contains(&(interval as u32)) {
                 return Some(i);
             }
         }
         None
+    }
+
+    fn internal_state_to_receiver_state(&self) -> Rc5RS {
+        match self.state {
+            InternalState::Idle => ReceiverState::Idle,
+            InternalState::Done => {
+                let cmd = Rc5Command::new(self.data);
+                ReceiverState::Done(cmd)
+            },
+            InternalState::Error(err) => ReceiverState::Error(err),
+            _ => ReceiverState::Receiving
+        }
     }
 }
 
@@ -79,69 +86,75 @@ pub enum InternalState {
     Data(u8),
     Done,
     Error(Rc5Error),
+    Disabled,
 }
 
 const RISING: bool = true;
 const FALLING: bool = false;
 
-impl Receiver for Rc5Receiver {
-    type Command = Rc5Command;
-    type ReceiveError = Rc5Error;
+type Rc5RS = ReceiverState<Rc5Command, Rc5Error>;
 
-    fn event(&mut self, pinval: bool, timestamp: u32) -> ReceiverState<Self::Command, Self::ReceiveError> {
+impl Receiver for Rc5Receiver {
+    type Cmd = Rc5Command;
+    type Err = Rc5Error;
+
+    fn sample(&mut self, pinval: bool, timestamp: u32) -> ReceiverState<Self::Cmd, Self::Err> {
 
         if self.pinval != pinval {
-            use InternalState::*;
 
             let interval = timestamp.wrapping_sub(self.last);
             self.last = timestamp;
             self.pinval = pinval;
 
-            // Number of rc5 units since last pin edge
-            let n_units = self.interval_to_units(interval);
-
-            // For debug use
-            self.last_interval = interval;
-            self.last_state = self.state;
-
-            if let Some(units) = n_units {
-                self.rc5_counter += units;
+            if interval == 0 || interval == timestamp ||  interval >= core::u16::MAX.into() {
+                return self.internal_state_to_receiver_state();
             }
 
-            let odd = self.rc5_counter & 1 == 0;
-
-            let next = match (self.state, pinval, n_units) {
-                (Idle, FALLING, _) => Idle,
-                (Idle, RISING, _) => {
-                    self.data |= 1 << 13;
-                    Data(12)
-                },
-                (Data(0), _, Some(_)) if odd => {
-                    self.data |= if pinval {1} else {0};
-                    Done
-                },
-                (Data(n), _, Some(_)) if odd => {
-                    self.data |= if pinval {1} else {0} << n;
-                    Data(n-1)
-                },
-                (Data(n), _, Some(_)) => Data(n),
-                (Data(_), _, None)    => Error(Rc5Error::Data(interval)),
-                (Done, _, _)        => Done,
-                (Error(err), _, _)  => Error(err),
-            };
-
-            self.state = next;
+            let interval = interval as u16;
+            return self.edge(pinval, interval);
         }
 
-        match self.state {
-            InternalState::Idle => ReceiverState::Idle,
-            InternalState::Done => {
-                let cmd = Rc5Command::new(self.data);
-                ReceiverState::Done(cmd)
+        self.internal_state_to_receiver_state()
+    }
+
+    fn edge(&mut self, rising: bool, sampledelta: u16) -> ReceiverState<Self::Cmd, Self::Err> {
+        use InternalState::*;
+
+        // Number of rc5 units since last pin edge
+        let n_units = self.interval_to_units(sampledelta);
+
+        // For debug use
+        self.last_interval = sampledelta;
+        self.last_state = self.state;
+
+        if let Some(units) = n_units {
+            self.rc5_counter += units;
+        }
+
+        let odd = self.rc5_counter & 1 == 0;
+
+        self.state = match (self.state, rising, n_units) {
+            (Idle, FALLING, _) => Idle,
+            (Idle, RISING, _) => {
+                self.data |= 1 << 13;
+                Data(12)
             },
-            InternalState::Error(err) => ReceiverState::Err(err),
-            _ => ReceiverState::Receiving
-        }
+            (Data(0), _, Some(_)) if odd => {
+                self.data |= if rising {1} else {0};
+                Done
+            },
+            (Data(n), _, Some(_)) if odd => {
+                self.data |= if rising {1} else {0} << n;
+                Data(n-1)
+            },
+            (Data(n), _, Some(_)) => Data(n),
+            (Data(_), _, None)    => Error(Rc5Error::Data(sampledelta)),
+            (Done, _, _)        => Done,
+            (Error(err), _, _)  => Error(err),
+            (Disabled, _, _) => Disabled,
+        };
+
+        self.internal_state_to_receiver_state()
     }
 
     fn reset(&mut self) {
@@ -152,7 +165,7 @@ impl Receiver for Rc5Receiver {
     }
 
     fn disable(&mut self) {
-        unimplemented!()
+        self.state = InternalState::Disabled;
     }
 }
 

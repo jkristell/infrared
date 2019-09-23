@@ -3,87 +3,68 @@ use crate::{Receiver, ReceiverState};
 const BUF_LEN: usize = 128;
 
 pub struct TraceReceiver {
-    pub data: [u16; BUF_LEN],
+    pub buffer: [u16; BUF_LEN],
     pub samplerate: u32,
+    pub timeout: u32,
     pub prev_pinval: bool,
-    pub st_prev: u32,
-    pub event_id: usize,
+    pub prev_samplenum: u32,
+    pub buffer_index: usize,
 
-    state: ReceiverState<TraceResult, ()>,
+    pub state: ReceiverState<(), ()>,
 }
-
-#[derive(Clone, Copy)]
-pub struct TraceResult {
-    pub buf: [u16; BUF_LEN],
-    pub buf_len: usize,
-}
-
-//TODO: Make dependent on samplerate
-const TIMEOUT: u16 = 1000;
 
 
 impl Receiver for TraceReceiver {
-    type Command = TraceResult;
-    type ReceiveError = ();
+    type Cmd = ();
+    type Err = ();
 
-    fn event(&mut self, pinvalue: bool, st: u32) -> ReceiverState<TraceResult, ()> {
+    fn sample(&mut self, pinval: bool, samplenum: u32) -> ReceiverState<(), ()> {
 
-        match self.state {
-            ReceiverState::Disabled => return ReceiverState::Disabled,
-            _ => (),
-        };
+        if !self.ready() {
+            return self.state;
+        }
 
-        let delta = self.delta(st);
+        let delta = self.delta(samplenum);
 
-        if delta > TIMEOUT {
+        if delta as u32 > self.timeout {
             // Set the receiver in disabled state but return the Done state
-            self.state = ReceiverState::Idle;
-            return ReceiverState::Done(TraceResult {
-                buf: self.data,
-                buf_len: self.event_id,
-            });
+            self.state = ReceiverState::Done(());
         }
-
-        if self.prev_pinval != pinvalue {
+        else if self.prev_pinval != pinval {
             // Change detected
-            self.state = ReceiverState::Receiving;
-
-            self.data[self.event_id] = delta;
-            self.event_id += 1;
-
-            self.st_prev = st;
-            self.prev_pinval = pinvalue;
-
-            if self.event_id == BUF_LEN {
-                self.state = ReceiverState::Disabled;
-
-                let mut buf = [0; 128];
-                for i in 0..self.data.len() {
-                    buf[i] = self.data[i];
-                }
-
-                return ReceiverState::Done(TraceResult {
-                    buf,
-                    buf_len: self.event_id,
-                })
-            }
+            self.state = ReceiverState::Receiving;  // Idle and Receiving doesn't really matter in this receiver
+            self.prev_samplenum = samplenum;
+            self.prev_pinval = pinval;
+            self.state = self.edge(pinval, delta)
         }
 
-        match self.state {
-            ReceiverState::Disabled => ReceiverState::Disabled,
-            ReceiverState::Idle => ReceiverState::Idle,
-            _ => ReceiverState::Receiving,
+        self.state
+    }
+
+    fn edge(&mut self, _rising: bool, sampledelta: u16) -> ReceiverState<Self::Cmd, Self::Err> {
+
+        if !self.ready() {
+            return self.state;
         }
+
+        self.buffer[self.buffer_index] = sampledelta;
+        self.buffer_index += 1;
+
+        if self.buffer_index == BUF_LEN {
+            self.state = ReceiverState::Done(());
+        }
+
+        self.state
     }
 
     fn reset(&mut self) {
-        self.st_prev = 0;
-        self.event_id = 0;
-        self.prev_pinval = false;
         self.state = ReceiverState::Idle;
+        self.prev_samplenum = 0;
+        self.prev_pinval = false;
+        self.buffer_index = 0;
 
-        for i in 0..self.data.len() {
-            self.data[i] = 0;
+        for i in 0..self.buffer.len() {
+            self.buffer[i] = 0;
         }
     }
 
@@ -93,23 +74,31 @@ impl Receiver for TraceReceiver {
 }
 
 impl TraceReceiver {
-    pub const fn new(samplerate: u32) -> Self {
-
+    pub const fn new(samplerate: u32, timeout: u32) -> Self {
         Self {
-            data: [0; BUF_LEN],
+            buffer: [0; BUF_LEN],
             samplerate,
+            timeout,
             prev_pinval: false,
-            st_prev: 0,
-            event_id: 0,
+            prev_samplenum: 0,
+            buffer_index: 0,
             state: ReceiverState::Idle
         }
     }
 
+    fn ready(&self) -> bool {
+        !(self.state == ReceiverState::Done(()) || self.state == ReceiverState::Disabled)
+    }
+
     pub fn delta(&self, ts: u32) -> u16 {
-        if self.st_prev == 0 {
+        if self.prev_samplenum == 0 {
             return 0;
         }
 
-        ts.wrapping_sub(self.st_prev) as u16
+        ts.wrapping_sub(self.prev_samplenum) as u16
+    }
+
+    pub fn data(&self) -> &[u16] {
+        &self.buffer[0..self.buffer_index]
     }
 }
