@@ -10,4 +10,12 @@ keywords = ["infrared", "remote", "rc5", "rc6", "nec"]
 categories = ["no-std", "embedded"]
 license = "MIT OR Apache-2.0"
 
+[features]
+default = ["nec", "rc5", "rc6"]
+nec = []
+rc5 = []
+rc6 = []
+protocol-dev = []
+
 [dependencies]
+

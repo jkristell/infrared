@@ -1,7 +1,8 @@
 use core::convert::Into;
 
-use crate::nec::{NecType, Timing, SAMSUNG_TIMING, STANDARD_TIMING};
+use crate::nec::{Timing};
 use crate::{Transmitter, TransmitterState};
+use crate::protocols::nec::NecTypeTrait;
 
 enum TransmitStateInternal {
     Idle,
@@ -13,11 +14,12 @@ enum TransmitStateInternal {
     Done,
 }
 
-pub struct NecTransmitter {
+pub struct NecTypeTransmitter<NECTYPE> {
     state: TransmitStateInternal,
     samples: NSamples,
     last_ts: u32,
     cmd: u32,
+    nectype: core::marker::PhantomData<NECTYPE>,
 }
 
 struct NSamples {
@@ -28,23 +30,22 @@ struct NSamples {
     one_low: u32,
 }
 
-impl NecTransmitter {
-    pub fn new(nectype: NecType, period: u32) -> Self {
-        let units = match nectype {
-            NecType::Standard => NSamples::new(period, &STANDARD_TIMING),
-            NecType::Samsung => NSamples::new(period, &SAMSUNG_TIMING),
-        };
+impl<NECTYPE: NecTypeTrait> NecTypeTransmitter<NECTYPE> {
+    pub fn new(period: u32) -> Self {
+
+        let units = NSamples::new(period, &NECTYPE::TIMING);
 
         Self {
             state: TransmitStateInternal::Idle,
             samples: units,
             last_ts: 0,
             cmd: 0,
+            nectype: core::marker::PhantomData,
         }
     }
 }
 
-impl Transmitter for NecTransmitter {
+impl<NECTYPE> Transmitter for NecTypeTransmitter<NECTYPE> {
     fn init<CMD: Into<u32>>(&mut self, cmd: CMD) {
         self.cmd = cmd.into();
         self.state = TransmitStateInternal::Start;

@@ -1,15 +1,16 @@
 use core::ops::Range;
 
-use crate::nec::NecType;
 use crate::nec::Timing;
-use crate::nec::{SAMSUNG_TIMING, STANDARD_TIMING};
 use crate::{Receiver, ReceiverState};
+#[cfg(feature="protocol-dev")]
+use crate::ReceiverDebug;
+use crate::protocols::nec::NecTypeTrait;
 
 #[derive(Debug, Copy, Clone)]
 /// The resulting command
 pub struct NecCommand {
-    addr: u16,
-    cmd: u16,
+    pub addr: u16,
+    pub cmd: u16,
 }
 
 impl NecCommand {
@@ -31,137 +32,154 @@ pub enum NecError {
 
 pub type NecResult = ReceiverState<NecCommand, NecError>;
 
-pub struct NecReceiver {
+pub struct NecTypeReceiver<NECTYPE: NecTypeTrait> {
     // State
-    pub state: InternalState,
+    state: NecState,
     pub bitbuf: u32,
-    pub prev_timestamp: u32,
-    pub prev_pinval: bool,
-    pub prev_state: InternalState,
+    prev_sampletime: u32,
+    prev_pinval: bool,
     // Timing and tolerances
-    pub tolerance: Tolerances,
-    pub interval: u32,
-    lastcommand: NecCommand,
+    tolerance: Tolerances,
+    lastcommand: u32,
+
+    marker: core::marker::PhantomData<NECTYPE>,
+
+    #[cfg(feature="protocol-dev")]
+    pub debug: ReceiverDebug<NecState, Tolerances>,
 }
 
 #[derive(Debug, Copy, Clone)]
 // Internal receiver state
-pub enum InternalState {
+pub enum NecState {
     // Waiting for first pulse
     Init,
     // Receiving data
     Receiving(u32),
-    // Done receiving
-    Done(NecCommand),
+    // Command received
+    Done,
+    // Repeat command received
+    RepeatDone,
     // In error state
-    Error(NecError),
+    Err(NecError),
     // Disabled
     Disabled,
 }
 
-impl NecReceiver {
-    pub fn new(variant: NecType, samplerate: u32) -> Self {
-        let timing = match variant {
-            NecType::Standard => &STANDARD_TIMING,
-            NecType::Samsung => &SAMSUNG_TIMING,
-        };
-
+impl<NECTYPE: NecTypeTrait> NecTypeReceiver<NECTYPE> {
+    pub fn new(samplerate: u32) -> Self {
+        let timing = &NECTYPE::TIMING;
         Self::new_from_timing(samplerate, timing)
     }
 
     fn new_from_timing(samplerate: u32, timing: &Timing) -> Self {
         let tol = Tolerances::from_timing(timing, samplerate);
         Self {
-            state: InternalState::Init,
-            prev_state: InternalState::Init,
-            tolerance: tol,
-            prev_timestamp: 0,
+            state: NecState::Init,
+            prev_sampletime: 0,
             prev_pinval: false,
             bitbuf: 0,
-            interval: 0,
-            lastcommand: NecCommand::new(0),
+            lastcommand: 0,
+            marker: core::marker::PhantomData,
+            #[cfg(feature="protocol-dev")]
+            debug: ReceiverDebug {
+                state: NecState::Init,
+                state_new: NecState::Init,
+                delta: 0,
+                extra: tol.clone(),
+            },
+            tolerance: tol,
+        }
+    }
+
+    fn receiver_state(&self) -> NecResult {
+        use ReceiverState::*;
+        // Internalstate to ReceiverState
+        match self.state {
+            NecState::Init => Idle,
+            NecState::Done => Done(NecCommand::new(self.bitbuf)),
+            NecState::RepeatDone => Done(NecCommand::new(self.lastcommand)),
+            NecState::Err(e) => Error(e),
+            NecState::Disabled => Disabled,
+            _ => Receiving,
         }
     }
 }
 
-impl Receiver for NecReceiver {
+impl<NECTYPE: NecTypeTrait> Receiver for NecTypeReceiver<NECTYPE> {
     type Cmd = NecCommand;
     type Err = NecError;
 
     fn sample(&mut self, pinval: bool, timestamp: u32) -> ReceiverState<NecCommand, NecError> {
-        use InternalState::{
-            Disabled, Done, Error as InternalError, Init, Receiving,
-        };
 
-        if pinval && self.prev_pinval != pinval {
-
-            let mut interval = timestamp.wrapping_sub(self.prev_timestamp);
-
-            if interval >= core::u16::MAX.into() {
-                interval = 0;
-            }
-
-            self.prev_timestamp = timestamp;
-            self.interval = interval;
-            self.prev_state = self.state;
-
-            let pulsewidth = self.tolerance.pulsewidth(interval);
-
-            self.state = match (self.state, pulsewidth) {
-                (Init, PulseWidth::Sync) => Receiving(31),
-                (Init, PulseWidth::Repeat) => Done(self.lastcommand),
-                (Init, _) => Init,
-
-                (Receiving(0), _) => {
-                    self.lastcommand = NecCommand::new(self.bitbuf);
-                    Done(self.lastcommand)
-                },
-                (Receiving(idx), PulseWidth::One) => {
-                    self.bitbuf |= 1 << idx;
-                    Receiving(idx - 1)
-                },
-                (Receiving(idx), PulseWidth::Zero) => Receiving(idx - 1),
-                (Receiving(idx), _) => InternalError(NecError::Data),
-
-                (Done(cmd), _) => Done(cmd),
-                (InternalError(err), _) => InternalError(err),
-                (Disabled, _) => Disabled,
-            };
-        }
-
+        let rising_edge = pinval && !self.prev_pinval;
         self.prev_pinval = pinval;
 
-        // Internalstate to ReceiverState
-        match self.state {
-            InternalState::Init => ReceiverState::Idle,
-            InternalState::Done(cmd) => ReceiverState::Done(cmd),
-            InternalState::Error(e) => ReceiverState::Error(e),
-            InternalState::Disabled => ReceiverState::Disabled,
-            _ => ReceiverState::Receiving,
+        if rising_edge {
+            return self.sample_edge(true, timestamp);
         }
+
+        self.receiver_state()
     }
 
     fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err> {
-        unimplemented!()
-    }
+        use NecState::*;
+        use PulseWidth::*;
 
-    fn sample_edge_delta(&mut self, rising: bool, sampledelta: u16) -> ReceiverState<Self::Cmd, Self::Err> {
-        unimplemented!()
+        if rising {
+
+            let mut delta = sampletime.wrapping_sub(self.prev_sampletime);
+
+            if delta >= core::u16::MAX.into() {
+                delta = 0;
+            }
+
+            self.prev_sampletime = sampletime;
+
+            let pulsewidth = self.tolerance.pulsewidth(delta);
+
+            let newstate = match (self.state, pulsewidth) {
+                (Init,            Sync)     => Receiving(31),
+                (Init,            Repeat)   => RepeatDone,
+                (Init,            _)        => Init,
+
+                (Receiving(0),    _)        => Done,
+                (Receiving(bit),  One)      => {self.bitbuf |= 1 << bit; Receiving(bit - 1)},
+                (Receiving(bit),  Zero)     => Receiving(bit - 1),
+                (Receiving(_bit), _)        => Err(NecError::Data),
+
+                (Done,            _)        => Done,
+                (RepeatDone,      _)        => RepeatDone,
+                (Err(err),        _)        => Err(err),
+                (Disabled,        _)        => Disabled,
+            };
+
+            #[cfg(feature="protocol-dev")]
+            {
+                self.debug.state = self.state;
+                self.debug.state_new = newstate;
+                self.debug.delta = delta as u16;
+            }
+
+            self.state = newstate;
+        }
+
+        self.receiver_state()
     }
 
     fn reset(&mut self) {
-        self.state = InternalState::Init;
-        self.prev_timestamp = 0;
+        self.state = NecState::Init;
+        self.prev_sampletime = 0;
         self.prev_pinval = false;
+        self.lastcommand = self.bitbuf;
         self.bitbuf = 0;
     }
 
     fn disable(&mut self) {
-        self.state = InternalState::Disabled;
+        self.state = NecState::Disabled;
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Tolerances {
     pub sync: Range<u32>,
     pub repeat: Range<u32>,

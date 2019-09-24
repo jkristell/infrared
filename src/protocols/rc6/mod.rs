@@ -1,23 +1,20 @@
 use core::ops::Range;
 use crate::{Receiver, ReceiverState};
+#[cfg(feature="protocol-dev")]
+use crate::ReceiverDebug;
 
 #[derive(Debug)]
 pub struct Rc6Command {
     pub addr: u8,
     pub cmd: u8,
-    pub repeat: bool,
+    pub toggle: bool,
 }
 
 impl Rc6Command {
-    pub fn new(data: u32, repeat: bool) -> Self {
+    pub fn new(data: u32, toggle: bool) -> Self {
         let addr = (data >> 8) as u8;
         let cmd = (data & 0xFF) as u8;
-
-        Self {
-            addr,
-            cmd,
-            repeat,
-        }
+        Self {addr, cmd, toggle}
     }
 }
 
@@ -30,17 +27,16 @@ pub enum Rc6Error {
 
 pub struct Rc6Receiver {
     samplerate: u32,
-    state: InternalState,
+    state: Rc6State,
     pub pinval: bool,
     data: u32,
     headerdata: u32,
-    repeat: bool,
+    toggle: bool,
     pub last: u32,
     pub rc6_counter: u32,
 
-    pub last_interval: u16,
-    pub last_state: InternalState,
-    pub n_units: Option<u32>,
+    #[cfg(feature="protocol-dev")]
+    pub debug: ReceiverDebug<Rc6State, Option<u32>>,
 }
 
 impl Rc6Receiver {
@@ -48,21 +44,25 @@ impl Rc6Receiver {
         Self {
             samplerate,
             last: 0,
-            last_interval: 0,
-            state: InternalState::Idle,
-            last_state: InternalState::Idle,
+            state: Rc6State::Idle,
             pinval: false,
             data: 0,
             rc6_counter: 0,
             headerdata: 0,
-            repeat: false,
-            n_units: None,
+            toggle: false,
+            #[cfg(feature="protocol-dev")]
+            debug: ReceiverDebug {
+                state: Rc6State::Idle,
+                state_new: Rc6State::Idle,
+                delta: 0,
+                extra: None,
+            }
         }
     }
 
     fn interval_to_units(&self, interval: u16) -> Option<u32> {
 
-        let interval = interval as u32;
+        let interval = u32::from(interval);
 
         for i in 1..=8 {
             if rc6_multiplier(self.samplerate, i).contains(&interval) {
@@ -72,21 +72,30 @@ impl Rc6Receiver {
         None
     }
 
-    fn state(&self) -> ReceiverState<Rc6Command, Rc6Error> {
+    // Time since last edge
+    fn delta(&self, sampletime: u32) -> u16 {
+        let delta = sampletime.wrapping_sub(self.last);
+        if delta >= core::u16::MAX.into() {
+            return 0;
+        }
+        delta as u16
+    }
+
+    fn receiver_state(&self) -> Rc6Result {
+        use ReceiverState::*;
         match self.state {
-            InternalState::Idle => ReceiverState::Idle,
-            InternalState::Done => {
-                let cmd = Rc6Command::new(self.data, self.repeat);
-                ReceiverState::Done(cmd)
-            },
-            InternalState::Error(err) => ReceiverState::Error(err),
-            _ => ReceiverState::Receiving
+            Rc6State::Idle => Idle,
+            Rc6State::Done => Done(Rc6Command::new(self.data, self.toggle)),
+            Rc6State::Error(err) => Error(err),
+            _ => Receiving
         }
     }
 }
 
+type Rc6Result = ReceiverState<Rc6Command, Rc6Error>;
+
 #[derive(Clone, Copy, Debug)]
-pub enum InternalState {
+pub enum Rc6State {
     Idle,
     Leading,
     LeadingPaus,
@@ -104,39 +113,24 @@ impl Receiver for Rc6Receiver {
     type Cmd = Rc6Command;
     type Err = Rc6Error;
 
-    fn sample(&mut self, pinval: bool, timestamp: u32) -> ReceiverState<Self::Cmd, Self::Err> {
+    fn sample(&mut self, pinval: bool, timestamp: u32) -> Rc6Result {
 
         if self.pinval != pinval {
-            let mut interval = timestamp.wrapping_sub(self.last);
-
-            self.last = timestamp;
-            self.pinval = pinval;
-
-            if interval >= core::u16::MAX.into() {
-                interval = 0;
-            }
-
-            let interval = interval as u16;
-            return self.sample_edge_delta(pinval, interval);
+            return self.sample_edge(pinval, timestamp);
         }
 
-        self.state()
+        self.receiver_state()
     }
 
-    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err> {
-        unimplemented!()
-    }
+    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> Rc6Result {
+        use Rc6State::*;
 
-    fn sample_edge_delta(&mut self, rising: bool, interval: u16) -> ReceiverState<Self::Cmd, Self::Err> {
-        use InternalState::*;
+        let delta = self.delta(sampletime);
+        self.last = sampletime;
+        self.pinval = rising;
 
         // Number of rc6 units since last pin edge
-        let n_units = self.interval_to_units(interval);
-
-        // For debug use
-        self.last_interval = interval;
-        self.last_state = self.state;
-        self.n_units = n_units;
+        let n_units = self.interval_to_units(delta);
 
         if let Some(units) = n_units {
             self.rc6_counter += units;
@@ -144,7 +138,7 @@ impl Receiver for Rc6Receiver {
 
         let odd = self.rc6_counter & 1 == 1;
 
-        self.state = match (self.state, rising, n_units) {
+        let newstate = match (self.state, rising, n_units) {
             (Idle,          FALLING,    _)      => Idle,
             (Idle,          RISING,     _)      => Leading,
             (Leading,       FALLING, Some(6))   => LeadingPaus,
@@ -164,18 +158,18 @@ impl Receiver for Rc6Receiver {
             (HeaderData(_), _, None)        => Idle,
 
             (Trailing, FALLING, Some(3))    => {
-                self.repeat = false;
+                self.toggle = false;
                 Data(15)
             },
             (Trailing, RISING, Some(2))     => {
-                self.repeat = true;
+                self.toggle = true;
                 Data(15)
             },
             (Trailing, FALLING, Some(1))    => Trailing,
             (Trailing, _, _) => Idle,
 
             (Data(0), _, Some(_)) if odd    => {
-                self.data |= if rising {0} else {1} ;
+                self.data |= if rising {0} else {1};
                 Done
             },
             (Data(0), _, Some(_)) => Data(0),
@@ -184,21 +178,29 @@ impl Receiver for Rc6Receiver {
                 Data(n-1)
             },
             (Data(n), _, Some(_)) => Data(n),
-            (Data(_),      _,      None)    => Error(Rc6Error::Data(interval)),     // Data Error
+            (Data(_),      _,      None)    => Error(Rc6Error::Data(delta)),
 
-            (Done, _, _)        => InternalState::Done,
-            (Error(err), _, _)  => InternalState::Error(err),
+            (Done, _, _)        => Rc6State::Done,
+            (Error(err), _, _)  => Rc6State::Error(err),
         };
 
-        self.state()
+        #[cfg(feature="protocol-dev")]
+        {
+            self.debug.state = self.state;
+            self.debug.state_new = newstate;
+            self.debug.delta = delta;
+            self.debug.extra = n_units;
+        }
+
+        self.state = newstate;
+        self.receiver_state()
     }
 
     fn reset(&mut self) {
-        self.state = InternalState::Idle;
+        self.state = Rc6State::Idle;
         self.pinval = false;
         self.data = 0;
         self.last = 0;
-        self.last_interval = 0;
         self.headerdata = 0;
         self.rc6_counter = 0;
     }
@@ -209,7 +211,7 @@ impl Receiver for Rc6Receiver {
 }
 
 pub const fn rc6_multiplier(samplerate: u32, multiplier: u32) -> Range<u32> {
-    let base = (samplerate * 444 * multiplier) / 1000_000;
+    let base = (samplerate * 444 * multiplier) / 1_000_000;
     range(base, 10)
 }
 

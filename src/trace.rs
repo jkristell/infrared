@@ -2,14 +2,22 @@ use crate::{Receiver, ReceiverState};
 
 const BUF_LEN: usize = 128;
 
+/// Receiver that doesn't do any decoding of the incoming signal
+/// Instead it saves the distance between the edges for later processing
 pub struct TraceReceiver {
-    pub buffer: [u16; BUF_LEN],
+    /// Samplerate
     pub samplerate: u32,
+    /// Timemout
     pub timeout: u16,
+    /// Saved edges
+    pub edges: [u16; BUF_LEN],
+    /// Number of edges in edges
+    pub n_edges: usize,
+    /// Prev pin value
     pub prev_pinval: bool,
+    /// Samplenum with pin change
     pub prev_samplenum: u32,
-    pub buffer_index: usize,
-
+    /// Our state
     pub state: ReceiverState<(), ()>,
 }
 
@@ -24,14 +32,13 @@ impl Receiver for TraceReceiver {
             return self.state;
         }
 
-        if self.state == ReceiverState::Receiving && self.delta(samplenum) > self.timeout {
-            self.state = ReceiverState::Done(());
-        }
-
-
-        else if self.prev_pinval != pinval {
+        if self.prev_pinval != pinval {
             // Change detected
             return self.sample_edge(pinval, samplenum);
+        }
+
+        if self.state == ReceiverState::Receiving && self.delta(samplenum) > self.timeout {
+            self.state = ReceiverState::Done(());
         }
 
         self.state
@@ -46,27 +53,18 @@ impl Receiver for TraceReceiver {
         let delta = self.delta(sampletime);
 
         if delta > self.timeout {
-            // Set the receiver in disabled state but return the Done state
             self.state = ReceiverState::Done(());
-        }
-
-        self.state = ReceiverState::Receiving;  // Idle or Receiving doesn't really matter in this receiver
-        self.prev_samplenum = sampletime;
-        self.prev_pinval = rising;
-
-        self.sample_edge_delta(rising, delta)
-    }
-
-    fn sample_edge_delta(&mut self, _rising: bool, sampledelta: u16) -> ReceiverState<Self::Cmd, Self::Err> {
-
-        if !self.ready() {
             return self.state;
         }
 
-        self.buffer[self.buffer_index] = sampledelta;
-        self.buffer_index += 1;
+        self.state = ReceiverState::Receiving;
+        self.prev_samplenum = sampletime;
+        self.prev_pinval = rising;
 
-        if self.buffer_index == BUF_LEN {
+        self.edges[self.n_edges] = delta;
+        self.n_edges += 1;
+
+        if self.n_edges == BUF_LEN {
             self.state = ReceiverState::Done(());
         }
 
@@ -77,10 +75,10 @@ impl Receiver for TraceReceiver {
         self.state = ReceiverState::Idle;
         self.prev_samplenum = 0;
         self.prev_pinval = false;
-        self.buffer_index = 0;
+        self.n_edges = 0;
 
-        for i in 0..self.buffer.len() {
-            self.buffer[i] = 0;
+        for i in 0..self.edges.len() {
+            self.edges[i] = 0;
         }
     }
 
@@ -92,13 +90,13 @@ impl Receiver for TraceReceiver {
 impl TraceReceiver {
     pub const fn new(samplerate: u32, timeout: u16) -> Self {
         Self {
-            buffer: [0; BUF_LEN],
+            edges: [0; BUF_LEN],
             samplerate,
             timeout,
             prev_pinval: false,
             prev_samplenum: 0,
-            buffer_index: 0,
-            state: ReceiverState::Idle
+            n_edges: 0,
+            state: ReceiverState::Receiving,
         }
     }
 
@@ -115,6 +113,6 @@ impl TraceReceiver {
     }
 
     pub fn data(&self) -> &[u16] {
-        &self.buffer[0..self.buffer_index]
+        &self.edges[0..self.n_edges]
     }
 }

@@ -1,21 +1,20 @@
 use crate::remote::RemoteControl;
+use crate::protocols::nec::NecCommand;
 
-const ADDR: u8 = 0;
+const ADDR: u16 = 0;
 
 pub struct SpecialForMp3;
 
-impl RemoteControl for SpecialForMp3 {
+impl RemoteControl<NecCommand> for SpecialForMp3 {
     type Action = SpecialForMp3Action;
 
-    fn decode(&self, raw: u32) -> Option<SpecialForMp3Action> {
-        let addr = (raw & 0xFF) as u8;
+    fn decode(&self, raw: NecCommand) -> Option<SpecialForMp3Action> {
 
-        if addr != ADDR {
+        if raw.addr != ADDR {
             return None;
         }
 
-        let cmd = ((raw >> 16) & 0xFF) as u8;
-        to_action(cmd)
+        to_action(raw.cmd as u8)
     }
 
     fn encode(&self, action: SpecialForMp3Action) -> u32 {
@@ -55,21 +54,20 @@ pub enum SpecialForMp3Action {
 }
 
 macro_rules! generate_action_funcs {
-    ($out:ty, $t:path, $( ($x:expr, $y:expr, $z:pat) ),* ) => {
+    ($action:tt, $( ($val:expr, $name:tt) ),* ) => {
 
-        fn to_action(val: u8) -> Option<$out>
-        {
-            use $t::*;
+        fn to_action(val: u8) -> Option<$action> {
+            use $action::*;
             match val {
-                $($x => Some($y),)+
+                $($val => Some($name),)+
                 _ => None,
             }
         }
 
-        fn from_action(action: $out) -> u8 {
-            use $t::*;
+        fn from_action(action: $action) -> u8 {
+            use $action::*;
             match action {
-                $($z => $x,)+
+                $($name => $val,)+
             }
         }
     };
@@ -77,26 +75,25 @@ macro_rules! generate_action_funcs {
 
 generate_action_funcs!(
     SpecialForMp3Action,
-    SpecialForMp3Action,
-    (69, Power, Power),
-    (70, Mode, Mode),
-    (71, Mute, Mute),
-    (68, Play_Paus, Play_Paus),
-    (64, Prev, Prev),
-    (67, Next, Next),
-    (7, Eq, Eq),
-    (21, Minus, Minus),
-    (9, Plus, Plus),
-    (22, Zero, Zero),
-    (25, Shuffle, Shuffle),
-    (13, U_SD, U_SD),
-    (12, One, One),
-    (24, Two, Two),
-    (94, Three, Three),
-    (8, Four, Four),
-    (28, Five, Five),
-    (90, Six, Six),
-    (66, Seven, Seven),
-    (82, Eight, Eight),
-    (74, Nine, Nine)
+    (69, Power),
+    (70, Mode),
+    (71, Mute),
+    (68, Play_Paus),
+    (64, Prev),
+    (67, Next),
+    (7, Eq),
+    (21, Minus),
+    (9, Plus),
+    (22, Zero),
+    (25, Shuffle),
+    (13, U_SD),
+    (12, One),
+    (24, Two),
+    (94, Three),
+    (8, Four),
+    (28, Five),
+    (90, Six),
+    (66, Seven),
+    (82, Eight),
+    (74, Nine)
 );

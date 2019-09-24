@@ -2,11 +2,18 @@
 
 use core::convert::Into;
 
+mod protocols;
+
+#[cfg(feature="nec")]
 /// NEC protocol
 pub use protocols::nec;
+
 /// Rc5 Protocol
+#[cfg(feature="rc5")]
 pub use protocols::rc5;
+
 /// Rc6 Protocol
+#[cfg(feature="rc6")]
 pub use protocols::rc6;
 
 pub mod trace;
@@ -15,7 +22,13 @@ pub mod trace;
 pub mod remote;
 pub use remote::RemoteControl;
 
-mod protocols;
+pub mod prelude {
+    pub use crate::Receiver;
+    pub use crate::Transmitter;
+    pub use crate::ReceiverState;
+    pub use crate::TransmitterState;
+}
+
 
 #[derive(PartialEq, Copy, Clone)]
 /// Protocol decoder state
@@ -36,13 +49,8 @@ pub trait Receiver {
 
     /// Sample
     fn sample(&mut self, pinval: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err>;
-
-    /// Sample known edge
+    /// Sample on known edge
     fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err>;
-
-    /// Sample on edge with delta samples
-    fn sample_edge_delta(&mut self, rising: bool, sampledelta: u16) -> ReceiverState<Self::Cmd, Self::Err>;
-
     /// Reset receiver
     fn reset(&mut self);
     /// Disable receiver
@@ -67,4 +75,12 @@ pub trait Transmitter {
 
     /// Reset the transmitter
     fn reset(&mut self);
+}
+
+#[cfg(feature="protocol-dev")]
+pub struct ReceiverDebug<STATE, EXTRA> {
+    pub state: STATE,
+    pub state_new: STATE,
+    pub delta: u16,
+    pub extra: EXTRA,
 }
