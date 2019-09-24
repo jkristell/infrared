@@ -141,7 +141,7 @@ impl<NECTYPE: NecTypeTrait> Receiver for NecTypeReceiver<NECTYPE> {
                 (Init,            Repeat)   => RepeatDone,
                 (Init,            _)        => Init,
 
-                (Receiving(31),    _)        => Done,
+                (Receiving(32),   _)        => Done,
                 (Receiving(bit),  One)      => {self.bitbuf |= 1 << bit; Receiving(bit + 1)},
                 (Receiving(bit),  Zero)     => Receiving(bit + 1),
                 (Receiving(_bit), _)        => Err(NecError::Data),

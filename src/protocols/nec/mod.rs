@@ -11,26 +11,13 @@ pub type NecSamsungReceiver = NecTypeReceiver<SamsungType>;
 
 pub type NecTransmitter = NecTypeTransmitter<SamsungType>;
 
-pub struct SamsungType;
 pub struct StandardType;
+pub struct SamsungType;
 
 pub trait NecTypeTrait {
     const TIMING: Timing;
     const ADDR_BITS: usize;
     const CMD_BITS: usize;
-}
-
-impl NecTypeTrait for SamsungType {
-    const TIMING: Timing = Timing {
-        header_high: 4500,
-        header_low: 4500,
-        repeat_low: 2250,
-        zero_low: 560,
-        data_high: 560,
-        one_low: 1690,
-    };
-    const ADDR_BITS: usize = 8;
-    const CMD_BITS: usize = 8;
 }
 
 impl NecTypeTrait for StandardType {
@@ -46,6 +33,19 @@ impl NecTypeTrait for StandardType {
     const CMD_BITS: usize = 8;
 }
 
+impl NecTypeTrait for SamsungType {
+    const TIMING: Timing = Timing {
+        header_high: 4500,
+        header_low: 4500,
+        repeat_low: 2250,
+        zero_low: 560,
+        data_high: 560,
+        one_low: 1690,
+    };
+    // Address is inverted and command is repeated
+    const ADDR_BITS: usize = 8;
+    const CMD_BITS: usize = 8;
+}
 
 pub struct Timing {
     header_high: u32,
