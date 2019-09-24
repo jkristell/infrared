@@ -32,7 +32,7 @@ pub enum NecError {
 
 pub type NecResult = ReceiverState<NecCommand, NecError>;
 
-pub struct NecTypeReceiver<NECTYPE: NecTypeTrait> {
+pub struct NecTypeReceiver<NECTYPE> {
     // State
     state: NecState,
     pub bitbuf: u32,
@@ -41,8 +41,7 @@ pub struct NecTypeReceiver<NECTYPE: NecTypeTrait> {
     // Timing and tolerances
     tolerance: Tolerances,
     lastcommand: u32,
-
-    marker: core::marker::PhantomData<NECTYPE>,
+    nectype: core::marker::PhantomData<NECTYPE>,
 
     #[cfg(feature="protocol-dev")]
     pub debug: ReceiverDebug<NecState, Tolerances>,
@@ -79,7 +78,7 @@ impl<NECTYPE: NecTypeTrait> NecTypeReceiver<NECTYPE> {
             prev_pinval: false,
             bitbuf: 0,
             lastcommand: 0,
-            marker: core::marker::PhantomData,
+            nectype: core::marker::PhantomData,
             #[cfg(feature="protocol-dev")]
             debug: ReceiverDebug {
                 state: NecState::Init,
