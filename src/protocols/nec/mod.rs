@@ -81,7 +81,7 @@ mod tests {
 
         if let ReceiverState::Done(cmd) = state {
             assert_eq!(cmd.addr, 0);
-            assert_eq!(cmd.cmd, 48);
+            assert_eq!(cmd.cmd, 12);
         } else {
             assert!(false);
         }

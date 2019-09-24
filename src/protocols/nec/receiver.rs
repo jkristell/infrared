@@ -15,9 +15,9 @@ pub struct NecCommand {
 
 impl NecCommand {
     pub fn new(bitbuf: u32) -> Self {
-        let addr = ((bitbuf >> 24) & 0xFF) as u16;
-        let cmd = ((bitbuf >> 8) & 0xFF) as u16;
-        Self { addr, cmd}
+        let addr = ((bitbuf) & 0xFF) as u16;
+        let cmd = ((bitbuf >> 16) & 0xFF) as u16;
+        Self {addr, cmd}
     }
 }
 
@@ -138,13 +138,13 @@ impl<NECTYPE: NecTypeTrait> Receiver for NecTypeReceiver<NECTYPE> {
             let pulsewidth = self.tolerance.pulsewidth(delta);
 
             let newstate = match (self.state, pulsewidth) {
-                (Init,            Sync)     => Receiving(31),
+                (Init,            Sync)     => Receiving(0),
                 (Init,            Repeat)   => RepeatDone,
                 (Init,            _)        => Init,
 
-                (Receiving(0),    _)        => Done,
-                (Receiving(bit),  One)      => {self.bitbuf |= 1 << bit; Receiving(bit - 1)},
-                (Receiving(bit),  Zero)     => Receiving(bit - 1),
+                (Receiving(31),    _)        => Done,
+                (Receiving(bit),  One)      => {self.bitbuf |= 1 << bit; Receiving(bit + 1)},
+                (Receiving(bit),  Zero)     => Receiving(bit + 1),
                 (Receiving(_bit), _)        => Err(NecError::Data),
 
                 (Done,            _)        => Done,

@@ -90,15 +90,15 @@ fn main() -> ! {
 
     loop {
         if let Some(cmd) = necq.dequeue() {
-            hprintln!("nec: {:?}", cmd).unwrap();
+            hprintln!("{:?}", cmd).unwrap();
         }
 
         if let Some(cmd) = rc5q.dequeue() {
-            hprintln!("rc5: {:?}", cmd).unwrap();
+            hprintln!("{:?}", cmd).unwrap();
         }
 
         if let Some(cmd) = rc6q.dequeue() {
-            hprintln!("rc6: {:?}", cmd).unwrap();
+            hprintln!("{:?}", cmd).unwrap();
         }
     }
 }
