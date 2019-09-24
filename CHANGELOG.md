@@ -1,7 +1,6 @@
 # Changelog
 
 ## TODO
- - Add tests for all type of receivers
  - Ensure that examples work
  - Test transmitter
  - Maybe remove Transmitter altogether to be able to 

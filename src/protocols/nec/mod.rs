@@ -59,15 +59,31 @@ pub struct Timing {
 #[cfg(test)]
 mod tests {
     use crate::protocols::nec::NecReceiver;
+    use crate::prelude::*;
 
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn standard_nec() {
+        let dists = [0, 363, 177, 24, 21, 24, 21, 24, 21, 24, 21, 24, 21, 24, 20, 24, 21, 24, 21, 24,
+            66, 24, 66, 24, 65, 25, 65, 24, 66, 24, 66, 24, 65, 25, 65, 24, 21, 24, 21, 24,
+            66, 24, 65, 24, 21, 24, 21, 24, 21, 24, 21, 24, 65, 25, 65, 24, 21, 24, 21, 24,
+            66, 24, 65, 25, 65, 24, 66, 24];
 
-        let _recv = NecReceiver::new(40_000);
+        let mut recv = NecReceiver::new(40_000);
+        let mut edge = false;
+        let mut tot = 0;
+        let mut state = ReceiverState::Idle;
 
+        for dist in dists.iter() {
+            edge = !edge;
+            tot += dist;
+            state = recv.sample_edge(edge, tot);
+        }
 
-
-
+        if let ReceiverState::Done(cmd) = state {
+            assert_eq!(cmd.addr, 0);
+            assert_eq!(cmd.cmd, 48);
+        } else {
+            assert!(false);
+        }
     }
 }

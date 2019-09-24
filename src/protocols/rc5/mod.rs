@@ -43,7 +43,7 @@ pub struct Rc5Receiver {
     pub rc5cntr: u32,
 
     #[cfg(feature="protocol-dev")]
-    pub debug: ReceiverDebug<Rc5State, ()>,
+    pub debug: ReceiverDebug<Rc5State, Option<u32>>,
 }
 
 impl Rc5Receiver {
@@ -60,7 +60,7 @@ impl Rc5Receiver {
                 state: Rc5State::Idle,
                 state_new: Rc5State::Idle,
                 delta: 0,
-                extra: ()
+                extra: None,
             }
         }
     }
@@ -139,15 +139,20 @@ impl Receiver for Rc5Receiver {
         let odd = self.rc5cntr & 1 == 0;
 
         let newstate = match (self.state, rising, rc5units) {
-            (Idle,          FALLING,_)              => Idle,
-            (Idle,          RISING, _)              => {self.bitbuf |= 1 << 13; Data(12)},
-            (Data(0),       _,      Some(_)) if odd => {self.bitbuf |= if rising {1} else {0}; Done},
-            (Data(bit),     _,      Some(_)) if odd => {self.bitbuf |= if rising {1} else {0} << bit; Data(bit-1)},
-            (Data(bit),     _,      Some(_))        => Data(bit),
-            (Data(_),       _,      None)           => Error(Rc5Error::Data(delta)),
-            (Done,          _,      _)              => Done,
-            (Error(err),    _,      _)              => Error(err),
-            (Disabled,      _,      _)              => Disabled,
+            (Idle,          FALLING, _)              => Idle,
+            (Idle,          RISING,  _)              => {self.bitbuf |= 1 << 13; Data(12)},
+
+            (Data(0),       RISING,  Some(_)) if odd => {self.bitbuf |= 1; Done},
+            (Data(0),       FALLING, Some(_)) if odd => Done,
+
+            (Data(bit),     RISING,  Some(_)) if odd => {self.bitbuf |= 1 << bit; Data(bit-1)},
+            (Data(bit),     FALLING, Some(_)) if odd => Data(bit-1),
+
+            (Data(bit),     _,      Some(_))         => Data(bit),
+            (Data(_),       _,      None)            => Error(Rc5Error::Data(delta)),
+            (Done,          _,      _)               => Done,
+            (Error(err),    _,      _)               => Error(err),
+            (Disabled,      _,      _)               => Disabled,
         };
 
         #[cfg(feature="protocol-dev")]
@@ -155,6 +160,7 @@ impl Receiver for Rc5Receiver {
             self.debug.state = self.state;
             self.debug.state_new = newstate;
             self.debug.delta = delta;
+            self.debug.extra = rc5units;
         }
 
         self.state = newstate;
@@ -184,6 +190,35 @@ const fn range(len: u32, percent: u32) -> Range<u32> {
      Range {
         start: len - tol - 2,
         end: len + tol + 2,
+    }
+}
+#[cfg(test)]
+mod tests {
+    use crate::rc5::Rc5Receiver;
+    use crate::prelude::*;
+
+    #[test]
+    fn command() {
+
+        let dists = [0, 37, 34, 72, 72, 73, 70, 72, 36, 37, 34, 36, 36, 36, 71, 73, 35, 37, 70, 37];
+
+        let mut recv = Rc5Receiver::new(40_000);
+        let mut edge = false;
+        let mut tot = 0;
+        let mut state = ReceiverState::Idle;
+
+        for dist in dists.iter() {
+            edge = !edge;
+            tot += dist;
+            state = recv.sample_edge(edge, tot);
+        }
+
+        if let ReceiverState::Done(cmd) = state {
+            assert_eq!(cmd.addr, 20);
+            assert_eq!(cmd.cmd, 9);
+        } else {
+            assert!(false);
+        }
     }
 }
 

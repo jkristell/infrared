@@ -1,5 +1,9 @@
 #![no_std]
 
+#[cfg(test)]
+#[macro_use]
+extern crate std;
+
 use core::convert::Into;
 
 mod protocols;
@@ -84,3 +88,4 @@ pub struct ReceiverDebug<STATE, EXTRA> {
     pub delta: u16,
     pub extra: EXTRA,
 }
+

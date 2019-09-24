@@ -146,6 +146,7 @@ impl Receiver for Rc6Receiver {
             (LeadingPaus,   RISING,  Some(2))   => HeaderData(3),
             (LeadingPaus, _, _)                 => Idle,
 
+
             (HeaderData(n), _, Some(_)) if odd => {
                 self.headerdata |= if rising {0} else {1} << n;
                 if n == 0 {
@@ -154,34 +155,25 @@ impl Receiver for Rc6Receiver {
                     HeaderData(n-1)
                 }
             },
+
             (HeaderData(n), _, Some(_))     => HeaderData(n),
             (HeaderData(_), _, None)        => Idle,
 
-            (Trailing, FALLING, Some(3))    => {
-                self.toggle = false;
-                Data(15)
-            },
-            (Trailing, RISING, Some(2))     => {
-                self.toggle = true;
-                Data(15)
-            },
+            (Trailing, FALLING, Some(3))    => { self.toggle = false; Data(15) },
+            (Trailing, RISING, Some(2))     => { self.toggle = true; Data(15) },
             (Trailing, FALLING, Some(1))    => Trailing,
-            (Trailing, _, _) => Idle,
+            (Trailing, _, _)                => Idle,
 
-            (Data(0), _, Some(_)) if odd    => {
-                self.data |= if rising {0} else {1};
-                Done
-            },
-            (Data(0), _, Some(_)) => Data(0),
-            (Data(n), _, Some(_)) if odd    => {
-                self.data |= if rising {0} else {1} << n;
-                Data(n-1)
-            },
-            (Data(n), _, Some(_)) => Data(n),
-            (Data(_),      _,      None)    => Error(Rc6Error::Data(delta)),
+            (Data(0), RISING,   Some(_)) if odd    => Done,
+            (Data(0), FALLING,  Some(_)) if odd    => { self.data |= 1; Done },
+            (Data(0), _,        Some(_))           => Data(0),
+            (Data(n), RISING,   Some(_)) if odd    => Data(n-1),
+            (Data(n), FALLING,  Some(_)) if odd    => { self.data |= 1 << n; Data(n-1) },
+            (Data(n), _,        Some(_))           => Data(n),
+            (Data(_),      _,   None)              => Error(Rc6Error::Data(delta)),
 
-            (Done, _, _)        => Rc6State::Done,
-            (Error(err), _, _)  => Rc6State::Error(err),
+            (Done, _, _)        => Done,
+            (Error(err), _, _)  => Error(err),
         };
 
         #[cfg(feature="protocol-dev")]
@@ -223,4 +215,36 @@ const fn range(len: u32, percent: u32) -> Range<u32> {
         end: len + tol + 4,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::rc6::Rc6Receiver;
+    use crate::prelude::*;
+
+    #[test]
+    fn basic() {
+        let dists = [0, 108, 34, 19, 34, 19, 16, 20, 16, 19, 34, 36, 16, 37, 34, 20, 16, 19,
+                     16, 37, 17, 19, 34, 19, 17, 19, 16, 19, 17, 19, 16, 20, 16, 19, 16, 37, 34, 20];
+
+        let mut recv = Rc6Receiver::new(40_000);
+        let mut edge = false;
+        let mut tot = 0;
+        let mut state = ReceiverState::Idle;
+
+        for dist in dists.iter() {
+            edge = !edge;
+            tot += dist;
+            state = recv.sample_edge(edge, tot);
+        }
+
+        if let ReceiverState::Done(cmd) = state {
+            assert_eq!(cmd.addr, 70);
+            assert_eq!(cmd.cmd, 2);
+        } else {
+            assert!(false);
+        }
+    }
+}
+
+
 
