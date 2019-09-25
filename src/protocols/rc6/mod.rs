@@ -64,7 +64,7 @@ impl Rc6Receiver {
 
         let interval = u32::from(interval);
 
-        for i in 1..=8 {
+        for i in 1..=6 {
             if rc6_multiplier(self.samplerate, i).contains(&interval) {
                 return Some(i);
             }
@@ -202,7 +202,7 @@ impl Receiver for Rc6Receiver {
     }
 }
 
-pub const fn rc6_multiplier(samplerate: u32, multiplier: u32) -> Range<u32> {
+const fn rc6_multiplier(samplerate: u32, multiplier: u32) -> Range<u32> {
     let base = (samplerate * 444 * multiplier) / 1_000_000;
     range(base, 10)
 }
@@ -223,8 +223,10 @@ mod tests {
 
     #[test]
     fn basic() {
-        let dists = [0, 108, 34, 19, 34, 19, 16, 20, 16, 19, 34, 36, 16, 37, 34, 20, 16, 19,
-                     16, 37, 17, 19, 34, 19, 17, 19, 16, 19, 17, 19, 16, 20, 16, 19, 16, 37, 34, 20];
+        let dists = [0, 108,
+                     34, 19, 34, 19, 16, 20, 16, 19, 34, 36, 16, 37, 34, 20, 16, 19,
+                     16, 37, 17, 19, 34, 19, 17, 19, 16, 19, 17, 19, 16, 20, 16, 19,
+                     16, 37, 34, 20];
 
         let mut recv = Rc6Receiver::new(40_000);
         let mut edge = false;

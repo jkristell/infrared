@@ -5,24 +5,10 @@
 extern crate std;
 
 mod protocols;
+pub use protocols::*;
 
-#[cfg(feature="nec")]
-/// NEC protocol
-pub use protocols::nec;
-
-/// Rc5 Protocol
-#[cfg(feature="rc5")]
-pub use protocols::rc5;
-
-/// Rc6 Protocol
-#[cfg(feature="rc6")]
-pub use protocols::rc6;
-
-pub mod trace;
-
-/// Remote controls
-pub mod remote;
-pub use remote::RemoteControl;
+pub mod remotecontrol;
+pub use remotecontrol::RemoteControl;
 
 pub mod prelude {
     pub use crate::Receiver;
@@ -30,7 +16,6 @@ pub mod prelude {
     pub use crate::ReceiverState;
     pub use crate::TransmitterState;
 }
-
 
 #[derive(PartialEq, Eq, Copy, Clone)]
 /// Protocol decoder state
@@ -48,6 +33,7 @@ pub trait Receiver {
     type Cmd;
     /// Receive Error
     type Err;
+
     /// Sample
     fn sample(&mut self, pinval: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err>;
     /// Sample on known edge
@@ -68,12 +54,10 @@ pub enum TransmitterState {
 }
 
 pub trait Transmitter<CMD> {
-    /// Initialize transfer
-    fn init(&mut self, cmd: CMD);
-
+    /// Load command into transmitter
+    fn load(&mut self, cmd: CMD);
     /// Step the transfer loop
     fn step(&mut self, ts: u32) -> TransmitterState;
-
     /// Reset the transmitter
     fn reset(&mut self);
 }

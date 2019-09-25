@@ -1,6 +1,6 @@
 use core::ops::Range;
 
-use crate::nec::Timing;
+use crate::nec::Pulsedistance;
 use crate::{Receiver, ReceiverState};
 #[cfg(feature="protocol-dev")]
 use crate::ReceiverDebug;
@@ -52,11 +52,11 @@ pub enum NecState {
 
 impl<NECTYPE: NecTypeTrait> NecTypeReceiver<NECTYPE> {
     pub fn new(samplerate: u32) -> Self {
-        let timing = &NECTYPE::TIMING;
+        let timing = &NECTYPE::PULSEDISTANCE;
         Self::new_from_timing(samplerate, timing)
     }
 
-    fn new_from_timing(samplerate: u32, timing: &Timing) -> Self {
+    fn new_from_timing(samplerate: u32, timing: &Pulsedistance) -> Self {
         let tol = Tolerances::from_timing(timing, samplerate);
         Self {
             state: NecState::Init,
@@ -184,7 +184,7 @@ pub enum PulseWidth {
 }
 
 impl Tolerances {
-    pub const fn from_timing(timing: &Timing, samplerate: u32) -> Self {
+    pub const fn from_timing(timing: &Pulsedistance, samplerate: u32) -> Self {
         let per: u32 = 1000 / (samplerate / 1000);
         Tolerances {
             sync: sample_range((timing.header_high + timing.header_low) / per, 5),

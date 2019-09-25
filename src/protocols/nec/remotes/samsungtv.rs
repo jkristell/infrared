@@ -1,4 +1,4 @@
-use crate::remote::RemoteControl;
+use crate::remotecontrol::RemoteControl;
 use crate::protocols::nec::NecCommand;
 
 const SAMSUNGTV_ADDR: u8 = 7;

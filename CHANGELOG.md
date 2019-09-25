@@ -2,17 +2,13 @@
 
 ## TODO
  - Ensure that examples work
- - Test transmitter
- - Maybe remove Transmitter altogether to be able to 
-   add it back in point release?
-
+ - Release and mention Blipper
 
 ## [0.4.0] - 2019-09-XX
  - Rewrote the NEC receiver
  - Added protocol-dev feature for easier protocol debugging
  - Lots of API breakage :)
    * Receiver::event() is now split in to ::sample() and ::sample_edge()
- 
 
 ## [0.3.2] - 2019-09-21
  - Added support for Philips Rc5 Protocol

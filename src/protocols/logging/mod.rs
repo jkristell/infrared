@@ -4,7 +4,7 @@ const BUF_LEN: usize = 128;
 
 /// Receiver that doesn't do any decoding of the incoming signal
 /// Instead it saves the distance between the edges for later processing
-pub struct TraceReceiver {
+pub struct LoggingReceiver {
     /// Samplerate
     pub samplerate: u32,
     /// Timemout
@@ -22,7 +22,7 @@ pub struct TraceReceiver {
 }
 
 
-impl Receiver for TraceReceiver {
+impl Receiver for LoggingReceiver {
     type Cmd = ();
     type Err = ();
 
@@ -87,7 +87,7 @@ impl Receiver for TraceReceiver {
     }
 }
 
-impl TraceReceiver {
+impl LoggingReceiver {
     pub const fn new(samplerate: u32, timeout: u16) -> Self {
         Self {
             edges: [0; BUF_LEN],

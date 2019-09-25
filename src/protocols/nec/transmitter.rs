@@ -1,4 +1,4 @@
-use crate::nec::{Timing, NecCommand};
+use crate::nec::{Pulsedistance, NecCommand};
 use crate::{Transmitter, TransmitterState};
 use crate::protocols::nec::NecTypeTrait;
 
@@ -31,7 +31,7 @@ struct NSamples {
 impl<NECTYPE: NecTypeTrait> NecTypeTransmitter<NECTYPE> {
 
     pub fn new(period: u32) -> Self {
-        let units = NSamples::new(period, &NECTYPE::TIMING);
+        let units = NSamples::new(period, &NECTYPE::PULSEDISTANCE);
         Self {
             state: TransmitStateInternal::Idle,
             samples: units,
@@ -45,7 +45,7 @@ impl<NECTYPE: NecTypeTrait> NecTypeTransmitter<NECTYPE> {
 impl<NECTYPE> Transmitter<NecCommand> for NecTypeTransmitter<NECTYPE>
     where NECTYPE: NecTypeTrait,
 {
-    fn init(&mut self, cmd: NecCommand) {
+    fn load(&mut self, cmd: NecCommand) {
 
         self.cmd = NECTYPE::encode_command(cmd);
         self.state = TransmitStateInternal::Start;
@@ -120,7 +120,7 @@ impl<NECTYPE> Transmitter<NecCommand> for NecTypeTransmitter<NECTYPE>
 }
 
 impl NSamples {
-    pub const fn new(period: u32, timing: &Timing) -> Self {
+    pub const fn new(period: u32, timing: &Pulsedistance) -> Self {
         Self {
             header_high: timing.header_high / period,
             header_low: timing.header_low / period,

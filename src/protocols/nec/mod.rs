@@ -9,17 +9,17 @@ mod tests;
 pub use receiver::{NecError, NecTypeReceiver, NecResult};
 pub use transmitter::NecTypeTransmitter;
 
-pub type NecReceiver = NecTypeReceiver<StandardType>;
-pub type NecSamsungReceiver = NecTypeReceiver<SamsungType>;
-
-pub type NecTransmitter = NecTypeTransmitter<SamsungType>;
-
 pub struct StandardType;
 pub struct SamsungType;
 
+pub type NecReceiver = NecTypeReceiver<StandardType>;
+pub type NecSamsungReceiver = NecTypeReceiver<SamsungType>;
+
+pub type NecTransmitter = NecTypeTransmitter<StandardType>;
+pub type NecSamsungTransmitter = NecTypeTransmitter<SamsungType>;
 
 #[derive(Debug, Copy, Clone)]
-/// The resulting command
+/// A Nec Command
 pub struct NecCommand {
     pub addr: u8,
     pub cmd: u8,
@@ -33,15 +33,14 @@ impl NecCommand {
     }
 }
 
-
 pub trait NecTypeTrait {
-    const TIMING: Timing;
+    const PULSEDISTANCE: Pulsedistance;
 
     fn encode_command(cmd: NecCommand) -> u32;
 }
 
 impl NecTypeTrait for StandardType {
-    const TIMING: Timing = Timing {
+    const PULSEDISTANCE: Pulsedistance = Pulsedistance {
         header_high: 9000,
         header_low: 4500,
         repeat_low: 2250,
@@ -58,7 +57,7 @@ impl NecTypeTrait for StandardType {
 }
 
 impl NecTypeTrait for SamsungType {
-    const TIMING: Timing = Timing {
+    const PULSEDISTANCE: Pulsedistance = Pulsedistance {
         header_high: 4500,
         header_low: 4500,
         repeat_low: 2250,
@@ -73,10 +72,9 @@ impl NecTypeTrait for SamsungType {
         let cmd = u32::from(cmd) << 16 | u32::from(!cmd) << 24;
         addr | cmd
     }
-
 }
 
-pub struct Timing {
+pub struct Pulsedistance {
     header_high: u32,
     header_low: u32,
     repeat_low: u32,
@@ -84,4 +82,3 @@ pub struct Timing {
     zero_low: u32,
     one_low: u32,
 }
-

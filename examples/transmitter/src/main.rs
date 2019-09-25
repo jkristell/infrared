@@ -24,7 +24,7 @@ use heapless::spsc::Queue;
 
 use infrared::{
     nec::remotes::*,
-    nec::{NecTransmitter},
+    nec::*,
     RemoteControl, Transmitter, TransmitterState,
 };
 
@@ -33,7 +33,7 @@ const FREQ: u32 = 20_000;
 // Global timer
 static mut TIMER: Option<Timer<TIM2>> = None;
 // transmitter
-static mut NECTX: Option<NecTransmitter> = None;
+static mut NECTX: Option<NecSamsungTransmitter> = None;
 // Pwm channel
 static mut PWM: Option<Pwm<TIM4, C4>> = None;
 // Our remote control we want to act like
@@ -113,7 +113,7 @@ fn main() -> ! {
     unsafe {
         TIMER.replace(timer);
         let per: u32 = (1 * 1000) / (FREQ / 1000);
-        NECTX.replace(NecTransmitter::new(per));
+        NECTX.replace(NecSamsungTransmitter::new(per));
         PWM.replace(c4);
     }
 
@@ -177,17 +177,17 @@ fn TIM2() {
     // Update the state in the transmitter
     let state = transmitter.step(*COUNT);
 
-    // Get a handle to our action queue
-    let mut action_queue = unsafe { TXQ.as_mut().unwrap().split().1 };
-
     match state {
         TransmitterState::Idle => {
             // Make sure the Pwm is disabled
             pwm.disable();
             // Check queue for new commands
-            if let Some(action) = action_queue.dequeue() {
-                // Initialize the transfer
-                transmitter.init(REMOTECONTROL.encode(action));
+
+            if *COUNT % FREQ == 0 {
+                transmitter.load(NecCommand {
+                   addr: 7,
+                    cmd: 18,
+                });
             }
         }
         // The state machine wants us to activate the pwm
@@ -198,5 +198,5 @@ fn TIM2() {
         TransmitterState::Err => hprintln!("Err!!").unwrap(),
     }
 
-    *COUNT += 1;
+    *COUNT = COUNT.wrapping_add(1);
 }
