@@ -29,12 +29,11 @@ struct NSamples {
 }
 
 impl<NECTYPE: NecTypeTrait> NecTypeTransmitter<NECTYPE> {
-
     pub fn new(period: u32) -> Self {
-        let units = NSamples::new(period, &NECTYPE::PULSEDISTANCE);
+        let samples = NSamples::new(period, &NECTYPE::PULSEDISTANCE);
         Self {
             state: TransmitStateInternal::Idle,
-            samples: units,
+            samples,
             last_ts: 0,
             cmd: 0,
             nectype: core::marker::PhantomData,
@@ -46,7 +45,6 @@ impl<NECTYPE> Transmitter<NecCommand> for NecTypeTransmitter<NECTYPE>
     where NECTYPE: NecTypeTrait,
 {
     fn load(&mut self, cmd: NecCommand) {
-
         self.cmd = NECTYPE::encode_command(cmd);
         self.state = TransmitStateInternal::Start;
     }
@@ -120,13 +118,13 @@ impl<NECTYPE> Transmitter<NecCommand> for NecTypeTransmitter<NECTYPE>
 }
 
 impl NSamples {
-    pub const fn new(period: u32, timing: &Pulsedistance) -> Self {
+    pub const fn new(period: u32, pulsedistance: &Pulsedistance) -> Self {
         Self {
-            header_high: timing.header_high / period,
-            header_low: timing.header_low / period,
-            zero_low: timing.zero_low / period,
-            data_high: timing.data_high / period,
-            one_low: timing.one_low / period,
+            header_high: pulsedistance.header_high / period,
+            header_low: pulsedistance.header_low / period,
+            zero_low: pulsedistance.zero_low / period,
+            data_high: pulsedistance.data_high / period,
+            one_low: pulsedistance.one_low / period,
         }
     }
 }

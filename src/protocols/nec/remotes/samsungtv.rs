@@ -19,10 +19,9 @@ impl RemoteControl<NecCommand> for SamsungTv {
     }
 
     fn encode(&self, action: SamsungTvButton) -> NecCommand {
-        let cmd = from_button(action);
         NecCommand {
             addr: SAMSUNGTV_ADDR,
-            cmd: cmd,
+            cmd: from_button(action),
         }
     }
 }

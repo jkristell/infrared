@@ -15,17 +15,15 @@ macro_rules! nec_buttons {
         }
 
         fn to_button(val: u8) -> Option<$buttonenum> {
-            use $buttonenum::*;
             match val {
-                $($cmd => Some($name),)+
+                $($cmd => Some($buttonenum::$name),)+
                 _ => None,
             }
         }
 
         fn from_button(button: $buttonenum) -> u8 {
-            use $buttonenum::*;
             match button {
-                $($name => $cmd,)+
+                $($buttonenum::$name => $cmd,)+
             }
         }
     };

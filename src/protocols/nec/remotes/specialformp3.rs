@@ -17,10 +17,9 @@ impl RemoteControl<NecCommand> for SpecialForMp3 {
     }
 
     fn encode(&self, button: SpecialForMp3Button) -> NecCommand {
-        let cmd = from_button(button);
         NecCommand {
             addr: ADDR,
-            cmd: cmd,
+            cmd: from_button(button),
         }
     }
 }
