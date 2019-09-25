@@ -1,99 +1,52 @@
 use crate::remotecontrol::RemoteControl;
-use crate::protocols::nec::NecCommand;
+use crate::nec::NecCommand;
+use crate::nec_buttons;
 
 const ADDR: u8 = 0;
 
 pub struct SpecialForMp3;
 
 impl RemoteControl<NecCommand> for SpecialForMp3 {
-    type Action = SpecialForMp3Action;
+    type Button = SpecialForMp3Button;
 
-    fn decode(&self, raw: NecCommand) -> Option<SpecialForMp3Action> {
-
+    fn decode(&self, raw: NecCommand) -> Option<SpecialForMp3Button> {
         if raw.addr != ADDR {
             return None;
         }
-
-        to_action(raw.cmd as u8)
+        to_button(raw.cmd)
     }
 
-    fn encode(&self, action: SpecialForMp3Action) -> u32 {
-        let cmd = from_action(action);
-
-        let addr = u32::from(ADDR) | u32::from(!ADDR) << 8;
-        let cmd = u32::from(cmd) << 16 | u32::from(!cmd) << 24;
-
-        addr | cmd
+    fn encode(&self, button: SpecialForMp3Button) -> NecCommand {
+        let cmd = from_button(button);
+        NecCommand {
+            addr: ADDR,
+            cmd: cmd,
+        }
     }
 }
 
-#[allow(non_camel_case_types)]
-#[derive(Debug, Clone)]
-pub enum SpecialForMp3Action {
-    Power,
-    Mode,
-    Mute,
-    Play_Paus,
-    Prev,
-    Next,
-    Eq,
-    Minus,
-    Plus,
-    Zero,
-    Shuffle,
-    U_SD,
-    One,
-    Two,
-    Three,
-    Four,
-    Five,
-    Six,
-    Seven,
-    Eight,
-    Nine,
-}
-
-macro_rules! generate_action_funcs {
-    ($action:tt, $( ($val:expr, $name:tt) ),* ) => {
-
-        fn to_action(val: u8) -> Option<$action> {
-            use $action::*;
-            match val {
-                $($val => Some($name),)+
-                _ => None,
-            }
-        }
-
-        fn from_action(action: $action) -> u8 {
-            use $action::*;
-            match action {
-                $($name => $val,)+
-            }
-        }
-    };
-}
-
-generate_action_funcs!(
-    SpecialForMp3Action,
-    (69, Power),
-    (70, Mode),
-    (71, Mute),
-    (68, Play_Paus),
-    (64, Prev),
-    (67, Next),
-    (7, Eq),
-    (21, Minus),
-    (9, Plus),
-    (22, Zero),
-    (25, Shuffle),
-    (13, U_SD),
-    (12, One),
-    (24, Two),
-    (94, Three),
-    (8, Four),
-    (28, Five),
-    (90, Six),
-    (66, Seven),
-    (82, Eight),
-    (74, Nine)
+nec_buttons!(
+    SpecialForMp3Button, [
+        (69, Power),
+        (70, Mode),
+        (71, Mute),
+        (68, Play_Paus),
+        (64, Prev),
+        (67, Next),
+        (7, Eq),
+        (21, Minus),
+        (9, Plus),
+        (22, Zero),
+        (25, Shuffle),
+        (13, U_SD),
+        (12, One),
+        (24, Two),
+        (94, Three),
+        (8, Four),
+        (28, Five),
+        (90, Six),
+        (66, Seven),
+        (82, Eight),
+        (74, Nine),
+    ]
 );

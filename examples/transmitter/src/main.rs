@@ -15,11 +15,11 @@ use stm32f1xx_hal::{
     timer::{Event, Timer},
 };
 
-
 use infrared::{
-    nec::remotes::*,
     nec::*,
-    RemoteControl, Transmitter, TransmitterState,
+    nec::remotes::{SamsungTv, SamsungTvButton},
+    Transmitter, TransmitterState,
+    remotecontrol::RemoteControl,
 };
 
 const FREQ: u32 = 20_000;
@@ -59,8 +59,7 @@ fn main() -> ! {
 
     assert!(clocks.usbclk_valid());
 
-
-    let mut timer = Timer::tim2(device.TIM2, 20.khz(), clocks, &mut rcc.apb1);
+    let mut timer = Timer::tim2(device.TIM2, FREQ.hz(), clocks, &mut rcc.apb1);
     timer.listen(Event::Update);
 
     // PWM
@@ -89,7 +88,6 @@ fn main() -> ! {
 
     core.NVIC.enable(pac::Interrupt::TIM2);
 
-
     loop {
         continue;
     }
@@ -98,6 +96,7 @@ fn main() -> ! {
 #[interrupt]
 fn TIM2() {
     static mut COUNT: u32 = 0;
+    use TransmitterState::*;
 
     // Clear the interrupt
     let timer = unsafe { &mut TIMER.as_mut().unwrap() };
@@ -111,24 +110,22 @@ fn TIM2() {
     let state = transmitter.step(*COUNT);
 
     match state {
-        TransmitterState::Idle => {
-            // Make sure the Pwm is disabled
+        Idle => {
             pwm.disable();
-            // Check queue for new commands
 
+            // Sends a command every second
             if *COUNT % FREQ == 0 {
-                transmitter.load(NecCommand {
-                   addr: 7,
-                    cmd: 18,
-                });
+                // Next Channel on my Samsung TV
+
+                // let cmd = NecCommand {addr: 7, cmd: 18};
+                let cmd = SamsungTv.encode(SamsungTvButton::ChannelListNext);
+
+                transmitter.load(cmd);
             }
         }
-        // The state machine wants us to activate the pwm
-        TransmitterState::Transmit(true) => pwm.enable(),
-        // And disable it
-        TransmitterState::Transmit(false) => pwm.disable(),
-        // Error when sendinf
-        TransmitterState::Err => hprintln!("Err!!").unwrap(),
+        Transmit(true) => pwm.enable(),
+        Transmit(false) => pwm.disable(),
+        Err => hprintln!("Err!!").unwrap(),
     }
 
     *COUNT = COUNT.wrapping_add(1);
