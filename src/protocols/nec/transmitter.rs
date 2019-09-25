@@ -1,6 +1,4 @@
-use core::convert::Into;
-
-use crate::nec::{Timing};
+use crate::nec::{Timing, NecCommand};
 use crate::{Transmitter, TransmitterState};
 use crate::protocols::nec::NecTypeTrait;
 
@@ -31,10 +29,9 @@ struct NSamples {
 }
 
 impl<NECTYPE: NecTypeTrait> NecTypeTransmitter<NECTYPE> {
+
     pub fn new(period: u32) -> Self {
-
         let units = NSamples::new(period, &NECTYPE::TIMING);
-
         Self {
             state: TransmitStateInternal::Idle,
             samples: units,
@@ -45,9 +42,12 @@ impl<NECTYPE: NecTypeTrait> NecTypeTransmitter<NECTYPE> {
     }
 }
 
-impl<NECTYPE> Transmitter for NecTypeTransmitter<NECTYPE> {
-    fn init<CMD: Into<u32>>(&mut self, cmd: CMD) {
-        self.cmd = cmd.into();
+impl<NECTYPE> Transmitter<NecCommand> for NecTypeTransmitter<NECTYPE>
+    where NECTYPE: NecTypeTrait,
+{
+    fn init(&mut self, cmd: NecCommand) {
+
+        self.cmd = NECTYPE::encode_command(cmd);
         self.state = TransmitStateInternal::Start;
     }
 

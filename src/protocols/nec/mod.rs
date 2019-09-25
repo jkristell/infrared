@@ -3,7 +3,10 @@ pub mod remotes;
 pub mod receiver;
 pub mod transmitter;
 
-pub use receiver::{NecCommand, NecError, NecTypeReceiver, NecResult};
+#[cfg(test)]
+mod tests;
+
+pub use receiver::{NecError, NecTypeReceiver, NecResult};
 pub use transmitter::NecTypeTransmitter;
 
 pub type NecReceiver = NecTypeReceiver<StandardType>;
@@ -14,10 +17,27 @@ pub type NecTransmitter = NecTypeTransmitter<SamsungType>;
 pub struct StandardType;
 pub struct SamsungType;
 
+
+#[derive(Debug, Copy, Clone)]
+/// The resulting command
+pub struct NecCommand {
+    pub addr: u8,
+    pub cmd: u8,
+}
+
+impl NecCommand {
+    pub fn from(bitbuf: u32) -> Self {
+        let addr = ((bitbuf) & 0xFF) as u8;
+        let cmd = ((bitbuf >> 16) & 0xFF) as u8;
+        Self {addr, cmd}
+    }
+}
+
+
 pub trait NecTypeTrait {
     const TIMING: Timing;
-    const ADDR_BITS: usize;
-    const CMD_BITS: usize;
+
+    fn encode_command(cmd: NecCommand) -> u32;
 }
 
 impl NecTypeTrait for StandardType {
@@ -29,8 +49,12 @@ impl NecTypeTrait for StandardType {
         zero_low: 560,
         one_low: 1690,
     };
-    const ADDR_BITS: usize = 8;
-    const CMD_BITS: usize = 8;
+
+    fn encode_command(NecCommand {addr, cmd}: NecCommand) -> u32 {
+        let addr = u32::from(addr) | u32::from(!addr) << 8;
+        let cmd = u32::from(cmd) << 16 | u32::from(!cmd) << 24;
+        addr | cmd
+    }
 }
 
 impl NecTypeTrait for SamsungType {
@@ -42,9 +66,14 @@ impl NecTypeTrait for SamsungType {
         data_high: 560,
         one_low: 1690,
     };
-    // Address is inverted and command is repeated
-    const ADDR_BITS: usize = 8;
-    const CMD_BITS: usize = 8;
+
+    fn encode_command(NecCommand {addr, cmd}: NecCommand) -> u32 {
+        // Address is inverted and command is repeated
+        let addr = u32::from(addr) | u32::from(addr) << 8;
+        let cmd = u32::from(cmd) << 16 | u32::from(!cmd) << 24;
+        addr | cmd
+    }
+
 }
 
 pub struct Timing {
@@ -56,34 +85,3 @@ pub struct Timing {
     one_low: u32,
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::protocols::nec::NecReceiver;
-    use crate::prelude::*;
-
-    #[test]
-    fn standard_nec() {
-        let dists = [0, 363, 177, 24, 21, 24, 21, 24, 21, 24, 21, 24, 21, 24, 20, 24, 21, 24, 21, 24,
-            66, 24, 66, 24, 65, 25, 65, 24, 66, 24, 66, 24, 65, 25, 65, 24, 21, 24, 21, 24,
-            66, 24, 65, 24, 21, 24, 21, 24, 21, 24, 21, 24, 65, 25, 65, 24, 21, 24, 21, 24,
-            66, 24, 65, 25, 65, 24, 66, 24];
-
-        let mut recv = NecReceiver::new(40_000);
-        let mut edge = false;
-        let mut tot = 0;
-        let mut state = ReceiverState::Idle;
-
-        for dist in dists.iter() {
-            edge = !edge;
-            tot += dist;
-            state = recv.sample_edge(edge, tot);
-        }
-
-        if let ReceiverState::Done(cmd) = state {
-            assert_eq!(cmd.addr, 0);
-            assert_eq!(cmd.cmd, 12);
-        } else {
-            assert!(false);
-        }
-    }
-}

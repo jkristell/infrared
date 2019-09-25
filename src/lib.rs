@@ -4,8 +4,6 @@
 #[macro_use]
 extern crate std;
 
-use core::convert::Into;
-
 mod protocols;
 
 #[cfg(feature="nec")]
@@ -34,7 +32,7 @@ pub mod prelude {
 }
 
 
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Eq, Copy, Clone)]
 /// Protocol decoder state
 pub enum ReceiverState<CMD, ERR> {
     Idle,
@@ -50,7 +48,6 @@ pub trait Receiver {
     type Cmd;
     /// Receive Error
     type Err;
-
     /// Sample
     fn sample(&mut self, pinval: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err>;
     /// Sample on known edge
@@ -70,9 +67,9 @@ pub enum TransmitterState {
     Err,
 }
 
-pub trait Transmitter {
+pub trait Transmitter<CMD> {
     /// Initialize transfer
-    fn init<CMD: Into<u32>>(&mut self, cmd: CMD);
+    fn init(&mut self, cmd: CMD);
 
     /// Step the transfer loop
     fn step(&mut self, ts: u32) -> TransmitterState;

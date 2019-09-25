@@ -4,22 +4,8 @@ use crate::nec::Timing;
 use crate::{Receiver, ReceiverState};
 #[cfg(feature="protocol-dev")]
 use crate::ReceiverDebug;
-use crate::protocols::nec::NecTypeTrait;
+use crate::protocols::nec::{NecTypeTrait, NecCommand};
 
-#[derive(Debug, Copy, Clone)]
-/// The resulting command
-pub struct NecCommand {
-    pub addr: u16,
-    pub cmd: u16,
-}
-
-impl NecCommand {
-    pub fn new(bitbuf: u32) -> Self {
-        let addr = ((bitbuf) & 0xFF) as u16;
-        let cmd = ((bitbuf >> 16) & 0xFF) as u16;
-        Self {addr, cmd}
-    }
-}
 
 #[derive(Debug, Clone, Copy)]
 /// Error when receiving
@@ -95,8 +81,8 @@ impl<NECTYPE: NecTypeTrait> NecTypeReceiver<NECTYPE> {
         // Internalstate to ReceiverState
         match self.state {
             NecState::Init => Idle,
-            NecState::Done => Done(NecCommand::new(self.bitbuf)),
-            NecState::RepeatDone => Done(NecCommand::new(self.lastcommand)),
+            NecState::Done => Done(NecCommand::from(self.bitbuf)),
+            NecState::RepeatDone => Done(NecCommand::from(self.lastcommand)),
             NecState::Err(e) => Error(e),
             NecState::Disabled => Disabled,
             _ => Receiving,
@@ -141,10 +127,13 @@ impl<NECTYPE: NecTypeTrait> Receiver for NecTypeReceiver<NECTYPE> {
                 (Init,            Repeat)   => RepeatDone,
                 (Init,            _)        => Init,
 
-                (Receiving(32),   _)        => Done,
+                (Receiving(31),   One)      => {self.bitbuf |= 1 << 31; Done},
+                (Receiving(31),   Zero)     => Done,
+
                 (Receiving(bit),  One)      => {self.bitbuf |= 1 << bit; Receiving(bit + 1)},
                 (Receiving(bit),  Zero)     => Receiving(bit + 1),
-                (Receiving(_bit), _)        => Err(NecError::Data),
+
+                (Receiving(_),    _)        => Err(NecError::Data),
 
                 (Done,            _)        => Done,
                 (RepeatDone,      _)        => RepeatDone,

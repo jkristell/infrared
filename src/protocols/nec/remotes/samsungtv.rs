@@ -1,7 +1,7 @@
 use crate::remote::RemoteControl;
 use crate::protocols::nec::NecCommand;
 
-const SAMSUNGTV_ADDR: u16 = 7;
+const SAMSUNGTV_ADDR: u8 = 7;
 
 #[derive(Copy, Clone)]
 /// Samsung Tv Remote Control
@@ -21,8 +21,8 @@ impl RemoteControl<NecCommand> for SamsungTv {
     fn encode(&self, action: SamsungTvAction) -> u32 {
         let cmd = from_action(action);
 
-        let addr = (SAMSUNGTV_ADDR as u32) | (SAMSUNGTV_ADDR as u32) << 8;
-        let cmd = (cmd as u32) << 16 | (!cmd as u32) << 24;
+        let addr = u32::from(SAMSUNGTV_ADDR) | u32::from(SAMSUNGTV_ADDR) << 8;
+        let cmd = u32::from(cmd) << 16 | u32::from(!cmd) << 24;
 
         addr | cmd
     }

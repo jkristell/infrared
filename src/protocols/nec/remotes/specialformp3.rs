@@ -1,7 +1,7 @@
 use crate::remote::RemoteControl;
 use crate::protocols::nec::NecCommand;
 
-const ADDR: u16 = 0;
+const ADDR: u8 = 0;
 
 pub struct SpecialForMp3;
 
@@ -20,8 +20,8 @@ impl RemoteControl<NecCommand> for SpecialForMp3 {
     fn encode(&self, action: SpecialForMp3Action) -> u32 {
         let cmd = from_action(action);
 
-        let addr = (ADDR as u32) | (!ADDR as u32) << 8;
-        let cmd = (cmd as u32) << 16 | (!cmd as u32) << 24;
+        let addr = u32::from(ADDR) | u32::from(!ADDR) << 8;
+        let cmd = u32::from(cmd) << 16 | u32::from(!cmd) << 24;
 
         addr | cmd
     }
