@@ -23,20 +23,26 @@ use infrared::{
     rc6::*,
 };
 
+#[derive(Debug)]
+enum AnyCommand {
+    Nec(NecCommand),
+    Rc5(Rc5Command),
+    Rc6(Rc6Command),
+}
+
 const FREQ: u32 = 40_000;
 
 static mut TIMER: Option<Timer<TIM2>> = None;
 static mut IRPIN: Option<PB8<Input<Floating>>> = None;
 
+// Receivers
 static mut NEC: Option<NecReceiver> = None;
 static mut NES: Option<NecSamsungReceiver> = None;
 static mut RC5: Option<Rc5Receiver> = None;
 static mut RC6: Option<Rc6Receiver> = None;
 
-// Command Queues
-static mut NECQ: Option<Queue<NecCommand, U8>> = None;
-static mut RC5Q: Option<Queue<Rc5Command, U8>> = None;
-static mut RC6Q: Option<Queue<Rc6Command, U8>> = None;
+// Command Queue
+static mut CMDQ: Option<Queue<AnyCommand, U8>> = None;
 
 #[entry]
 fn main() -> ! {
@@ -53,8 +59,6 @@ fn main() -> ! {
         .pclk1(24.mhz())
         .freeze(&mut flash.acr);
 
-    assert!(clocks.usbclk_valid());
-
     let mut gpiob = device.GPIOB.split(&mut rcc.apb2);
     let irpin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
 
@@ -70,18 +74,12 @@ fn main() -> ! {
         NES.replace(NecSamsungReceiver::new(FREQ));
         RC5.replace(Rc5Receiver::new(FREQ));
         RC6.replace(Rc6Receiver::new(FREQ));
+
+        // Initialize the queue
+        CMDQ.replace(Queue::new());
     }
 
-    // Initialize the queues
-    unsafe {
-        NECQ.replace(Queue::new());
-        RC5Q.replace(Queue::new());
-        RC6Q.replace(Queue::new());
-    };
-
-    let mut necq = unsafe { NECQ.as_mut().unwrap().split().1 };
-    let mut rc5q = unsafe { RC5Q.as_mut().unwrap().split().1 };
-    let mut rc6q = unsafe { RC6Q.as_mut().unwrap().split().1 };
+    let mut cmdq = unsafe { CMDQ.as_mut().unwrap().split().1 };
 
     // Enable the timer interrupt
     core.NVIC.enable(pac::Interrupt::TIM2);
@@ -89,15 +87,7 @@ fn main() -> ! {
     hprintln!("Ready!").unwrap();
 
     loop {
-        if let Some(cmd) = necq.dequeue() {
-            hprintln!("{:?}", cmd).unwrap();
-        }
-
-        if let Some(cmd) = rc5q.dequeue() {
-            hprintln!("{:?}", cmd).unwrap();
-        }
-
-        if let Some(cmd) = rc6q.dequeue() {
+        if let Some(cmd) = cmdq.dequeue() {
             hprintln!("{:?}", cmd).unwrap();
         }
     }
@@ -118,55 +108,51 @@ fn TIM2() {
     if *PINVAL != new_pinval {
         let rising = new_pinval;
 
-        let mut necq = unsafe { NECQ.as_mut().unwrap().split().0 };
-        let mut rc5q = unsafe { RC5Q.as_mut().unwrap().split().0 };
-        let mut rc6q = unsafe { RC6Q.as_mut().unwrap().split().0 };
+        let mut cmdq = unsafe { CMDQ.as_mut().unwrap().split().0 };
 
         let nec = unsafe { NEC.as_mut().unwrap() };
         let nes = unsafe { NES.as_mut().unwrap() };
         let rc5 = unsafe { RC5.as_mut().unwrap() };
         let rc6 = unsafe { RC6.as_mut().unwrap() };
 
-        // NEC
-        match nec.sample_edge(rising, *COUNT) {
-            ReceiverState::Done(cmd) => {
-                necq.enqueue(cmd).ok().unwrap();
-                nec.reset();
-            },
-            ReceiverState::Error(_err) => nec.reset(),
-            _ => (),
+
+        if let Some(cmd) = sample_on_edge(nec, rising, *COUNT) {
+            cmdq.enqueue(AnyCommand::Nec(cmd)).ok().unwrap();
         }
 
-        // Nec with Samsung flavour
-        match nes.sample_edge(rising, *COUNT) {
-            ReceiverState::Done(cmd) => {
-                necq.enqueue(cmd).unwrap();
-                nes.reset();
-            },
-            ReceiverState::Error(_err) => nes.reset(),
-            _ => (),
+        if let Some(cmd) = sample_on_edge(nes, rising, *COUNT) {
+            cmdq.enqueue(AnyCommand::Nec(cmd)).ok().unwrap();
         }
 
-        match rc5.sample_edge(rising, *COUNT) {
-            ReceiverState::Done(cmd) => {
-                rc5q.enqueue(cmd).unwrap();
-                rc5.reset();
-            },
-            ReceiverState::Error(_err) => rc5.reset(),
-            _ => (),
+        if let Some(cmd) = sample_on_edge(rc5, rising, *COUNT) {
+            cmdq.enqueue(AnyCommand::Rc5(cmd)).ok().unwrap();
         }
 
-        // RC6
-        match rc6.sample_edge(rising, *COUNT) {
-            ReceiverState::Done(cmd) => {
-                rc6q.enqueue(cmd).unwrap();
-                rc6.reset();
-            },
-            ReceiverState::Error(_err) => rc6.reset(),
-            _ => (),
+        if let Some(cmd) = sample_on_edge(rc6, rising, *COUNT) {
+            cmdq.enqueue(AnyCommand::Rc6(cmd)).ok().unwrap();
         }
     }
 
     *PINVAL = new_pinval;
     *COUNT = COUNT.wrapping_add(1);
 }
+
+
+fn sample_on_edge<CMD, ERR>(recv: &mut impl Receiver<Cmd=CMD, Err=ERR>,
+                            edge: bool,
+                            t: u32,
+) -> Option<CMD> {
+
+    match recv.sample_edge(edge, t) {
+        ReceiverState::Done(c) => {
+            return Some(c);
+        }
+        ReceiverState::Error(_err) => {
+            recv.reset();
+        }
+        _ => {}
+    }
+
+    None
+}
+
