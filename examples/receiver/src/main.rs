@@ -142,7 +142,7 @@ fn TIM2() {
 }
 
 
-fn sample_on_edge<CMD, ERR>(recv: &mut impl Receiver<Cmd=CMD, Err=ERR>,
+fn sample_on_edge<CMD, ERR>(recv: &mut Receiver<Cmd=CMD, Err=ERR>,
                             edge: bool,
                             t: u32,
 ) -> Option<CMD> {
