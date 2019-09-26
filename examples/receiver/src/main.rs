@@ -13,22 +13,12 @@ use stm32f1xx_hal::{
     timer::{Event, Timer},
 };
 
-use heapless::consts::*;
-use heapless::spsc::Queue;
-
 use infrared::{
     Receiver, ReceiverState,
     nec::*,
     rc5::*,
     rc6::*,
 };
-
-#[derive(Debug)]
-enum AnyCommand {
-    Nec(NecCommand),
-    Rc5(Rc5Command),
-    Rc6(Rc6Command),
-}
 
 const FREQ: u32 = 40_000;
 
@@ -40,9 +30,6 @@ static mut NEC: Option<NecReceiver> = None;
 static mut NES: Option<NecSamsungReceiver> = None;
 static mut RC5: Option<Rc5Receiver> = None;
 static mut RC6: Option<Rc6Receiver> = None;
-
-// Command Queue
-static mut CMDQ: Option<Queue<AnyCommand, U8>> = None;
 
 #[entry]
 fn main() -> ! {
@@ -74,12 +61,7 @@ fn main() -> ! {
         NES.replace(NecSamsungReceiver::new(FREQ));
         RC5.replace(Rc5Receiver::new(FREQ));
         RC6.replace(Rc6Receiver::new(FREQ));
-
-        // Initialize the queue
-        CMDQ.replace(Queue::new());
     }
-
-    let mut cmdq = unsafe { CMDQ.as_mut().unwrap().split().1 };
 
     // Enable the timer interrupt
     core.NVIC.enable(pac::Interrupt::TIM2);
@@ -87,9 +69,7 @@ fn main() -> ! {
     hprintln!("Ready!").unwrap();
 
     loop {
-        if let Some(cmd) = cmdq.dequeue() {
-            hprintln!("{:?}", cmd).unwrap();
-        }
+        continue;
     }
 }
 
@@ -108,8 +88,6 @@ fn TIM2() {
     if *PINVAL != new_pinval {
         let rising = new_pinval;
 
-        let mut cmdq = unsafe { CMDQ.as_mut().unwrap().split().0 };
-
         let nec = unsafe { NEC.as_mut().unwrap() };
         let nes = unsafe { NES.as_mut().unwrap() };
         let rc5 = unsafe { RC5.as_mut().unwrap() };
@@ -119,25 +97,21 @@ fn TIM2() {
         if let Some(cmd) = sample_on_edge(nec, rising, *COUNT) {
             hprintln!("{:?}", cmd).unwrap();
             nec.reset();
-            //cmdq.enqueue(AnyCommand::Nec(cmd)).ok().unwrap();
         }
 
         if let Some(cmd) = sample_on_edge(nes, rising, *COUNT) {
             hprintln!("{:?}", cmd).unwrap();
             nes.reset();
-            //cmdq.enqueue(AnyCommand::Nec(cmd)).ok().unwrap();
         }
 
         if let Some(cmd) = sample_on_edge(rc5, rising, *COUNT) {
             hprintln!("{:?}", cmd).unwrap();
             rc5.reset();
-            //cmdq.enqueue(AnyCommand::Rc5(cmd)).ok().unwrap();
         }
 
         if let Some(cmd) = sample_on_edge(rc6, rising, *COUNT) {
             hprintln!("{:?}", cmd).unwrap();
             rc6.reset();
-            //cmdq.enqueue(AnyCommand::Rc6(cmd)).ok().unwrap();
         }
     }
 
@@ -146,7 +120,7 @@ fn TIM2() {
 }
 
 
-fn sample_on_edge<CMD, ERR>(recv: &mut Receiver<Cmd=CMD, Err=ERR>,
+fn sample_on_edge<CMD, ERR>(recv: &mut dyn Receiver<Cmd=CMD, Err=ERR>,
                             edge: bool,
                             t: u32,
 ) -> Option<CMD> {
