@@ -117,19 +117,23 @@ fn TIM2() {
 
 
         if let Some(cmd) = sample_on_edge(nec, rising, *COUNT) {
-            cmdq.enqueue(AnyCommand::Nec(cmd)).ok().unwrap();
+            hprintln!("{:?}", cmd).unwrap();
+            //cmdq.enqueue(AnyCommand::Nec(cmd)).ok().unwrap();
         }
 
         if let Some(cmd) = sample_on_edge(nes, rising, *COUNT) {
-            cmdq.enqueue(AnyCommand::Nec(cmd)).ok().unwrap();
+            hprintln!("{:?}", cmd).unwrap();
+            //cmdq.enqueue(AnyCommand::Nec(cmd)).ok().unwrap();
         }
 
         if let Some(cmd) = sample_on_edge(rc5, rising, *COUNT) {
-            cmdq.enqueue(AnyCommand::Rc5(cmd)).ok().unwrap();
+            hprintln!("{:?}", cmd).unwrap();
+            //cmdq.enqueue(AnyCommand::Rc5(cmd)).ok().unwrap();
         }
 
         if let Some(cmd) = sample_on_edge(rc6, rising, *COUNT) {
-            cmdq.enqueue(AnyCommand::Rc6(cmd)).ok().unwrap();
+            hprintln!("{:?}", cmd).unwrap();
+            //cmdq.enqueue(AnyCommand::Rc6(cmd)).ok().unwrap();
         }
     }
 
