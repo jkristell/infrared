@@ -1,7 +1,6 @@
-use core::convert::Into;
-
-use crate::nec::{NecType, Timing, SAMSUNG_TIMING, STANDARD_TIMING};
+use crate::nec::{Pulsedistance, NecCommand};
 use crate::{Transmitter, TransmitterState};
+use crate::protocols::nec::NecTypeTrait;
 
 enum TransmitStateInternal {
     Idle,
@@ -13,11 +12,12 @@ enum TransmitStateInternal {
     Done,
 }
 
-pub struct NecTransmitter {
+pub struct NecTypeTransmitter<NECTYPE> {
     state: TransmitStateInternal,
     samples: NSamples,
     last_ts: u32,
     cmd: u32,
+    nectype: core::marker::PhantomData<NECTYPE>,
 }
 
 struct NSamples {
@@ -28,25 +28,24 @@ struct NSamples {
     one_low: u32,
 }
 
-impl NecTransmitter {
-    pub fn new(nectype: NecType, period: u32) -> Self {
-        let units = match nectype {
-            NecType::Standard => NSamples::new(period, &STANDARD_TIMING),
-            NecType::Samsung => NSamples::new(period, &SAMSUNG_TIMING),
-        };
-
+impl<NECTYPE: NecTypeTrait> NecTypeTransmitter<NECTYPE> {
+    pub fn new(period: u32) -> Self {
+        let samples = NSamples::new(period, &NECTYPE::PULSEDISTANCE);
         Self {
             state: TransmitStateInternal::Idle,
-            samples: units,
+            samples,
             last_ts: 0,
             cmd: 0,
+            nectype: core::marker::PhantomData,
         }
     }
 }
 
-impl Transmitter for NecTransmitter {
-    fn init<CMD: Into<u32>>(&mut self, cmd: CMD) {
-        self.cmd = cmd.into();
+impl<NECTYPE> Transmitter<NecCommand> for NecTypeTransmitter<NECTYPE>
+    where NECTYPE: NecTypeTrait,
+{
+    fn load(&mut self, cmd: NecCommand) {
+        self.cmd = NECTYPE::encode_command(cmd);
         self.state = TransmitStateInternal::Start;
     }
 
@@ -119,13 +118,13 @@ impl Transmitter for NecTransmitter {
 }
 
 impl NSamples {
-    pub const fn new(period: u32, timing: &Timing) -> Self {
+    pub const fn new(period: u32, pulsedistance: &Pulsedistance) -> Self {
         Self {
-            header_high: timing.header_htime / period,
-            header_low: timing.header_ltime / period,
-            zero_low: timing.zero_ltime / period,
-            data_high: timing.data_htime / period,
-            one_low: timing.one_ltime / period,
+            header_high: pulsedistance.header_high / period,
+            header_low: pulsedistance.header_low / period,
+            zero_low: pulsedistance.zero_low / period,
+            data_high: pulsedistance.data_high / period,
+            one_low: pulsedistance.one_low / period,
         }
     }
 }

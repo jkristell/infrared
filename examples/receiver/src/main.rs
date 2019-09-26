@@ -13,12 +13,10 @@ use stm32f1xx_hal::{
     timer::{Event, Timer},
 };
 
-use heapless::consts::*;
-use heapless::spsc::Queue;
-
 use infrared::{
-    Receiver, ReceiverState, remote::RemoteControl,
-    nec::*, nec::remotes::SpecialForMp3,
+    Receiver, ReceiverState,
+    nec::*,
+    rc5::*,
     rc6::*,
 };
 
@@ -27,12 +25,11 @@ const FREQ: u32 = 40_000;
 static mut TIMER: Option<Timer<TIM2>> = None;
 static mut IRPIN: Option<PB8<Input<Floating>>> = None;
 
+// Receivers
+static mut NEC: Option<NecReceiver> = None;
+static mut NES: Option<NecSamsungReceiver> = None;
+static mut RC5: Option<Rc5Receiver> = None;
 static mut RC6: Option<Rc6Receiver> = None;
-static mut NEC: Option<NecReceiver<u32>> = None;
-
-// Command Queues
-static mut RC6Q: Option<Queue<Rc6Command, U8>> = None;
-static mut NECQ: Option<Queue<NecCommand<u32>, U8>> = None;
 
 #[entry]
 fn main() -> ! {
@@ -49,8 +46,6 @@ fn main() -> ! {
         .pclk1(24.mhz())
         .freeze(&mut flash.acr);
 
-    assert!(clocks.usbclk_valid());
-
     let mut gpiob = device.GPIOB.split(&mut rcc.apb2);
     let irpin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
 
@@ -62,18 +57,11 @@ fn main() -> ! {
         TIMER.replace(timer);
         IRPIN.replace(irpin);
 
-        NEC.replace(NecReceiver::new(NecType::Standard, FREQ));
+        NEC.replace(NecReceiver::new(FREQ));
+        NES.replace(NecSamsungReceiver::new(FREQ));
+        RC5.replace(Rc5Receiver::new(FREQ));
         RC6.replace(Rc6Receiver::new(FREQ));
     }
-
-    // Initialize the queues
-    unsafe {
-        NECQ.replace(Queue::new());
-        RC6Q.replace(Queue::new());
-    };
-
-    let mut necq = unsafe { NECQ.as_mut().unwrap().split().1 };
-    let mut rc6q = unsafe { RC6Q.as_mut().unwrap().split().1 };
 
     // Enable the timer interrupt
     core.NVIC.enable(pac::Interrupt::TIM2);
@@ -81,15 +69,7 @@ fn main() -> ! {
     hprintln!("Ready!").unwrap();
 
     loop {
-
-        if let Some(NecCommand::Payload(cmd)) = necq.dequeue() {
-            let cmd = SpecialForMp3.decode(cmd);
-            hprintln!("{:?}", cmd).unwrap();
-        }
-
-        if let Some(cmd) = rc6q.dequeue() {
-            hprintln!("{:?}", cmd).unwrap();
-        }
+        continue;
     }
 }
 
@@ -108,33 +88,53 @@ fn TIM2() {
     if *PINVAL != new_pinval {
         let rising = new_pinval;
 
-        let mut necq = unsafe { NECQ.as_mut().unwrap().split().0 };
-        let mut rc6q = unsafe { RC6Q.as_mut().unwrap().split().0 };
-
         let nec = unsafe { NEC.as_mut().unwrap() };
+        let nes = unsafe { NES.as_mut().unwrap() };
+        let rc5 = unsafe { RC5.as_mut().unwrap() };
         let rc6 = unsafe { RC6.as_mut().unwrap() };
 
-        // NEC
-        match nec.event(rising, *COUNT) {
-            ReceiverState::Done(cmd) => {
-                necq.enqueue(cmd).ok().unwrap();
-                nec.reset();
-            },
-            ReceiverState::Err(_err) => nec.reset(),
-            _ => (),
+
+        if let Some(cmd) = sample_on_edge(nec, rising, *COUNT) {
+            hprintln!("{:?}", cmd).unwrap();
+            nec.reset();
         }
 
-        // RC6
-        match rc6.event(rising, *COUNT) {
-            ReceiverState::Done(cmd) => {
-                rc6q.enqueue(cmd).ok().unwrap();
-                rc6.reset();
-            },
-            ReceiverState::Err(_err) => rc6.reset(),
-            _ => (),
+        if let Some(cmd) = sample_on_edge(nes, rising, *COUNT) {
+            hprintln!("{:?}", cmd).unwrap();
+            nes.reset();
+        }
+
+        if let Some(cmd) = sample_on_edge(rc5, rising, *COUNT) {
+            hprintln!("{:?}", cmd).unwrap();
+            rc5.reset();
+        }
+
+        if let Some(cmd) = sample_on_edge(rc6, rising, *COUNT) {
+            hprintln!("{:?}", cmd).unwrap();
+            rc6.reset();
         }
     }
 
     *PINVAL = new_pinval;
-    *COUNT += 1;
+    *COUNT = COUNT.wrapping_add(1);
 }
+
+
+fn sample_on_edge<CMD, ERR>(recv: &mut dyn Receiver<Cmd=CMD, Err=ERR>,
+                            edge: bool,
+                            t: u32,
+) -> Option<CMD> {
+
+    match recv.sample_edge(edge, t) {
+        ReceiverState::Done(c) => {
+            return Some(c);
+        }
+        ReceiverState::Error(_err) => {
+            recv.reset();
+        }
+        _ => {}
+    }
+
+    None
+}
+

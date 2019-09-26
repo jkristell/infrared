@@ -1,22 +1,11 @@
-use core::convert::From;
 use core::ops::Range;
 
-use crate::nec::NecType;
-use crate::nec::Timing;
-use crate::nec::{SAMSUNG_TIMING, STANDARD_TIMING};
+use crate::nec::Pulsedistance;
 use crate::{Receiver, ReceiverState};
+#[cfg(feature="protocol-dev")]
+use crate::ReceiverDebug;
+use crate::protocols::nec::{NecTypeTrait, NecCommand};
 
-#[derive(Debug, Clone)]
-/// The Command types
-pub enum NecCommand<T>
-where
-    T: Clone + From<u32>,
-{
-    /// A Repeat
-    Repeat,
-    /// A Command With device address and action
-    Payload(T),
-}
 
 #[derive(Debug, Clone, Copy)]
 /// Error when receiving
@@ -27,201 +16,202 @@ pub enum NecError {
     Data,
 }
 
-pub type NecResult<T> = ReceiverState<NecCommand<T>, NecError>;
+pub type NecResult = ReceiverState<NecCommand, NecError>;
 
-pub struct NecReceiver<T: Clone + From<u32>> {
+pub struct NecTypeReceiver<NECTYPE> {
     // State
-    state: InternalState<T>,
-    bitbuf: u32,
-    bitbuf_idx: u32,
-    prev_timestamp: u32,
+    state: NecState,
+    pub bitbuf: u32,
+    prev_sampletime: u32,
+    prev_pinval: bool,
     // Timing and tolerances
     tolerance: Tolerances,
+    lastcommand: u32,
+    nectype: core::marker::PhantomData<NECTYPE>,
+
+    #[cfg(feature="protocol-dev")]
+    pub debug: ReceiverDebug<NecState, Tolerances>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Copy, Clone)]
 // Internal receiver state
-enum InternalState<T: Clone + From<u32>> {
-    // Waiting for first edge
-    Idle,
-    // Determining the type of message
-    HeaderHigh,
-    HeaderLow,
+pub enum NecState {
+    // Waiting for first pulse
+    Init,
     // Receiving data
     Receiving(u32),
-    // Done receiving
-    Done(NecCommand<T>),
+    // Command received
+    Done,
+    // Repeat command received
+    RepeatDone,
     // In error state
-    Error(NecError),
+    Err(NecError),
     // Disabled
     Disabled,
 }
 
-impl<T> NecReceiver<T>
-where
-    T: Clone + From<u32>,
-{
-    pub fn new(variant: NecType, samplerate: u32) -> Self {
-        let timing = match variant {
-            NecType::Standard => &STANDARD_TIMING,
-            NecType::Samsung => &SAMSUNG_TIMING,
-        };
-
+impl<NECTYPE: NecTypeTrait> NecTypeReceiver<NECTYPE> {
+    pub fn new(samplerate: u32) -> Self {
+        let timing = &NECTYPE::PULSEDISTANCE;
         Self::new_from_timing(samplerate, timing)
     }
 
-    fn new_from_timing(samplerate: u32, timing: &Timing) -> Self {
+    fn new_from_timing(samplerate: u32, timing: &Pulsedistance) -> Self {
         let tol = Tolerances::from_timing(timing, samplerate);
         Self {
-            state: InternalState::Idle,
-            tolerance: tol,
-            prev_timestamp: 0,
-            bitbuf_idx: 0,
+            state: NecState::Init,
+            prev_sampletime: 0,
+            prev_pinval: false,
             bitbuf: 0,
+            lastcommand: 0,
+            nectype: core::marker::PhantomData,
+            #[cfg(feature="protocol-dev")]
+            debug: ReceiverDebug {
+                state: NecState::Init,
+                state_new: NecState::Init,
+                delta: 0,
+                extra: tol.clone(),
+            },
+            tolerance: tol,
+        }
+    }
+
+    fn receiver_state(&self) -> NecResult {
+        use ReceiverState::*;
+        // Internalstate to ReceiverState
+        match self.state {
+            NecState::Init => Idle,
+            NecState::Done => Done(NecCommand::from(self.bitbuf)),
+            NecState::RepeatDone => Done(NecCommand::from(self.lastcommand)),
+            NecState::Err(e) => Error(e),
+            NecState::Disabled => Disabled,
+            _ => Receiving,
         }
     }
 }
 
-impl<T> Receiver for NecReceiver<T>
-where
-    T: Clone + From<u32>,
-{
-    type Command = NecCommand<T>;
-    type ReceiveError = NecError;
+impl<NECTYPE: NecTypeTrait> Receiver for NecTypeReceiver<NECTYPE> {
+    type Cmd = NecCommand;
+    type Err = NecError;
 
-    fn event(&mut self, rising: bool, timestamp: u32) -> ReceiverState<NecCommand<T>, NecError> {
-        use InternalState::{
-            Disabled, Done, Error as InternalError, HeaderHigh, HeaderLow, Idle, Receiving,
-        };
+    fn sample(&mut self, pinval: bool, timestamp: u32) -> ReceiverState<NecCommand, NecError> {
 
-        let interval = timestamp.wrapping_sub(self.prev_timestamp);
-        self.prev_timestamp = timestamp;
+        let rising_edge = pinval && !self.prev_pinval;
+        self.prev_pinval = pinval;
 
-        self.state = match (self.state.clone(), rising) {
-            (Idle, true) => HeaderHigh,
-            (Idle, false) => Idle,
-
-            (HeaderHigh, true) => unreachable!(),
-            (HeaderHigh, false) => {
-                if self.tolerance.is_sync_high(interval) {
-                    HeaderLow
-                } else {
-                    InternalError(NecError::CommandType(interval))
-                }
-            }
-
-            (HeaderLow, false) => unreachable!(),
-            (HeaderLow, true) => {
-                if self.tolerance.is_sync_low(interval) {
-                    Receiving(0)
-                } else if self.tolerance.is_repeat(interval) {
-                    Done(NecCommand::Repeat)
-                } else {
-                    InternalError(NecError::CommandType(interval))
-                }
-            }
-
-            (Receiving(_saved), false) => Receiving(interval),
-            (Receiving(saved), true) => {
-                let tsdiff = interval + saved;
-
-                if let Some(one) = self.tolerance.is_value(tsdiff) {
-                    if one {
-                        self.bitbuf |= 1 << self.bitbuf_idx;
-                    }
-                    self.bitbuf_idx += 1;
-                    if self.bitbuf_idx == 32 {
-                        Done(NecCommand::Payload(self.bitbuf.into()))
-                    } else {
-                        Receiving(0)
-                    }
-                } else {
-                    InternalError(NecError::Data)
-                }
-            }
-            (Done(_), _) => Disabled,
-            (InternalError(_), _) => Disabled,
-            (Disabled, _) => Disabled,
-        };
-
-        // Internalstate to ReceiverState
-        match self.state.clone() {
-            InternalState::Idle => ReceiverState::Idle,
-            InternalState::Done(cmd) => {
-                self.reset();
-                ReceiverState::Done(cmd)
-            }
-            InternalState::Error(e) => ReceiverState::Err(e),
-            InternalState::Disabled => ReceiverState::Disabled,
-            _ => ReceiverState::Receiving,
+        if rising_edge {
+            return self.sample_edge(true, timestamp);
         }
+
+        self.receiver_state()
+    }
+
+    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err> {
+        use NecState::*;
+        use PulseWidth::*;
+
+        if rising {
+
+            let mut delta = sampletime.wrapping_sub(self.prev_sampletime);
+
+            if delta >= core::u16::MAX.into() {
+                delta = 0;
+            }
+
+            self.prev_sampletime = sampletime;
+
+            let pulsewidth = self.tolerance.pulsewidth(delta);
+
+            let newstate = match (self.state, pulsewidth) {
+                (Init,            Sync)     => Receiving(0),
+                (Init,            Repeat)   => RepeatDone,
+                (Init,            _)        => Init,
+
+                (Receiving(31),   One)      => {self.bitbuf |= 1 << 31; Done},
+                (Receiving(31),   Zero)     => Done,
+
+                (Receiving(bit),  One)      => {self.bitbuf |= 1 << bit; Receiving(bit + 1)},
+                (Receiving(bit),  Zero)     => Receiving(bit + 1),
+
+                (Receiving(_),    _)        => Err(NecError::Data),
+
+                (Done,            _)        => Done,
+                (RepeatDone,      _)        => RepeatDone,
+                (Err(err),        _)        => Err(err),
+                (Disabled,        _)        => Disabled,
+            };
+
+            #[cfg(feature="protocol-dev")]
+            {
+                self.debug.state = self.state;
+                self.debug.state_new = newstate;
+                self.debug.delta = delta as u16;
+            }
+
+            self.state = newstate;
+        }
+
+        self.receiver_state()
     }
 
     fn reset(&mut self) {
-        self.state = InternalState::Idle;
-        self.prev_timestamp = 0;
-        self.bitbuf_idx = 0;
+        self.state = NecState::Init;
+        self.prev_sampletime = 0;
+        self.prev_pinval = false;
+        self.lastcommand = self.bitbuf;
         self.bitbuf = 0;
     }
 
     fn disable(&mut self) {
-        self.state = InternalState::Disabled;
+        self.state = NecState::Disabled;
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Tolerances {
-    pub sync_high: Range<u32>,
-    pub sync_low: Range<u32>,
+    pub sync: Range<u32>,
     pub repeat: Range<u32>,
     pub zero: Range<u32>,
     pub one: Range<u32>,
 }
 
+pub enum PulseWidth {
+    Sync,
+    Repeat,
+    Zero,
+    One,
+    NotAPulseWidth,
+}
+
 impl Tolerances {
-    pub const fn from_timing(t: &Timing, samplerate: u32) -> Self {
+    pub const fn from_timing(timing: &Pulsedistance, samplerate: u32) -> Self {
         let per: u32 = 1000 / (samplerate / 1000);
         Tolerances {
-            sync_high: unit_range(t.header_htime / per, 5),
-            sync_low: unit_range(t.header_ltime / per, 5),
-            repeat: unit_range(t.repeat_ltime / per, 5),
-            zero: unit_range((t.data_htime + t.zero_ltime) / per, 15),
-            one: unit_range((t.data_htime + t.one_ltime) / per, 15),
+            sync: sample_range((timing.header_high + timing.header_low) / per, 5),
+            repeat: sample_range((timing.header_high + timing.repeat_low) / per, 5),
+            zero: sample_range((timing.data_high + timing.zero_low) / per, 5),
+            one: sample_range((timing.data_high + timing.one_low) / per, 5),
         }
     }
 
-    pub fn is_sync_high(&self, units: u32) -> bool {
-        self.sync_high.contains(&units)
-    }
-
-    pub fn is_sync_low(&self, units: u32) -> bool {
-        self.sync_low.contains(&units)
-    }
-
-    pub fn is_repeat(&self, tsd: u32) -> bool {
-        self.repeat.contains(&tsd)
-    }
-
-    pub fn is_value(&self, tsd: u32) -> Option<bool> {
-        if self.is_zero(tsd) {
-            return Some(false);
+    pub fn pulsewidth(&self, samples: u32) -> PulseWidth {
+        if self.sync.contains(&samples) {
+            return PulseWidth::Sync;
         }
-        if self.is_one(tsd) {
-            return Some(true);
+        if self.repeat.contains(&samples) {
+            return PulseWidth::Repeat;
         }
-        None
-    }
-
-    pub fn is_zero(&self, tsd: u32) -> bool {
-        self.zero.contains(&tsd)
-    }
-
-    pub fn is_one(&self, tsd: u32) -> bool {
-        self.one.contains(&tsd)
+        if self.one.contains(&samples) {
+            return PulseWidth::One;
+        }
+        if self.zero.contains(&samples) {
+            return PulseWidth::Zero;
+        }
+        PulseWidth::NotAPulseWidth
     }
 }
 
-const fn unit_range(units: u32, percent: u32) -> Range<u32> {
+const fn sample_range(units: u32, percent: u32) -> Range<u32> {
     let tol = (units * percent) / 100;
     (units - tol..units + tol)
 }

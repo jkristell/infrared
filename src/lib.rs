@@ -1,45 +1,43 @@
 #![no_std]
 
-use core::convert::Into;
-
-/// NEC protocol
-pub use protocols::nec;
-/// Rc5 Protocol
-pub use protocols::rc5;
-/// Rc6 Protocol
-pub use protocols::rc6;
-
-pub mod trace;
-
-/// Remote controls
-pub mod remote;
-pub use remote::RemoteControl;
+#[cfg(test)]
+#[macro_use]
+extern crate std;
 
 mod protocols;
+pub use protocols::*;
 
-#[derive(PartialEq)]
+pub mod remotecontrol;
+pub use remotecontrol::RemoteControl;
+
+pub mod prelude {
+    pub use crate::Receiver;
+    pub use crate::Transmitter;
+    pub use crate::ReceiverState;
+    pub use crate::TransmitterState;
+}
+
+#[derive(PartialEq, Eq, Copy, Clone)]
 /// Protocol decoder state
 pub enum ReceiverState<CMD, ERR> {
     Idle,
     Receiving,
     Done(CMD),
-    Err(ERR),
+    Error(ERR),
     Disabled,
 }
 
 /// Receiver trait
 pub trait Receiver {
     /// The resulting command type
-    type Command;
+    type Cmd;
     /// Receive Error
-    type ReceiveError;
+    type Err;
 
-    /// Register new event
-    fn event(
-        &mut self,
-        pinvalue: bool,
-        timestamp: u32,
-    ) -> ReceiverState<Self::Command, Self::ReceiveError>;
+    /// Sample
+    fn sample(&mut self, pinval: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err>;
+    /// Sample on known edge
+    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err>;
     /// Reset receiver
     fn reset(&mut self);
     /// Disable receiver
@@ -55,13 +53,20 @@ pub enum TransmitterState {
     Err,
 }
 
-pub trait Transmitter {
-    /// Initialize transfer
-    fn init<CMD: Into<u32>>(&mut self, cmd: CMD);
-
+pub trait Transmitter<CMD> {
+    /// Load command into transmitter
+    fn load(&mut self, cmd: CMD);
     /// Step the transfer loop
     fn step(&mut self, ts: u32) -> TransmitterState;
-
     /// Reset the transmitter
     fn reset(&mut self);
 }
+
+#[cfg(feature="protocol-dev")]
+pub struct ReceiverDebug<STATE, EXTRA> {
+    pub state: STATE,
+    pub state_new: STATE,
+    pub delta: u16,
+    pub extra: EXTRA,
+}
+
