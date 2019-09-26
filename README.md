@@ -11,14 +11,16 @@ A library for using infrared remote controls with Rust.
 ### Examples
  - Receiving, NEC, Rc5 and Rc6 ``examples/receiver``
  - Transmitting NEC ``examples/transmitter``
+ - [Blipper](https://github.com/jkristell/blipper) - An application for working
+ with transmitters and receivers from a host computer
   
 ## Tested with
-  - Tested with bluepill board
-  - Vishay TSOP382 IR receiver
-  - Various ir leds
-  - NEC Generic "Special for MP3" and Samsung remotes
-  - Rc6 tested with a Philips Bluray player remote
-  - Rc5 tested with a Marantz CD player remote
+ - Tested with bluepill board
+ - Vishay TSOP382 IR receiver
+ - Various ir leds
+ - NEC Generic "Special for MP3" and Samsung remotes
+ - Rc6 tested with a Philips Bluray player remote
+ - Rc5 tested with a Marantz CD player remote
 
 
 ![Boards](http://jott.se/wp-content/uploads/2019/09/txrx_setup.jpg)
@@ -28,11 +30,10 @@ A library for using infrared remote controls with Rust.
 See the examples.
 
 ## Near time goals
-    - Implement support for more remotes of different kinds
-    - Investigate if the pwm traits from Embedded-hal can be used
-    - Hw Timer-Capture based example
-    - Better tracer/capture application so that remotes can be
-     cloned easily
+ - Implement transmit for Rc5 and Rc6
+ - Implement support for more remotes of different kinds
+ - Investigate if the pwm traits from Embedded-hal can be used
+ - Hw Timer-Capture based example
     
 ## Long time goals
 USB/Network support to be able to create "universal remote control" types of applications.

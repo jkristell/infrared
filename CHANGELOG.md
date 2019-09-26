@@ -1,14 +1,12 @@
 # Changelog
 
-## TODO
- - Ensure that examples work
- - Release and mention Blipper
-
-## [0.4.0] - 2019-09-XX
+## [0.4.0] - 2019-09-26
  - Rewrote the receivers
  - Examples updated
  - Added protocol-dev feature for easier protocol debugging
+ - Added some basic testing
  - Lots of API breakage
+ - Mentioned Blipper
 
 ## [0.3.2] - 2019-09-21
  - Added support for Philips Rc5 Protocol
