@@ -5,10 +5,10 @@
  - Release and mention Blipper
 
 ## [0.4.0] - 2019-09-XX
- - Rewrote the NEC receiver
+ - Rewrote the receivers
+ - Examples updated
  - Added protocol-dev feature for easier protocol debugging
- - Lots of API breakage :)
-   * Receiver::event() is now split in to ::sample() and ::sample_edge()
+ - Lots of API breakage
 
 ## [0.3.2] - 2019-09-21
  - Added support for Philips Rc5 Protocol
