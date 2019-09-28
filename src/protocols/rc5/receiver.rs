@@ -1,32 +1,10 @@
 use core::ops::Range;
 use crate::{Receiver, ReceiverState};
+
+
 #[cfg(feature="protocol-dev")]
 use crate::ReceiverDebug;
-
-
-#[derive(Debug)]
-pub struct Rc5Command {
-    pub addr: u8,
-    pub cmd: u8,
-    pub start: u8,
-    pub toggle: u8,
-}
-
-impl Rc5Command {
-    pub const fn new(data: u16) -> Self {
-
-        //                   SS_TAAA_AACC_CCCC
-        let addr_mask = 0b_0000_0111_1100_0000;
-        let cmd_mask  = 0b_0000_0000_0011_1111;
-
-        let addr = ((data & addr_mask) >> 6) as u8;
-        let cmd = (data & cmd_mask) as u8;
-        let start = (data >> 12) as u8;
-        let toggle = ((data >> 11) & 1) as u8;
-
-        Self {addr, cmd, start, toggle}
-    }
-}
+use crate::rc5::Rc5Command;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Rc5Error {
@@ -87,7 +65,7 @@ impl Rc5Receiver {
         use ReceiverState::*;
         match self.state {
             Rc5State::Idle => Idle,
-            Rc5State::Done => Done(Rc5Command::new(self.bitbuf)),
+            Rc5State::Done => Done(Rc5Command::from_bits(self.bitbuf)),
             Rc5State::Error(err) => Error(err),
             _ => Receiving
         }

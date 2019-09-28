@@ -3,14 +3,68 @@ pub mod receiver;
 pub mod transmitter;
 
 pub use receiver::{
-    Rc5Receiver, Rc5Command
+    Rc5Receiver
 };
+
+const ADDR_MASK: u16   = 0b_0000_0111_1100_0000;
+const CMD_MASK: u16    = 0b_0000_0000_0011_1111;
+const START_MASK: u16  = 0b_0011_0000_0000_0000;
+const TOGGLE_MASK: u16 = 0b_0000_1000_0000_0000;
+
+const ADDR_SHIFT: u32 = 6;
+const START_SHIFT: u32 = 12;
+const TOGGLE_SHIFT: u32 = 11;
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct Rc5Command {
+    pub addr: u8,
+    pub cmd: u8,
+    pub start: u8,
+    pub toggle: u8,
+}
+
+impl Rc5Command {
+    pub const fn from_bits(data: u16) -> Self {
+
+        let addr = ((data & ADDR_MASK) >> ADDR_SHIFT) as u8;
+        let cmd = (data & CMD_MASK) as u8;
+        let start = ((data & START_MASK) >> START_SHIFT) as u8;
+        let toggle = ((data & TOGGLE_MASK) >> TOGGLE_SHIFT) as u8;
+
+        Self {addr, cmd, start, toggle}
+    }
+
+    pub const fn new(addr: u8, cmd: u8, toggle: bool) -> Self {
+        Self {
+            addr,
+            cmd,
+            start: 0b11,
+            toggle: toggle as u8,
+        }
+    }
+
+    pub fn to_bits(&self) -> u16 {
+
+        u16::from(self.addr) << ADDR_SHIFT |
+        u16::from(self.cmd) |
+        u16::from(self.toggle) << TOGGLE_SHIFT |
+        u16::from(self.start) << START_SHIFT
+    }
+}
+
 
 
 #[cfg(test)]
 mod tests {
     use crate::rc5::Rc5Receiver;
     use crate::prelude::*;
+    use crate::protocols::rc5::Rc5Command;
+
+    #[test]
+    fn rc5_command() {
+        let cmd = Rc5Command::new(20, 15, false);
+        assert_eq!(cmd, Rc5Command::from_bits(cmd.to_bits()))
+    }
 
     #[test]
     fn command() {
