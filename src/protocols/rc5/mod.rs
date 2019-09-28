@@ -2,9 +2,8 @@
 pub mod receiver;
 pub mod transmitter;
 
-pub use receiver::{
-    Rc5Receiver
-};
+pub use receiver::{Rc5Receiver};
+pub use transmitter::Rc5Transmitter;
 
 const ADDR_MASK: u16   = 0b_0000_0111_1100_0000;
 const CMD_MASK: u16    = 0b_0000_0000_0011_1111;
@@ -58,7 +57,7 @@ impl Rc5Command {
 mod tests {
     use crate::rc5::Rc5Receiver;
     use crate::prelude::*;
-    use crate::protocols::rc5::Rc5Command;
+    use crate::protocols::rc5::{Rc5Command, Rc5Transmitter};
 
     #[test]
     fn rc5_command() {
@@ -69,7 +68,13 @@ mod tests {
     #[test]
     fn command() {
 
-        let dists = [0, 37, 34, 72, 72, 73, 70, 72, 36, 37, 34, 36, 36, 36, 71, 73, 35, 37, 70, 37];
+        let dists = [0, 37, 34,
+            72, 72, 73, 70, 72,
+            36, 37, 34, 36, 36, 36,
+
+            71, 73,
+            35, 37,
+            70, 37];
 
         let mut recv = Rc5Receiver::new(40_000);
         let mut edge = false;
@@ -87,6 +92,32 @@ mod tests {
             assert_eq!(cmd.cmd, 9);
         } else {
             assert!(false);
+        }
+    }
+
+    #[test]
+    fn rc5_transmit() {
+
+        let mut tx = Rc5Transmitter::new_for_samplerate(40_000);
+
+        tx.load(Rc5Command::new(20, 9, false));
+
+        println!("bits: {:X?}", tx.bits);
+
+        let mut last_enable = false;
+        let mut last_ts = 0;
+
+        for ts in 0..2000 {
+            let state = tx.step(ts);
+
+            if let TransmitterState::Transmit(v) = state {
+                if v != last_enable {
+                    last_enable = v;
+                    let delta = ts - last_ts;
+                    println!("state: {}: {:?}", delta, state);
+                    last_ts = ts;
+                }
+            }
         }
     }
 }
