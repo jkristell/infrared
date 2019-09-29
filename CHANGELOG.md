@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.4.1] - 2019-09-29
+ - Added support for Rc5 transmit
+
 ## [0.4.0] - 2019-09-26
  - Rewrote the receivers
  - Examples updated
