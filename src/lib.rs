@@ -44,6 +44,7 @@ pub trait Receiver {
     fn disable(&mut self);
 }
 
+#[derive(Debug)]
 pub enum TransmitterState {
     /// Transmitter is ready for transmitting
     Idle,
