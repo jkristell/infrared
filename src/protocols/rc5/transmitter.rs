@@ -80,10 +80,6 @@ impl Transmitter<Rc5Command> for Rc5Transmitter {
             return TransmitterState::Transmit(pwm);
         }
 
-        if let State::Done = newstate {
-            return TransmitterState::Transmit(false);
-        }
-
         TransmitterState::Idle
     }
 
