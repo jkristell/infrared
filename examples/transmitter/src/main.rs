@@ -5,7 +5,6 @@
 use panic_semihosting as _;
 
 use cortex_m_rt::entry;
-use cortex_m_semihosting::hprintln;
 use stm32f1xx_hal::{
     gpio::{gpiob::PB9, Alternate, PushPull},
     pac,
@@ -17,10 +16,7 @@ use stm32f1xx_hal::{
 
 use infrared::{
     prelude::*,
-    nec::*,
     rc5::*,
-    nec::remotes::{SamsungTv, SamsungTvButton},
-    remotecontrol::RemoteControl,
 };
 
 const FREQ: u32 = 20_000;
