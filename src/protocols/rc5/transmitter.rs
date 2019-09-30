@@ -89,3 +89,17 @@ impl Transmitter<Rc5Command> for Rc5Transmitter {
         self.ts = 0;
     }
 }
+
+#[cfg(feature = "embedded-hal")]
+impl PwmTransmitter<Rc5Command> for Rc5Transmitter {
+
+    fn pwmstep<DUTY>(&mut self, ts: u32, pwm: &mut impl embedded_hal::PwmPin<Duty=DUTY>) -> TransmitterState {
+
+        let state = self.step(ts);
+        match state {
+            TransmitterState::Transmit(true) => pwm.enable(),
+            _ => pwm.disable(),
+        }
+        state
+    }
+}

@@ -1,5 +1,5 @@
 use crate::nec::{Pulsedistance, NecCommand};
-use crate::{Transmitter, TransmitterState};
+use crate::prelude::*;
 use crate::protocols::nec::NecTypeTrait;
 
 enum TransmitStateInternal {
@@ -114,6 +114,20 @@ impl<NECTYPE> Transmitter<NecCommand> for NecTypeTransmitter<NECTYPE>
         self.cmd = 0;
         self.state = TransmitStateInternal::Idle;
         self.last_ts = 0;
+    }
+}
+
+#[cfg(feature = "embedded-hal")]
+impl<NECTYPE: NecTypeTrait> PwmTransmitter<NecCommand> for NecTypeTransmitter<NECTYPE> {
+
+    fn pwmstep<DUTY>(&mut self, ts: u32, pwm: &mut impl embedded_hal::PwmPin<Duty=DUTY>) -> TransmitterState {
+
+        let state = self.step(ts);
+        match state {
+            TransmitterState::Transmit(true) => pwm.enable(),
+            _ => pwm.disable(),
+        }
+        state
     }
 }
 

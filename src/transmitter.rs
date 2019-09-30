@@ -1,0 +1,24 @@
+
+#[derive(Debug)]
+pub enum TransmitterState {
+    /// Transmitter is ready for transmitting
+    Idle,
+    /// Transmitting
+    Transmit(bool),
+    /// Error state
+    Err,
+}
+
+pub trait Transmitter<CMD> {
+    /// Load command into transmitter
+    fn load(&mut self, cmd: CMD);
+    /// Step the transfer loop
+    fn step(&mut self, ts: u32) -> TransmitterState;
+    /// Reset the transmitter
+    fn reset(&mut self);
+}
+
+#[cfg(feature = "embedded-hal")]
+pub trait PwmTransmitter<CMD>: Transmitter<CMD> {
+    fn pwmstep<DUTY>(&mut self, ts: u32, pwm: &mut impl embedded_hal::PwmPin<Duty=DUTY>) -> TransmitterState;
+}

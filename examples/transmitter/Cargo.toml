@@ -10,7 +10,7 @@ cortex-m = "0.6"
 cortex-m-rt = { version = "0.6.10" }
 panic-semihosting = "0.5"
 cortex-m-semihosting = "0.3.3"
-infrared = { path = "../.." }
+infrared = { path = "../..", features = ["embedded-hal"]}
 
 [profile.release]
 codegen-units = 1

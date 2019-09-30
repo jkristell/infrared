@@ -16,9 +16,10 @@ use stm32f1xx_hal::{
 };
 
 use infrared::{
+    prelude::*,
     nec::*,
+    rc5::*,
     nec::remotes::{SamsungTv, SamsungTvButton},
-    Transmitter, TransmitterState,
     remotecontrol::RemoteControl,
 };
 
@@ -27,7 +28,7 @@ const FREQ: u32 = 20_000;
 // Global timer
 static mut TIMER: Option<Timer<TIM2>> = None;
 // transmitter
-static mut NECTX: Option<NecSamsungTransmitter> = None;
+static mut NECTX: Option<Rc5Transmitter> = None;
 // Pwm channel
 static mut PWM: Option<Pwm<TIM4, C4>> = None;
 // Our remote control we want to act like
@@ -81,8 +82,7 @@ fn main() -> ! {
     // Safe because the devices are only used in the interrupt handler
     unsafe {
         TIMER.replace(timer);
-        let per: u32 = (1 * 1000) / (FREQ / 1000);
-        NECTX.replace(NecSamsungTransmitter::new(per));
+        NECTX.replace(Rc5Transmitter::new_for_samplerate(FREQ));
         PWM.replace(c4);
     }
 
@@ -96,7 +96,6 @@ fn main() -> ! {
 #[interrupt]
 fn TIM2() {
     static mut COUNT: u32 = 0;
-    use TransmitterState::*;
 
     // Clear the interrupt
     let timer = unsafe { &mut TIMER.as_mut().unwrap() };
@@ -106,27 +105,13 @@ fn TIM2() {
     let transmitter = unsafe { NECTX.as_mut().unwrap() };
     let pwm = unsafe { PWM.as_mut().unwrap() };
 
-    // Update the state in the transmitter
-    let state = transmitter.step(*COUNT);
-
-    match state {
-        Idle => {
-            pwm.disable();
-
-            // Sends a command every second
-            if *COUNT % FREQ == 0 {
-                // Next Channel on my Samsung TV
-
-                // let cmd = NecCommand {addr: 7, cmd: 18};
-                let cmd = SamsungTv.encode(SamsungTvButton::ChannelListNext);
-
-                transmitter.load(cmd);
-            }
-        }
-        Transmit(true) => pwm.enable(),
-        Transmit(false) => pwm.disable(),
-        Err => hprintln!("Err!!").unwrap(),
+    if *COUNT % FREQ == 0 {
+        // Next Channel on my Samsung TV
+        let cmd = Rc5Command::new(20, 15, false);
+        transmitter.load(cmd);
     }
+
+    transmitter.pwmstep(*COUNT, pwm);
 
     *COUNT = COUNT.wrapping_add(1);
 }

@@ -10,11 +10,17 @@ pub use protocols::*;
 pub mod remotecontrol;
 pub use remotecontrol::RemoteControl;
 
+mod transmitter;
+pub use transmitter::{TransmitterState, Transmitter};
+
+
 pub mod prelude {
     pub use crate::Receiver;
     pub use crate::Transmitter;
     pub use crate::ReceiverState;
     pub use crate::TransmitterState;
+    #[cfg(feature="embedded-hal")]
+    pub use crate::transmitter::PwmTransmitter;
 }
 
 #[derive(PartialEq, Eq, Copy, Clone)]
@@ -44,24 +50,6 @@ pub trait Receiver {
     fn disable(&mut self);
 }
 
-#[derive(Debug)]
-pub enum TransmitterState {
-    /// Transmitter is ready for transmitting
-    Idle,
-    /// Transmitting
-    Transmit(bool),
-    /// Error state
-    Err,
-}
-
-pub trait Transmitter<CMD> {
-    /// Load command into transmitter
-    fn load(&mut self, cmd: CMD);
-    /// Step the transfer loop
-    fn step(&mut self, ts: u32) -> TransmitterState;
-    /// Reset the transmitter
-    fn reset(&mut self);
-}
 
 #[cfg(feature="protocol-dev")]
 pub struct ReceiverDebug<STATE, EXTRA> {
