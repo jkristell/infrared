@@ -1,5 +1,8 @@
 # Changelog
 
+## [Unreleased] - 2019-10-XX
+ - Added (optional) embedded-hal support
+
 ## [0.4.1] - 2019-09-29
  - Added support for Rc5 transmit
 
