@@ -13,6 +13,8 @@ pub use remotecontrol::RemoteControl;
 mod transmitter;
 pub use transmitter::{TransmitterState, Transmitter};
 
+#[cfg(feature="embedded-hal")]
+pub use crate::transmitter::PwmTransmitter;
 
 pub mod prelude {
     pub use crate::Receiver;
@@ -20,7 +22,7 @@ pub mod prelude {
     pub use crate::ReceiverState;
     pub use crate::TransmitterState;
     #[cfg(feature="embedded-hal")]
-    pub use crate::transmitter::PwmTransmitter;
+    pub use crate::PwmTransmitter;
 }
 
 #[derive(PartialEq, Eq, Copy, Clone)]

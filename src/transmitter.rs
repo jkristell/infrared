@@ -20,5 +20,6 @@ pub trait Transmitter<CMD> {
 
 #[cfg(feature = "embedded-hal")]
 pub trait PwmTransmitter<CMD>: Transmitter<CMD> {
+    /// Step the transmit loop and output on `pwm`
     fn pwmstep<DUTY>(&mut self, ts: u32, pwm: &mut impl embedded_hal::PwmPin<Duty=DUTY>) -> TransmitterState;
 }

@@ -119,9 +119,7 @@ impl<NECTYPE> Transmitter<NecCommand> for NecTypeTransmitter<NECTYPE>
 
 #[cfg(feature = "embedded-hal")]
 impl<NECTYPE: NecTypeTrait> PwmTransmitter<NecCommand> for NecTypeTransmitter<NECTYPE> {
-
     fn pwmstep<DUTY>(&mut self, ts: u32, pwm: &mut impl embedded_hal::PwmPin<Duty=DUTY>) -> TransmitterState {
-
         let state = self.step(ts);
         match state {
             TransmitterState::Transmit(true) => pwm.enable(),
