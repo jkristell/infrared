@@ -89,3 +89,6 @@ impl Transmitter<Rc5Command> for Rc5Transmitter {
         self.ts = 0;
     }
 }
+
+#[cfg(feature = "embedded-hal")]
+impl PwmTransmitter<Rc5Command> for Rc5Transmitter {}

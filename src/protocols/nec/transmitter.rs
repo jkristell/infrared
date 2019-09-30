@@ -1,5 +1,5 @@
 use crate::nec::{Pulsedistance, NecCommand};
-use crate::{Transmitter, TransmitterState};
+use crate::prelude::*;
 use crate::protocols::nec::NecTypeTrait;
 
 enum TransmitStateInternal {
@@ -116,6 +116,9 @@ impl<NECTYPE> Transmitter<NecCommand> for NecTypeTransmitter<NECTYPE>
         self.last_ts = 0;
     }
 }
+
+#[cfg(feature = "embedded-hal")]
+impl<NECTYPE: NecTypeTrait> PwmTransmitter<NecCommand> for NecTypeTransmitter<NECTYPE> {}
 
 impl NSamples {
     pub const fn new(period: u32, pulsedistance: &Pulsedistance) -> Self {

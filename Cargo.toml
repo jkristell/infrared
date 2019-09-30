@@ -18,4 +18,5 @@ rc6 = []
 protocol-dev = []
 
 [dependencies]
+embedded-hal = {version = "0.2.3", features = ["unproven"], optional = true}
 
