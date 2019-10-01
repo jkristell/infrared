@@ -6,7 +6,7 @@ const ADDR: u8 = 0;
 
 pub struct SpecialForMp3;
 
-impl RemoteControl<NecCommand> for SpecialForMp3 {
+impl RemoteControl<'_, NecCommand> for SpecialForMp3 {
     type Button = SpecialForMp3Button;
 
     fn decode(&self, raw: NecCommand) -> Option<SpecialForMp3Button> {
