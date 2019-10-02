@@ -8,11 +8,13 @@ pub enum DeviceType {
     BluRayPlayer,
 }
 
-
 /// A trait describing a Remote Control
 pub trait RemoteControl<'a, CMD> {
     /// The type of the buttons
     type Button;
+
+    /// Device adress
+    const ADDR: u16;
 
     /// Type of device that this remote controls
     const DEVICE: DeviceType = DeviceType::Generic;
@@ -25,9 +27,4 @@ pub trait RemoteControl<'a, CMD> {
 
     /// Encode a button into a command
     fn encode(&self, button: Self::Button) -> CMD;
-
-    /// Get a reference to all buttons for this remote
-    fn buttons(&self) -> &[(Self::Button, CMD)] {
-        &[]
-    }
 }

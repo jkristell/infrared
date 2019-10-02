@@ -2,15 +2,14 @@ use crate::remotecontrol::RemoteControl;
 use crate::nec::NecCommand;
 use crate::nec_buttons;
 
-const ADDR: u8 = 0;
-
 pub struct SpecialForMp3;
 
 impl RemoteControl<'_, NecCommand> for SpecialForMp3 {
     type Button = SpecialForMp3Button;
+    const ADDR: u16 = 0;
 
     fn decode(&self, raw: NecCommand) -> Option<SpecialForMp3Button> {
-        if raw.addr != ADDR {
+        if raw.addr as u16 != Self::ADDR {
             return None;
         }
         to_button(raw.cmd)
@@ -18,7 +17,7 @@ impl RemoteControl<'_, NecCommand> for SpecialForMp3 {
 
     fn encode(&self, button: SpecialForMp3Button) -> NecCommand {
         NecCommand {
-            addr: ADDR,
+            addr: Self::ADDR as u8,
             cmd: from_button(button),
         }
     }

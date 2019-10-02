@@ -2,19 +2,19 @@ use crate::remotecontrol::{DeviceType, RemoteControl};
 use crate::nec::NecCommand;
 use crate::nec_buttons;
 
-const SAMSUNGTV_ADDR: u8 = 7;
-
 #[derive(Copy, Clone)]
 /// Samsung Tv Remote Control
 pub struct SamsungTv;
 
 impl RemoteControl<'_, NecCommand> for SamsungTv {
     type Button = SamsungTvButton;
+
     const MODEL: &'static str = "Samsung TV";
     const DEVICE: DeviceType = DeviceType::TV;
+    const ADDR: u16 = 7;
 
     fn decode(&self, cmd: NecCommand) -> Option<SamsungTvButton> {
-        if cmd.addr != SAMSUNGTV_ADDR {
+        if cmd.addr as u16 != Self::ADDR {
             return None;
         }
         to_button(cmd.cmd)
@@ -22,7 +22,7 @@ impl RemoteControl<'_, NecCommand> for SamsungTv {
 
     fn encode(&self, action: SamsungTvButton) -> NecCommand {
         NecCommand {
-            addr: SAMSUNGTV_ADDR,
+            addr: Self::ADDR as u8,
             cmd: from_button(action),
         }
     }
