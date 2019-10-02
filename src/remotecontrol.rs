@@ -17,12 +17,17 @@ pub trait RemoteControl<'a, CMD> {
     /// Type of device that this remote controls
     const DEVICE: DeviceType = DeviceType::Generic;
 
-    const NAME: &'a str = "";
-
+    /// Remote control model
+    const MODEL: &'a str = "<NONAME>";
 
     /// Try to decode a command into an Button for this remote
     fn decode(&self, raw: CMD) -> Option<Self::Button>;
 
     /// Encode a button into a command
     fn encode(&self, button: Self::Button) -> CMD;
+
+    /// Get a reference to all buttons for this remote
+    fn buttons(&self) -> &[(Self::Button, CMD)] {
+        &[]
+    }
 }

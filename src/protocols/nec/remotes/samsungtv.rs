@@ -10,7 +10,7 @@ pub struct SamsungTv;
 
 impl RemoteControl<'_, NecCommand> for SamsungTv {
     type Button = SamsungTvButton;
-    const NAME: &'static str = "Samsung TV";
+    const MODEL: &'static str = "Samsung TV";
     const DEVICE: DeviceType = DeviceType::TV;
 
     fn decode(&self, cmd: NecCommand) -> Option<SamsungTvButton> {
