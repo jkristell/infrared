@@ -2,6 +2,9 @@
 pub mod receiver;
 pub mod transmitter;
 
+pub mod remotes;
+
+
 pub use receiver::{Rc5Receiver};
 pub use transmitter::Rc5Transmitter;
 

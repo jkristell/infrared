@@ -1,35 +1,37 @@
-use crate::remotecontrol::{DeviceType, RemoteControl};
+use crate::remotecontrol::{DeviceType, RemoteControl, StandardButton};
 use crate::nec::NecCommand;
-use crate::nec_buttons;
+use crate::standard_mapping;
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 /// Samsung Tv Remote Control
 pub struct SamsungTv;
 
 impl RemoteControl<'_, NecCommand> for SamsungTv {
-    type Button = SamsungTvButton;
+    type Button = StandardButton;
 
     const MODEL: &'static str = "Samsung TV";
     const DEVICE: DeviceType = DeviceType::TV;
     const ADDR: u16 = 7;
 
-    fn decode(&self, cmd: NecCommand) -> Option<SamsungTvButton> {
+    fn decode(&self, cmd: NecCommand) -> Option<StandardButton> {
         if cmd.addr as u16 != Self::ADDR {
             return None;
         }
         to_button(cmd.cmd)
     }
 
-    fn encode(&self, action: SamsungTvButton) -> NecCommand {
-        NecCommand {
-            addr: Self::ADDR as u8,
-            cmd: from_button(action),
-        }
+    fn decode_cmdid(&self, cmdid: u8) -> Option<StandardButton> {
+        to_button(cmdid)
+    }
+
+    fn encode(&self, button: StandardButton) -> Option<NecCommand> {
+        let addr = Self::ADDR as u8;
+        from_button(button).map(|cmd| NecCommand { addr, cmd, })
     }
 }
 
-nec_buttons!(
-    SamsungTvButton, [
+standard_mapping!(
+    [
         (2, Power),
         (1, Source),
         (4, One),
