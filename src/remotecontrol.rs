@@ -1,5 +1,3 @@
-use crate::protocols::nec::remotes::{SamsungTv, SpecialForMp3};
-use crate::protocols::rc5::remotes::CdPlayer;
 
 #[derive(Debug)]
 pub enum DeviceType {
@@ -10,8 +8,13 @@ pub enum DeviceType {
     BluRayPlayer,
 }
 
+pub trait RemoteControlCommand {
+    fn address(&self) -> u16;
+    fn command(&self) -> u8;
+}
+
 /// A trait describing a Remote Control
-pub trait RemoteControl<'a, CMD> {
+pub trait RemoteControl<'a, CMD: RemoteControlCommand> {
     /// The type of the buttons
     type Button;
 
@@ -25,29 +28,22 @@ pub trait RemoteControl<'a, CMD> {
     const MODEL: &'a str = "<NONAME>";
 
     /// Try to decode a command into an Button for this remote
-    fn decode(&self, raw: CMD) -> Option<Self::Button>;
+    fn decode(&self, cmd: CMD) -> Option<Self::Button> {
+        if Self::ADDR == cmd.address() {
+            self.decode_cmdid(cmd.command())
+        } else {
+            None
+        }
+    }
 
-    fn decode_cmdid(&self, cmdid: u8) -> Option<Self::Button> { None }
+    fn decode_cmdid(&self, cmdid: u8) -> Option<Self::Button>;
 
     /// Encode a button into a command
     fn encode(&self, button: Self::Button) -> Option<CMD>;
 }
 
-#[derive(Debug)]
-pub enum Remotes {
-    SamsungTv(SamsungTv),
-    SpecialForMp3(SpecialForMp3),
-    Rc5CdPlayer(CdPlayer),
-}
-
-pub const REMOTES: &[Remotes] = &[
-    Remotes::SamsungTv(SamsungTv),
-    Remotes::SpecialForMp3(SpecialForMp3),
-    Remotes::Rc5CdPlayer(CdPlayer),
-];
-
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 /// Extensive list of all buttons ever found on a remote control
 pub enum StandardButton {
     Power,

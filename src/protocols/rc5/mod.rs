@@ -7,6 +7,7 @@ pub mod remotes;
 
 pub use receiver::{Rc5Receiver};
 pub use transmitter::Rc5Transmitter;
+use crate::remotecontrol::RemoteControlCommand;
 
 const ADDR_MASK: u16   = 0b_0000_0111_1100_0000;
 const CMD_MASK: u16    = 0b_0000_0000_0011_1111;
@@ -23,6 +24,16 @@ pub struct Rc5Command {
     pub cmd: u8,
     pub start: u8,
     pub toggle: u8,
+}
+
+impl RemoteControlCommand for Rc5Command {
+    fn address(&self) -> u16 {
+        self.addr as u16
+    }
+
+    fn command(&self) -> u8 {
+        self.cmd
+    }
 }
 
 impl Rc5Command {
