@@ -189,8 +189,8 @@ impl Tolerances {
         Tolerances {
             sync: sample_range((timing.header_high + timing.header_low) / per, 5),
             repeat: sample_range((timing.header_high + timing.repeat_low) / per, 5),
-            zero: sample_range((timing.data_high + timing.zero_low) / per, 5),
-            one: sample_range((timing.data_high + timing.one_low) / per, 5),
+            zero: sample_range((timing.data_high + timing.zero_low) / per, 10),
+            one: sample_range((timing.data_high + timing.one_low) / per, 10),
         }
     }
 
