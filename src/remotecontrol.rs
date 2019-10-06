@@ -100,5 +100,10 @@ pub enum StandardButton {
     Eq,
     Mute,
 
+    Random,
+    Repeat,
+    Time,
+    Setup,
+
 }
 
