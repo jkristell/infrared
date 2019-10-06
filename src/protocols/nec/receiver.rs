@@ -158,7 +158,7 @@ impl<NECTYPE: NecTypeTrait> Receiver for NecTypeReceiver<NECTYPE> {
         self.state = NecState::Init;
         self.prev_sampletime = 0;
         self.prev_pinval = false;
-        self.lastcommand = self.bitbuf;
+        self.lastcommand = if self.bitbuf == 0 {self.lastcommand} else {self.bitbuf};
         self.bitbuf = 0;
     }
 
