@@ -1,5 +1,4 @@
 #[macro_use]
-pub mod remotes;
 pub mod receiver;
 pub mod transmitter;
 
@@ -8,7 +7,6 @@ mod tests;
 
 pub use receiver::{NecError, NecTypeReceiver, NecResult};
 pub use transmitter::NecTypeTransmitter;
-use crate::remotecontrol::RemoteControlCommand;
 
 pub struct StandardType;
 pub struct SamsungType;
@@ -31,16 +29,6 @@ impl NecCommand {
         let addr = ((bitbuf) & 0xFF) as u8;
         let cmd = ((bitbuf >> 16) & 0xFF) as u8;
         Self {addr, cmd}
-    }
-}
-
-impl RemoteControlCommand for NecCommand {
-    fn address(&self) -> u16 {
-        self.addr as u16
-    }
-
-    fn command(&self) -> u8 {
-        self.cmd
     }
 }
 

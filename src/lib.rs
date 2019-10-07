@@ -7,9 +7,6 @@ extern crate std;
 mod protocols;
 pub use protocols::*;
 
-pub mod remotecontrol;
-pub use remotecontrol::RemoteControl;
-
 mod transmitter;
 pub use transmitter::{TransmitterState, Transmitter};
 
@@ -50,6 +47,14 @@ pub trait Receiver {
     fn reset(&mut self);
     /// Disable receiver
     fn disable(&mut self);
+}
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub enum Protocol {
+    Nec = 1,
+    NecSamsung = 2,
+    Rc5 = 3,
+    Rc6 = 4,
 }
 
 
