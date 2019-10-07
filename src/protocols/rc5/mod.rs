@@ -12,7 +12,7 @@ const ADDR_SHIFT: u32 = 6;
 const START_SHIFT: u32 = 12;
 const TOGGLE_SHIFT: u32 = 11;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct Rc5Command {
     pub addr: u8,
     pub cmd: u8,
