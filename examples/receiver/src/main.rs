@@ -93,33 +93,32 @@ fn TIM2() {
         let rc5 = unsafe { RC5.as_mut().unwrap() };
         let rc6 = unsafe { RC6.as_mut().unwrap() };
 
-
         if let Some(cmd) = sample(nec, rising, *COUNT) {
-            hprintln!("{:?}", cmd).unwrap();
+            hprintln!("nec: {} {}", cmd.addr, cmd.cmd).unwrap();
             nec.reset();
         }
 
         if let Some(cmd) = sample(nes, rising, *COUNT) {
-            hprintln!("{:?}", cmd).unwrap();
+            hprintln!("nes: {} {}", cmd.addr, cmd.cmd).unwrap();
             nes.reset();
         }
 
         if let Some(cmd) = sample(rc5, rising, *COUNT) {
-            use infrared_remotes::rc5::CdPlayer;
+            use infrared_remotes::rc5::Rc5CdPlayer;
             use infrared_remotes::RemoteControl;
 
             // Print the command if recognized as a Rc5 CD-player command
-            if let Some(decoded) = CdPlayer.decode(cmd) {
-                hprintln!("{:?}", decoded).unwrap();
+            if let Some(decoded) = Rc5CdPlayer.decode(cmd) {
+                hprintln!("rc5 CD: {:?}", decoded).unwrap();
             } else {
-                hprintln!("{:?}", cmd).unwrap();
+                hprintln!("rc5: {} {}", cmd.addr, cmd.cmd).unwrap();
             }
 
             rc5.reset();
         }
 
         if let Some(cmd) = sample(rc6, rising, *COUNT) {
-            hprintln!("{:?}", cmd).unwrap();
+            hprintln!("rc6: {} {}", cmd.addr, cmd.cmd).unwrap();
             rc6.reset();
         }
     }
