@@ -10,7 +10,7 @@ pub use protocols::*;
 mod transmitter;
 pub use transmitter::{TransmitterState, Transmitter};
 
-#[cfg(feature="embedded-hal")]
+#[cfg(feature = "embedded-hal")]
 pub use crate::transmitter::PwmTransmitter;
 
 pub mod prelude {
@@ -18,7 +18,7 @@ pub mod prelude {
     pub use crate::Transmitter;
     pub use crate::ReceiverState;
     pub use crate::TransmitterState;
-    #[cfg(feature="embedded-hal")]
+    #[cfg(feature = "embedded-hal")]
     pub use crate::PwmTransmitter;
 }
 
@@ -61,7 +61,7 @@ pub enum ProtocolId {
 }
 
 
-#[cfg(feature="protocol-dev")]
+#[cfg(feature = "protocol-dev")]
 pub struct ReceiverDebug<STATE, EXTRA> {
     pub state: STATE,
     pub state_new: STATE,

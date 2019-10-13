@@ -2,7 +2,7 @@ use core::ops::Range;
 
 use crate::nec::Pulsedistance;
 use crate::{Receiver, ReceiverState, ProtocolId};
-#[cfg(feature="protocol-dev")]
+#[cfg(feature = "protocol-dev")]
 use crate::ReceiverDebug;
 use crate::protocols::nec::{NecTypeTrait, NecCommand};
 
@@ -29,7 +29,7 @@ pub struct NecTypeReceiver<NECTYPE> {
     lastcommand: u32,
     nectype: core::marker::PhantomData<NECTYPE>,
 
-    #[cfg(feature="protocol-dev")]
+    #[cfg(feature = "protocol-dev")]
     pub debug: ReceiverDebug<NecState, Tolerances>,
 }
 
@@ -65,7 +65,7 @@ impl<NECTYPE: NecTypeTrait> NecTypeReceiver<NECTYPE> {
             bitbuf: 0,
             lastcommand: 0,
             nectype: core::marker::PhantomData,
-            #[cfg(feature="protocol-dev")]
+            #[cfg(feature = "protocol-dev")]
             debug: ReceiverDebug {
                 state: NecState::Init,
                 state_new: NecState::Init,
@@ -142,7 +142,7 @@ impl<NECTYPE: NecTypeTrait> Receiver for NecTypeReceiver<NECTYPE> {
                 (Disabled,        _)        => Disabled,
             };
 
-            #[cfg(feature="protocol-dev")]
+            #[cfg(feature = "protocol-dev")]
             {
                 self.debug.state = self.state;
                 self.debug.state_new = newstate;

@@ -2,7 +2,7 @@ use core::ops::Range;
 use crate::{Receiver, ReceiverState, ProtocolId};
 
 
-#[cfg(feature="protocol-dev")]
+#[cfg(feature = "protocol-dev")]
 use crate::ReceiverDebug;
 use crate::rc5::Rc5Command;
 
@@ -20,7 +20,7 @@ pub struct Rc5Receiver {
     last: u32,
     pub rc5cntr: u32,
 
-    #[cfg(feature="protocol-dev")]
+    #[cfg(feature = "protocol-dev")]
     pub debug: ReceiverDebug<Rc5State, Option<u32>>,
 }
 
@@ -33,7 +33,7 @@ impl Rc5Receiver {
             pinval: false,
             bitbuf: 0,
             rc5cntr: 0,
-            #[cfg(feature="protocol-dev")]
+            #[cfg(feature = "protocol-dev")]
             debug: ReceiverDebug {
                 state: Rc5State::Idle,
                 state_new: Rc5State::Idle,
@@ -134,7 +134,7 @@ impl Receiver for Rc5Receiver {
             (Disabled,      _,      _)               => Disabled,
         };
 
-        #[cfg(feature="protocol-dev")]
+        #[cfg(feature = "protocol-dev")]
             {
                 self.debug.state = self.state;
                 self.debug.state_new = newstate;

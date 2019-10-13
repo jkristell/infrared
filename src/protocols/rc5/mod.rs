@@ -80,7 +80,7 @@ mod tests {
 
         for dist in dists.iter() {
             edge = !edge;
-            tot += dist;
+            tot += *dist;
             state = recv.sample_edge(edge, tot);
         }
 
