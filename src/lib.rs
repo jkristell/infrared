@@ -38,6 +38,8 @@ pub trait Receiver {
     type Cmd;
     /// Receive Error
     type Err;
+    /// Protocol id
+    const PROTOCOL_ID: ProtocolId;
 
     /// Sample
     fn sample(&mut self, pinval: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err>;
@@ -50,11 +52,12 @@ pub trait Receiver {
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub enum Protocol {
+pub enum ProtocolId {
     Nec = 1,
     NecSamsung = 2,
     Rc5 = 3,
     Rc6 = 4,
+    Logging = 5,
 }
 
 

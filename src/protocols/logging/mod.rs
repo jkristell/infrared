@@ -1,4 +1,4 @@
-use crate::{Receiver, ReceiverState};
+use crate::{Receiver, ReceiverState, ProtocolId};
 
 const BUF_LEN: usize = 128;
 
@@ -25,6 +25,8 @@ pub struct LoggingReceiver {
 impl Receiver for LoggingReceiver {
     type Cmd = ();
     type Err = ();
+    const PROTOCOL_ID: ProtocolId = ProtocolId::Logging;
+
 
     fn sample(&mut self, pinval: bool, samplenum: u32) -> ReceiverState<(), ()> {
 

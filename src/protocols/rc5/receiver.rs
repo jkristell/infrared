@@ -1,5 +1,5 @@
 use core::ops::Range;
-use crate::{Receiver, ReceiverState};
+use crate::{Receiver, ReceiverState, ProtocolId};
 
 
 #[cfg(feature="protocol-dev")]
@@ -89,6 +89,7 @@ type Rc5Res = ReceiverState<Rc5Command, Rc5Error>;
 impl Receiver for Rc5Receiver {
     type Cmd = Rc5Command;
     type Err = Rc5Error;
+    const PROTOCOL_ID: ProtocolId = ProtocolId::Rc5;
 
     fn sample(&mut self, pinval: bool, sampletime: u32) -> Rc5Res {
 

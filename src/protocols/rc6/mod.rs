@@ -1,5 +1,5 @@
 use core::ops::Range;
-use crate::{Receiver, ReceiverState};
+use crate::{Receiver, ReceiverState, ProtocolId};
 #[cfg(feature="protocol-dev")]
 use crate::ReceiverDebug;
 
@@ -15,6 +15,12 @@ impl Rc6Command {
         let addr = (data >> 8) as u8;
         let cmd = (data & 0xFF) as u8;
         Self {addr, cmd, toggle}
+    }
+
+    pub fn from_addr_cmd(addr: u8, cmd: u8) -> Self {
+        Self {
+            addr, cmd, toggle: false
+        }
     }
 }
 
@@ -112,6 +118,7 @@ const FALLING: bool = false;
 impl Receiver for Rc6Receiver {
     type Cmd = Rc6Command;
     type Err = Rc6Error;
+    const PROTOCOL_ID: ProtocolId = ProtocolId::Rc6;
 
     fn sample(&mut self, pinval: bool, timestamp: u32) -> Rc6Result {
 
@@ -160,7 +167,7 @@ impl Receiver for Rc6Receiver {
             (HeaderData(_), _, None)        => Idle,
 
             (Trailing, FALLING, Some(3))    => { self.toggle = false; Data(15) },
-            (Trailing, RISING, Some(2))     => { self.toggle = true; Data(15) },
+            (Trailing, RISING,  Some(2))    => { self.toggle = true; Data(15) },
             (Trailing, FALLING, Some(1))    => Trailing,
             (Trailing, _, _)                => Idle,
 
@@ -170,7 +177,7 @@ impl Receiver for Rc6Receiver {
             (Data(n), RISING,   Some(_)) if odd    => Data(n-1),
             (Data(n), FALLING,  Some(_)) if odd    => { self.data |= 1 << n; Data(n-1) },
             (Data(n), _,        Some(_))           => Data(n),
-            (Data(_),      _,   None)              => Error(Rc6Error::Data(delta)),
+            (Data(_), _,        None)              => Error(Rc6Error::Data(delta)),
 
             (Done, _, _)        => Done,
             (Error(err), _, _)  => Error(err),

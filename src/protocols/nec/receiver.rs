@@ -1,7 +1,7 @@
 use core::ops::Range;
 
 use crate::nec::Pulsedistance;
-use crate::{Receiver, ReceiverState};
+use crate::{Receiver, ReceiverState, ProtocolId};
 #[cfg(feature="protocol-dev")]
 use crate::ReceiverDebug;
 use crate::protocols::nec::{NecTypeTrait, NecCommand};
@@ -93,6 +93,7 @@ impl<NECTYPE: NecTypeTrait> NecTypeReceiver<NECTYPE> {
 impl<NECTYPE: NecTypeTrait> Receiver for NecTypeReceiver<NECTYPE> {
     type Cmd = NecCommand;
     type Err = NecError;
+    const PROTOCOL_ID: ProtocolId = NECTYPE::PROTOCOL;
 
     fn sample(&mut self, pinval: bool, timestamp: u32) -> ReceiverState<NecCommand, NecError> {
 

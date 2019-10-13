@@ -7,6 +7,7 @@ mod tests;
 
 pub use receiver::{NecError, NecTypeReceiver, NecResult};
 pub use transmitter::NecTypeTransmitter;
+use crate::ProtocolId;
 
 pub struct StandardType;
 pub struct SamsungType;
@@ -34,11 +35,13 @@ impl NecCommand {
 
 pub trait NecTypeTrait {
     const PULSEDISTANCE: Pulsedistance;
+    const PROTOCOL: ProtocolId;
 
     fn encode_command(cmd: NecCommand) -> u32;
 }
 
 impl NecTypeTrait for StandardType {
+    const PROTOCOL: ProtocolId = ProtocolId::Nec;
     const PULSEDISTANCE: Pulsedistance = Pulsedistance {
         header_high: 9000,
         header_low: 4500,
@@ -56,6 +59,7 @@ impl NecTypeTrait for StandardType {
 }
 
 impl NecTypeTrait for SamsungType {
+    const PROTOCOL: ProtocolId = ProtocolId::NecSamsung;
     const PULSEDISTANCE: Pulsedistance = Pulsedistance {
         header_high: 4500,
         header_low: 4500,
