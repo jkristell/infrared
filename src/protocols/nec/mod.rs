@@ -26,9 +26,17 @@ pub struct NecCommand {
 }
 
 impl NecCommand {
-    pub fn from(bitbuf: u32) -> Self {
-        let addr = ((bitbuf) & 0xFF) as u8;
-        let cmd = ((bitbuf >> 16) & 0xFF) as u8;
+
+    pub fn new(addr: u8, cmd: u8) -> Self {
+        NecCommand {
+            addr,
+            cmd
+        }
+    }
+
+    pub fn from_bits(bits: u32) -> Self {
+        let addr = ((bits) & 0xFF) as u8;
+        let cmd = ((bits >> 16) & 0xFF) as u8;
         Self {addr, cmd}
     }
 }

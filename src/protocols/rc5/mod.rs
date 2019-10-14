@@ -21,16 +21,6 @@ pub struct Rc5Command {
 }
 
 impl Rc5Command {
-    pub const fn from_bits(data: u16) -> Self {
-
-        let addr = ((data & ADDR_MASK) >> ADDR_SHIFT) as u8;
-        let cmd = (data & CMD_MASK) as u8;
-        let start = ((data & START_MASK) >> START_SHIFT) as u8;
-        let toggle = ((data & TOGGLE_MASK) >> TOGGLE_SHIFT) as u8;
-
-        Self {addr, cmd, start, toggle}
-    }
-
     pub const fn new(addr: u8, cmd: u8, toggle: bool) -> Self {
         Self {
             addr,
@@ -40,6 +30,15 @@ impl Rc5Command {
         }
     }
 
+    pub const fn from_bits(bits: u16) -> Self {
+        let addr = ((bits & ADDR_MASK) >> ADDR_SHIFT) as u8;
+        let cmd = (bits & CMD_MASK) as u8;
+        let start = ((bits & START_MASK) >> START_SHIFT) as u8;
+        let toggle = ((bits & TOGGLE_MASK) >> TOGGLE_SHIFT) as u8;
+
+        Self {addr, cmd, start, toggle}
+    }
+
     pub fn to_bits(&self) -> u16 {
         u16::from(self.addr) << ADDR_SHIFT |
         u16::from(self.cmd) |
@@ -47,7 +46,6 @@ impl Rc5Command {
         u16::from(self.start) << START_SHIFT
     }
 }
-
 
 
 #[cfg(test)]

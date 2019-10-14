@@ -11,16 +11,17 @@ pub struct Rc6Command {
 }
 
 impl Rc6Command {
-    pub fn new(data: u32, toggle: bool) -> Self {
-        let addr = (data >> 8) as u8;
-        let cmd = (data & 0xFF) as u8;
-        Self {addr, cmd, toggle}
-    }
 
-    pub fn from_addr_cmd(addr: u8, cmd: u8) -> Self {
+    pub fn new(addr: u8, cmd: u8) -> Self {
         Self {
             addr, cmd, toggle: false
         }
+    }
+
+    pub fn from_bits(bits: u32, toggle: bool) -> Self {
+        let addr = (bits >> 8) as u8;
+        let cmd = (bits & 0xFF) as u8;
+        Self {addr, cmd, toggle}
     }
 }
 
@@ -91,7 +92,7 @@ impl Rc6Receiver {
         use ReceiverState::*;
         match self.state {
             Rc6State::Idle => Idle,
-            Rc6State::Done => Done(Rc6Command::new(self.data, self.toggle)),
+            Rc6State::Done => Done(Rc6Command::from_bits(self.data, self.toggle)),
             Rc6State::Error(err) => Error(err),
             _ => Receiving
         }

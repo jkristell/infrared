@@ -81,8 +81,8 @@ impl<NECTYPE: NecTypeTrait> NecTypeReceiver<NECTYPE> {
         // Internalstate to ReceiverState
         match self.state {
             NecState::Init => Idle,
-            NecState::Done => Done(NecCommand::from(self.bitbuf)),
-            NecState::RepeatDone => Done(NecCommand::from(self.lastcommand)),
+            NecState::Done => Done(NecCommand::from_bits(self.bitbuf)),
+            NecState::RepeatDone => Done(NecCommand::from_bits(self.lastcommand)),
             NecState::Err(e) => Error(e),
             NecState::Disabled => Disabled,
             _ => Receiving,
