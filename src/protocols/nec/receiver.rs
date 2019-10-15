@@ -1,8 +1,8 @@
 use core::ops::Range;
 
 use crate::nec::Pulsedistance;
-use crate::{Receiver, ReceiverState};
-#[cfg(feature="protocol-dev")]
+use crate::{Receiver, ReceiverState, ProtocolId};
+#[cfg(feature = "protocol-dev")]
 use crate::ReceiverDebug;
 use crate::protocols::nec::{NecTypeTrait, NecCommand};
 
@@ -29,7 +29,7 @@ pub struct NecTypeReceiver<NECTYPE> {
     lastcommand: u32,
     nectype: core::marker::PhantomData<NECTYPE>,
 
-    #[cfg(feature="protocol-dev")]
+    #[cfg(feature = "protocol-dev")]
     pub debug: ReceiverDebug<NecState, Tolerances>,
 }
 
@@ -65,7 +65,7 @@ impl<NECTYPE: NecTypeTrait> NecTypeReceiver<NECTYPE> {
             bitbuf: 0,
             lastcommand: 0,
             nectype: core::marker::PhantomData,
-            #[cfg(feature="protocol-dev")]
+            #[cfg(feature = "protocol-dev")]
             debug: ReceiverDebug {
                 state: NecState::Init,
                 state_new: NecState::Init,
@@ -81,8 +81,8 @@ impl<NECTYPE: NecTypeTrait> NecTypeReceiver<NECTYPE> {
         // Internalstate to ReceiverState
         match self.state {
             NecState::Init => Idle,
-            NecState::Done => Done(NecCommand::from(self.bitbuf)),
-            NecState::RepeatDone => Done(NecCommand::from(self.lastcommand)),
+            NecState::Done => Done(NecCommand::from_bits(self.bitbuf)),
+            NecState::RepeatDone => Done(NecCommand::from_bits(self.lastcommand)),
             NecState::Err(e) => Error(e),
             NecState::Disabled => Disabled,
             _ => Receiving,
@@ -93,6 +93,7 @@ impl<NECTYPE: NecTypeTrait> NecTypeReceiver<NECTYPE> {
 impl<NECTYPE: NecTypeTrait> Receiver for NecTypeReceiver<NECTYPE> {
     type Cmd = NecCommand;
     type Err = NecError;
+    const PROTOCOL_ID: ProtocolId = NECTYPE::PROTOCOL;
 
     fn sample(&mut self, pinval: bool, timestamp: u32) -> ReceiverState<NecCommand, NecError> {
 
@@ -141,7 +142,7 @@ impl<NECTYPE: NecTypeTrait> Receiver for NecTypeReceiver<NECTYPE> {
                 (Disabled,        _)        => Disabled,
             };
 
-            #[cfg(feature="protocol-dev")]
+            #[cfg(feature = "protocol-dev")]
             {
                 self.debug.state = self.state;
                 self.debug.state_new = newstate;
@@ -158,7 +159,7 @@ impl<NECTYPE: NecTypeTrait> Receiver for NecTypeReceiver<NECTYPE> {
         self.state = NecState::Init;
         self.prev_sampletime = 0;
         self.prev_pinval = false;
-        self.lastcommand = self.bitbuf;
+        self.lastcommand = if self.bitbuf == 0 {self.lastcommand} else {self.bitbuf};
         self.bitbuf = 0;
     }
 
@@ -189,8 +190,8 @@ impl Tolerances {
         Tolerances {
             sync: sample_range((timing.header_high + timing.header_low) / per, 5),
             repeat: sample_range((timing.header_high + timing.repeat_low) / per, 5),
-            zero: sample_range((timing.data_high + timing.zero_low) / per, 5),
-            one: sample_range((timing.data_high + timing.one_low) / per, 5),
+            zero: sample_range((timing.data_high + timing.zero_low) / per, 10),
+            one: sample_range((timing.data_high + timing.one_low) / per, 10),
         }
     }
 

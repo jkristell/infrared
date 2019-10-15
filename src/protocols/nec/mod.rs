@@ -1,5 +1,4 @@
 #[macro_use]
-pub mod remotes;
 pub mod receiver;
 pub mod transmitter;
 
@@ -8,6 +7,7 @@ mod tests;
 
 pub use receiver::{NecError, NecTypeReceiver, NecResult};
 pub use transmitter::NecTypeTransmitter;
+use crate::ProtocolId;
 
 pub struct StandardType;
 pub struct SamsungType;
@@ -26,20 +26,30 @@ pub struct NecCommand {
 }
 
 impl NecCommand {
-    pub fn from(bitbuf: u32) -> Self {
-        let addr = ((bitbuf) & 0xFF) as u8;
-        let cmd = ((bitbuf >> 16) & 0xFF) as u8;
+
+    pub fn new(addr: u8, cmd: u8) -> Self {
+        NecCommand {
+            addr,
+            cmd
+        }
+    }
+
+    pub fn from_bits(bits: u32) -> Self {
+        let addr = ((bits) & 0xFF) as u8;
+        let cmd = ((bits >> 16) & 0xFF) as u8;
         Self {addr, cmd}
     }
 }
 
 pub trait NecTypeTrait {
     const PULSEDISTANCE: Pulsedistance;
+    const PROTOCOL: ProtocolId;
 
     fn encode_command(cmd: NecCommand) -> u32;
 }
 
 impl NecTypeTrait for StandardType {
+    const PROTOCOL: ProtocolId = ProtocolId::Nec;
     const PULSEDISTANCE: Pulsedistance = Pulsedistance {
         header_high: 9000,
         header_low: 4500,
@@ -57,6 +67,7 @@ impl NecTypeTrait for StandardType {
 }
 
 impl NecTypeTrait for SamsungType {
+    const PROTOCOL: ProtocolId = ProtocolId::NecSamsung;
     const PULSEDISTANCE: Pulsedistance = Pulsedistance {
         header_high: 4500,
         header_low: 4500,

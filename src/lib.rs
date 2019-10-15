@@ -7,13 +7,10 @@ extern crate std;
 mod protocols;
 pub use protocols::*;
 
-pub mod remotecontrol;
-pub use remotecontrol::RemoteControl;
-
 mod transmitter;
 pub use transmitter::{TransmitterState, Transmitter};
 
-#[cfg(feature="embedded-hal")]
+#[cfg(feature = "embedded-hal")]
 pub use crate::transmitter::PwmTransmitter;
 
 pub mod prelude {
@@ -21,7 +18,7 @@ pub mod prelude {
     pub use crate::Transmitter;
     pub use crate::ReceiverState;
     pub use crate::TransmitterState;
-    #[cfg(feature="embedded-hal")]
+    #[cfg(feature = "embedded-hal")]
     pub use crate::PwmTransmitter;
 }
 
@@ -41,6 +38,8 @@ pub trait Receiver {
     type Cmd;
     /// Receive Error
     type Err;
+    /// Protocol id
+    const PROTOCOL_ID: ProtocolId;
 
     /// Sample
     fn sample(&mut self, pinval: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err>;
@@ -52,8 +51,17 @@ pub trait Receiver {
     fn disable(&mut self);
 }
 
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub enum ProtocolId {
+    Nec = 1,
+    NecSamsung = 2,
+    Rc5 = 3,
+    Rc6 = 4,
+    Logging = 5,
+}
 
-#[cfg(feature="protocol-dev")]
+
+#[cfg(feature = "protocol-dev")]
 pub struct ReceiverDebug<STATE, EXTRA> {
     pub state: STATE,
     pub state_new: STATE,
