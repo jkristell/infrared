@@ -11,11 +11,10 @@ cortex-m-rt = { version = "0.6.7" }
 panic-semihosting = "0.5"
 cortex-m-semihosting = "0.3.3"
 
-infrared = { path = "../.." }
+[dependencies.infrared]
+path = "../.."
+features = ["remotes"]
 
-[dependencies.infrared-remotes]
-git = "https://github.com/jkristell/infrared-remotes"
-default-features = false
 
 [profile.release]
 codegen-units = 1

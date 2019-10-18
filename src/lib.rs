@@ -1,4 +1,4 @@
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(test)]
 #[macro_use]
@@ -6,6 +6,9 @@ extern crate std;
 
 mod protocols;
 pub use protocols::*;
+
+#[cfg(feature = "remotes")]
+pub mod remotes;
 
 mod transmitter;
 pub use transmitter::{TransmitterState, Transmitter};

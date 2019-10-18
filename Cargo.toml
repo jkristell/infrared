@@ -15,8 +15,9 @@ default = ["nec", "rc5", "rc6"]
 nec = []
 rc5 = []
 rc6 = []
+remotes = []
+std = []
 protocol-dev = []
 
 [dependencies]
 embedded-hal = {version = "0.2.3", features = ["unproven"], optional = true}
-

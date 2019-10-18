@@ -104,11 +104,11 @@ fn TIM2() {
         }
 
         if let Some(cmd) = sample(rc5, rising, *COUNT) {
-            use infrared_remotes::rc5::Rc5CdPlayer;
-            use infrared_remotes::RemoteControl;
+            use infrared::remotes::rc5::Rc5CdPlayer;
+            use infrared::remotes::RemoteControl;
 
             // Print the command if recognized as a Rc5 CD-player command
-            if let Some(decoded) = Rc5CdPlayer.decode(cmd) {
+            if let Some(decoded) = Rc5CdPlayer.decode_with_address(cmd) {
                 hprintln!("rc5 CD: {:?}", decoded).unwrap();
             } else {
                 hprintln!("rc5: {} {}", cmd.addr, cmd.cmd).unwrap();
