@@ -2,6 +2,7 @@
 
 ## [Unreleased] - 2019-10-XX
  - Added (optional) embedded-hal support
+ - Added support for NEC commands with 16 bit addresses
 
 ## [0.4.1] - 2019-09-29
  - Added support for Rc5 transmit
