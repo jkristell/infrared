@@ -57,10 +57,11 @@ pub trait Receiver {
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ProtocolId {
     Nec = 1,
-    NecSamsung = 2,
-    Rc5 = 3,
-    Rc6 = 4,
-    Logging = 5,
+    Nec16 = 2,
+    NecSamsung = 3,
+    Rc5 = 4,
+    Rc6 = 5,
+    Logging = 6,
 }
 
 

@@ -1,4 +1,4 @@
-use crate::protocols::nec::{NecReceiver, SamsungType, StandardType};
+use crate::protocols::nec::{NecReceiver, SamsungType, StandardType, Nec16Type};
 use crate::prelude::*;
 use crate::nec::{NecCommand, NecTypeTrait};
 
@@ -18,7 +18,7 @@ fn standard_nec() {
 
     for dist in dists.iter() {
         edge = !edge;
-        tot += dist;
+        tot += *dist;
         state = recv.sample_edge(edge, tot);
     }
 
@@ -31,23 +31,46 @@ fn standard_nec() {
 }
 
 #[test]
-fn cmd_encode() {
+fn cmd_standard() {
+    let cmd = NecCommand::new(7, 44);
+    let bits = StandardType::encode_command(cmd);
 
-    let cmd = NecCommand {
-        addr: 7,
-        cmd: 44,
-    };
+    assert!(StandardType::verify_command(bits));
 
-    let standard = StandardType::encode_command(cmd);
-    let samsung = SamsungType::encode_command(cmd);
+    assert_eq!(bits, 0xD32CF807);
+    assert_eq!((bits >> 24) & 0xFF, (!(bits >> 16) & 0xFF));
+    assert_eq!((bits >> 8) & 0xFF, (!bits & 0xFF));
 
-    assert_eq!(standard, 0xD32CF807);
-    assert_eq!((standard >> 24) & 0xFF, (!(standard >> 16) & 0xFF));
-    assert_eq!((standard >> 8) & 0xFF, (!standard & 0xFF));
-
-    assert_eq!(samsung, 0xD32C0707);
-    assert_eq!((samsung >> 24) & 0xFF, (!(standard >> 16) & 0xFF));
-    assert_eq!((samsung >> 8) & 0xFF, (standard & 0xFF));
-
-    println!("{:X?}", samsung);
+    let cmd2 = StandardType::decode_command(bits);
+    assert_eq!(cmd, cmd2);
 }
+
+#[test]
+fn cmd_samsumg() {
+    let cmd = NecCommand::new(7, 44);
+    let bits = SamsungType::encode_command(cmd);
+
+    assert!(SamsungType::verify_command(bits));
+
+    assert_eq!(bits, 0xD32C0707);
+    assert_eq!((bits >> 24) & 0xFF, (!(bits >> 16) & 0xFF));
+    assert_eq!((bits >> 8) & 0xFF, (bits & 0xFF));
+
+    let cmd2 = SamsungType::decode_command(bits);
+    assert_eq!(cmd, cmd2);
+}
+
+#[test]
+fn cmd_nec16() {
+    let cmd = NecCommand::new(28114, 220);
+    let bits = Nec16Type::encode_command(cmd);
+
+    assert!(Nec16Type::verify_command(bits));
+
+    assert_eq!(bits, 0x23DC6DD2);
+    assert_eq!((bits >> 24) & 0xFF, (!(bits >> 16) & 0xFF));
+
+    let cmd2 = Nec16Type::decode_command(bits);
+    assert_eq!(cmd, cmd2);
+}
+
