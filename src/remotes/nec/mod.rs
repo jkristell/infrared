@@ -8,7 +8,7 @@ pub use specialformp3::SpecialForMp3;
 
 impl RemoteControlCommand for NecCommand {
     fn construct(addr: u16, cmd: u8) -> Self {
-        NecCommand::new(addr as u8, cmd)
+        NecCommand::new(addr, cmd)
     }
 
     fn address(&self) -> u16 {
