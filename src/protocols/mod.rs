@@ -5,4 +5,6 @@ pub mod rc5;
 #[cfg(feature = "rc6")]
 pub mod rc6;
 
+pub mod s36;
+
 pub mod logging;

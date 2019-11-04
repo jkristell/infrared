@@ -11,7 +11,10 @@ pub enum ProtocolId {
     NecSamsung = 3,
     Rc5 = 4,
     Rc6 = 5,
-    Logging = 6,
+    /// Samsung 36 bit protocol
+    S36 = 6,
+
+    Logging = 31,
 }
 
 
