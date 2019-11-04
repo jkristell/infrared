@@ -58,7 +58,7 @@ pub mod hal {
         }
 
         pub fn step(&mut self, ts: u32) -> Result<Option<CMD>, PINERR> {
-            let pinval = self.pin.is_high()?;
+            let pinval = self.pin.is_low()?;
 
             let res = match self.recv.sample(pinval, ts) {
                 ReceiverState::Done(cmd) => {
@@ -76,13 +76,13 @@ pub mod hal {
         }
     }
 
-    pub struct MultiReceiver<RECV1, RECV2, PIN> {
+    pub struct Receiver2<RECV1, RECV2, PIN> {
         recv1: RECV1,
         recv2: RECV2,
         pin: PIN,
     }
 
-    impl<RECV1, RECV2, CMD1, CMD2, CMDERR2, CMDERR1, PIN, ERR> MultiReceiver<RECV1, RECV2, PIN>
+    impl<RECV1, RECV2, CMD1, CMD2, CMDERR2, CMDERR1, PIN, ERR> Receiver2<RECV1, RECV2, PIN>
         where
             RECV1: crate::Receiver<Cmd = CMD1, Err = CMDERR1>,
             RECV2: crate::Receiver<Cmd = CMD2, Err = CMDERR2>,
@@ -98,7 +98,7 @@ pub mod hal {
 
         pub fn step(&mut self, ts: u32) -> Result<Option<(Option<CMD1>, Option<CMD2>)>, ERR> {
 
-            let pinval = self.pin.is_high()?;
+            let pinval = self.pin.is_low()?;
 
             let res1 = match self.recv1.sample(pinval, ts) {
                 ReceiverState::Done(cmd) => {
