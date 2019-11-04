@@ -4,56 +4,6 @@
 #[macro_use]
 extern crate std;
 
-mod protocols;
-pub use protocols::*;
-
-#[cfg(feature = "remotes")]
-pub mod remotes;
-
-mod transmitter;
-pub use transmitter::{TransmitterState, Transmitter};
-
-#[cfg(feature = "embedded-hal")]
-pub use crate::transmitter::PwmTransmitter;
-
-pub mod prelude {
-    pub use crate::Receiver;
-    pub use crate::Transmitter;
-    pub use crate::ReceiverState;
-    pub use crate::TransmitterState;
-    #[cfg(feature = "embedded-hal")]
-    pub use crate::PwmTransmitter;
-}
-
-#[derive(PartialEq, Eq, Copy, Clone)]
-/// Protocol decoder state
-pub enum ReceiverState<CMD, ERR> {
-    Idle,
-    Receiving,
-    Done(CMD),
-    Error(ERR),
-    Disabled,
-}
-
-/// Receiver trait
-pub trait Receiver {
-    /// The resulting command type
-    type Cmd;
-    /// Receive Error
-    type Err;
-    /// Protocol id
-    const PROTOCOL_ID: ProtocolId;
-
-    /// Sample
-    fn sample(&mut self, pinval: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err>;
-    /// Sample on known edge
-    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err>;
-    /// Reset receiver
-    fn reset(&mut self);
-    /// Disable receiver
-    fn disable(&mut self);
-}
-
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ProtocolId {
     Nec = 1,
@@ -65,11 +15,35 @@ pub enum ProtocolId {
 }
 
 
+mod protocols;
+pub use protocols::*;
+
+mod transmitter;
+pub use transmitter::{TransmitterState, Transmitter};
+
+mod receiver;
+pub use receiver::{Receiver, ReceiverState};
+
+#[cfg(feature = "embedded-hal")]
+pub mod hal {
+    pub use crate::receiver::hal::{Receiver, Receiver2};
+    pub use crate::transmitter::PwmTransmitter;
+}
+
+#[cfg(feature = "remotes")]
+pub mod remotes;
+
 #[cfg(feature = "protocol-dev")]
-pub struct ReceiverDebug<STATE, EXTRA> {
-    pub state: STATE,
-    pub state_new: STATE,
-    pub delta: u16,
-    pub extra: EXTRA,
+pub use receiver::ReceiverDebug;
+
+pub mod prelude {
+    pub use crate::Receiver;
+    pub use crate::Transmitter;
+    pub use crate::ReceiverState;
+    pub use crate::TransmitterState;
+    #[cfg(feature = "embedded-hal")]
+    pub use crate::hal;
+    #[cfg(feature = "embedded-hal")]
+    pub use crate::hal::PwmTransmitter;
 }
 
