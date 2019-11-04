@@ -17,16 +17,17 @@ use stm32f1xx_hal::{
 };
 
 use infrared::{
-    hal::Receiver,
+    hal::{self, MultiReceiver},
     nec::*,
+    rc5::*,
 };
 
 const FREQ: u32 = 40_000;
 
 static mut TIMER: Option<Timer<TIM2>> = None;
-
 // Receiver
-static mut RECEIVER: Option<Receiver<NecReceiver, PB8<Input<Floating>>>> = None;
+static mut HWRECV: Option<MultiReceiver<NecReceiver, Rc5Receiver, PB8<Input<Floating>>>> = None;
+//static mut HWRECV: Option<hal::Receiver<NecReceiver, PB8<Input<Floating>>>> = None;
 
 
 #[entry]
@@ -51,12 +52,14 @@ fn main() -> ! {
     timer.listen(Event::Update);
 
     let nec = NecReceiver::new(FREQ);
-    let receiver = Receiver::new(nec, irinpin);
+    let rc5 = Rc5Receiver::new(FREQ);
+    let hwr = MultiReceiver::new(nec, rc5, irinpin);
+    //let hwr = hal::Receiver::new(nec, irinpin);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
         TIMER.replace(timer);
-        RECEIVER.replace(receiver);
+        HWRECV.replace(hwr);
     }
 
     // Enable the timer interrupt
@@ -72,11 +75,26 @@ fn main() -> ! {
 #[interrupt]
 fn TIM2() {
     static mut COUNT: u32 = 0;
+    //static mut PINVAL: bool = false;
 
-    let receiver = unsafe { RECEIVER.as_mut().unwrap() };
+    let hwr = unsafe { HWRECV.as_mut().unwrap() };
 
-    if let Some(cmd) = receiver.step(*COUNT).unwrap() {
-        hprintln!("nec: {} {}", cmd.addr, cmd.cmd).unwrap();
+    if let Some((neccmd, rc5cmd)) = hwr.step(*COUNT).unwrap() {
+        if let Some(cmd) = neccmd {
+            hprintln!("nec: {} {}", cmd.addr, cmd.cmd).unwrap();
+        }
+
+        if let Some(cmd) = rc5cmd {
+            use infrared::remotes::rc5::Rc5CdPlayer;
+            use infrared::remotes::RemoteControl;
+
+            // Print the command if recognized as a Rc5 CD-player command
+            if let Some(decoded) = Rc5CdPlayer.decode_with_address(cmd) {
+                hprintln!("rc5 CD: {:?}", decoded).unwrap();
+            } else {
+                hprintln!("rc5: {} {}", cmd.addr, cmd.cmd).unwrap();
+            }
+        }
     }
 
     // Clear the interrupt
