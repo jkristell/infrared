@@ -11,10 +11,11 @@ categories = ["no-std", "embedded"]
 license = "MIT OR Apache-2.0"
 
 [features]
-default = ["nec", "rc5", "rc6"]
+default = ["nec", "rc5", "rc6", "sbp"]
 nec = []
 rc5 = []
 rc6 = []
+sbp = []
 remotes = []
 std = []
 protocol-dev = []
