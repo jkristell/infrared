@@ -13,13 +13,12 @@ use crate::{Receiver, ProtocolId, ReceiverState};
 
 #[derive(Debug)]
 pub struct SbpReceiver {
-    pub state: SbpState,
-    pub address: u16,
-    pub command: u32,
-    pub prev_sampletime: u32,
+    state: SbpState,
+    address: u16,
+    command: u32,
+    prev_sampletime: u32,
     prev_pinval: bool,
-    pub tolerances: Tolerances,
-    pub delta: u32,
+    tolerances: Tolerances,
 }
 
 #[derive(Debug)]
@@ -72,7 +71,6 @@ impl SbpReceiver {
     pub fn new(samplerate: u32) -> Self {
         Self {
             state: SbpState::Init,
-            delta: 0,
             address: 0,
             command: 0,
             prev_sampletime: 0,
@@ -124,7 +122,6 @@ impl Receiver for SbpReceiver {
             }
 
             self.prev_sampletime = sampletime;
-            self.delta = delta;
 
             let pulsewidth = self.tolerances.pulsewidth(delta);
 
