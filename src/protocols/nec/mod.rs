@@ -40,7 +40,7 @@ pub trait NecTypeTrait {
 
     fn encode_command(cmd: NecCommand) -> u32;
     fn decode_command(bits: u32) -> NecCommand;
-    fn verify_command(bits: u32) -> bool {false}
+    fn verify_command(bits: u32) -> bool;
 }
 
 impl NecTypeTrait for StandardType {
