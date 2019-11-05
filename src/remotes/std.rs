@@ -9,6 +9,9 @@ use crate::remotes::{
     rc5::{
         Rc5CdPlayer
     },
+    sbp::{
+        SamsungBluRayPlayer,
+    }
 };
 use crate::ProtocolId;
 
@@ -18,6 +21,7 @@ pub fn remotes() -> Vec<RemoteControlData> {
         RemoteControlData::construct::<Rc5CdPlayer>(),
         RemoteControlData::construct::<SamsungTv>(),
         RemoteControlData::construct::<SpecialForMp3>(),
+        RemoteControlData::construct::<SamsungBluRayPlayer>(),
     ]
 }
 
