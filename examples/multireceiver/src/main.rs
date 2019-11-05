@@ -17,7 +17,7 @@ use stm32f1xx_hal::{
 };
 
 use infrared::{
-    hal::{Receiver2},
+    hal::Receiver3,
     nec::*,
     rc5::*,
     remotes::{
@@ -32,7 +32,11 @@ const TIMER_FREQ: u32 = 40_000;
 static mut TIMER: Option<Timer<TIM2>> = None;
 
 // Receiver for multiple protocols
-static mut RECEIVER: Option<Receiver2<PB8<Input<Floating>>, NecReceiver, Rc5Receiver>> = None;
+static mut RECEIVER: Option<Receiver3<PB8<Input<Floating>>,
+    NecReceiver,
+    NecSamsungReceiver,
+    Rc5Receiver,
+>> = None;
 
 
 #[entry]
@@ -51,14 +55,18 @@ fn main() -> ! {
         .freeze(&mut flash.acr);
 
     let mut gpiob = device.GPIOB.split(&mut rcc.apb2);
-    let irinpin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
+    let inpin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
 
     let mut timer = Timer::tim2(device.TIM2, TIMER_FREQ.hz(), clocks, &mut rcc.apb1);
     timer.listen(Event::Update);
 
     let nec = NecReceiver::new(TIMER_FREQ);
+    let nes = NecSamsungReceiver::new(TIMER_FREQ);
     let rc5 = Rc5Receiver::new(TIMER_FREQ);
-    let receiver = Receiver2::new(irinpin, nec, rc5);
+    let receiver = Receiver3::new(inpin,
+                                  nec,
+                                  nes,
+                                  rc5);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
@@ -82,8 +90,13 @@ fn TIM2() {
 
     let receiver = unsafe { RECEIVER.as_mut().unwrap() };
 
-    if let Ok((neccmd, rc5cmd)) = receiver.step(*COUNT) {
+    if let Ok((neccmd, nescmd, rc5cmd)) = receiver.step(*COUNT) {
+
         if let Some(cmd) = neccmd {
+            hprintln!("nec: {} {}", cmd.addr, cmd.cmd).unwrap();
+        }
+
+        if let Some(cmd) = nescmd {
             hprintln!("nec: {} {}", cmd.addr, cmd.cmd).unwrap();
         }
 

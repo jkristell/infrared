@@ -17,7 +17,7 @@ use stm32f1xx_hal::{
 };
 
 use infrared::{
-    hal::Receiver1,
+    hal::Receiver,
     nec::*,
 };
 
@@ -26,7 +26,7 @@ const FREQ: u32 = 40_000;
 static mut TIMER: Option<Timer<TIM2>> = None;
 
 // Receiver
-static mut RECEIVER: Option<Receiver1<
+static mut RECEIVER: Option<Receiver<
     PB8<Input<Floating>>,
     NecReceiver,
 >> = None;
@@ -54,7 +54,7 @@ fn main() -> ! {
     timer.listen(Event::Update);
 
     let nec = NecReceiver::new(FREQ);
-    let receiver = Receiver1::new(irinpin, nec);
+    let receiver = Receiver::new(irinpin, nec);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
