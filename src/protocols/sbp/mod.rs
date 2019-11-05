@@ -2,9 +2,9 @@
 //!
 //! Protocol used on some Samsung BluRay players and probably other devices from Samsung.
 //!
-//! Pulse distance coding is used with. After the Header the 16 bit address is sent. Then a pause
-//! followed by 4 bits that I'm not sure if should be considered part of the address or just some
-//! sync data. After this the 8 bit command is sent twice, second time inverted.
+//! Pulse distance coding is used with. After the Header the 16 bit address is sent.
+//! Then a pause and then 4 bits of unknown function (could be repeat indicator?)
+//! After this the 8 bit command is sent twice, second time inverted.
 //!
 
 use core::ops::Range;
@@ -33,11 +33,11 @@ impl SbpCommand {
 
     pub fn from_receiver(address: u16, mut command: u32) -> Self {
 
-        let valid = command & 7 == 7;
-
+        // Discard the 4 unknown bits
         command >>= 4;
-        let valid = valid &&
-            ((((command >> 0) ^ (command >> 8)) & 0xFF) == 0xFF);
+
+        // Check the checksum
+        let valid = (((command >> 0) ^ (command >> 8)) & 0xFF) == 0xFF;
 
         Self {
             address,
@@ -129,29 +129,27 @@ impl Receiver for SbpReceiver {
             let pulsewidth = self.tolerances.pulsewidth(delta);
 
             let newstate = match (self.state, pulsewidth) {
-                (Init,            Sync)     => Address(0),
-                (Init,            _)        => Init,
+                (Init,          Sync)       => Address(0),
+                (Init,          _)          => Init,
 
-                (Address(15),   One)      => {self.address |= 1 << 15; Divider},
-                (Address(15),   Zero)     => Divider,
-                (Address(bit),  One)      => {self.address |= 1 << bit; Address(bit + 1)},
-                (Address(bit),  Zero)     => Address(bit + 1),
-                (Address(_),    _)        => Err(()),
+                (Address(15),   One)        => {self.address |= 1 << 15; Divider},
+                (Address(15),   Zero)       => Divider,
+                (Address(bit),  One)        => {self.address |= 1 << bit; Address(bit + 1)},
+                (Address(bit),  Zero)       => Address(bit + 1),
+                (Address(_),    _)          => Err(()),
 
-                (Divider, Paus)             => Command(0),
-                (Divider, _) => Err(()),
+                (Divider,       Paus)       => Command(0),
+                (Divider,       _)          => Err(()),
 
-                (Command(19),   One)      => {self.command |= 1 << 19; Done},
-                (Command(19),   Zero)     => Done,
+                (Command(19),   One)        => {self.command |= 1 << 19; Done},
+                (Command(19),   Zero)       => Done,
+                (Command(bit),  One)        => {self.command |= 1 << bit; Command(bit + 1)},
+                (Command(bit),  Zero)       => Command(bit + 1),
+                (Command(_),    _)          => Err(()),
 
-                (Command(bit),  One)      => {self.command |= 1 << bit; Command(bit + 1)},
-                (Command(bit),  Zero)     => Command(bit + 1),
-
-                (Command(_),    _)        => Err(()),
-
-                (Done,            _)        => Done,
-                (Err(err),        _)        => Err(err),
-                (Disabled,        _)        => Disabled,
+                (Done,          _)          => Done,
+                (Err(err),      _)          => Err(err),
+                (Disabled,      _)          => Disabled,
             };
 
             self.state = newstate;
