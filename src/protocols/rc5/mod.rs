@@ -93,7 +93,7 @@ mod tests {
     #[test]
     fn rc5_transmit() {
 
-        let mut tx = Rc5Transmitter::new_for_samplerate(40_000);
+        let mut tx = Rc5Transmitter::new(40_000);
 
         tx.load(Rc5Command::new(20, 9, false));
 

@@ -21,7 +21,7 @@ pub struct Rc5Transmitter {
 }
 
 impl Rc5Transmitter {
-    pub fn new_for_samplerate(samplerate: u32) -> Self {
+    pub fn new(samplerate: u32) -> Self {
 
         let samples = (samplerate * 889) / 1_000_000;
 

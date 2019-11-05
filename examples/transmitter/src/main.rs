@@ -79,7 +79,7 @@ fn main() -> ! {
     // Safe because the devices are only used in the interrupt handler
     unsafe {
         TIMER.replace(timer);
-        NECTX.replace(Rc5Transmitter::new_for_samplerate(FREQ));
+        NECTX.replace(Rc5Transmitter::new(FREQ));
         PWM.replace(c4);
     }
 

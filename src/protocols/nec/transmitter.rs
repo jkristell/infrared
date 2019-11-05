@@ -29,7 +29,10 @@ struct NSamples {
 }
 
 impl<NECTYPE: NecTypeTrait> NecTypeTransmitter<NECTYPE> {
-    pub fn new(period: u32) -> Self {
+
+    pub fn new(samplerate: u32) -> Self {
+        let period: u32 = (1 * 1000) / (samplerate / 1000);
+
         let samples = NSamples::new(period, &NECTYPE::PULSEDISTANCE);
         Self {
             state: TransmitStateInternal::Idle,
