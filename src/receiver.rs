@@ -35,21 +35,23 @@ pub mod hal {
     use embedded_hal::digital::v2::InputPin;
     use crate::ReceiverState;
 
-    /// Embedded hal receiver
-    pub struct Receiver<RECV, OUTPIN> {
-        recv: RECV,
-        pin: OUTPIN,
+    macro_rules! impl_receiver {
+    ($ty:ident, [ $( ($N:ident, $P:ident, $C:ident, $E:ident) ),* ]) =>
+    {
+    pub struct $ty<PIN, $( $P ),* > {
+        pin: PIN,
+        $( $N : $P ),*
     }
 
-    impl<RECV, CMD, CMDERR, PIN, PINERR> Receiver<RECV, PIN>
-        where
-            RECV: crate::Receiver<Cmd = CMD, Err = CMDERR>,
-            PIN: InputPin<Error =PINERR>,
+    impl<PIN, PINERR, $( $P, $C, $E ),* > $ty <PIN, $( $P ),* >
+    where
+        PIN: InputPin<Error = PINERR>,
+        $( $P: crate::Receiver<Cmd = $C, Err = $E> ),*
     {
-        pub fn new(recv: RECV, pin: PIN) -> Self {
+        pub fn new(pin: PIN, $( $N : $P ),* ) -> Self {
             Self {
                 pin,
-                recv,
+                $( $N ),*,
             }
         }
 
@@ -57,76 +59,50 @@ pub mod hal {
             self.pin
         }
 
-        pub fn step(&mut self, ts: u32) -> Result<Option<CMD>, PINERR> {
+        #[allow(unused_parens)]
+        pub fn step(&mut self, ts: u32) -> Result<( $( Option<$C>),*), PINERR> {
             let pinval = self.pin.is_low()?;
 
-            let res = match self.recv.sample(pinval, ts) {
+            Ok(($(
+            match self.$N.sample(pinval, ts) {
                 ReceiverState::Done(cmd) => {
-                    self.recv.reset();
+                    self.$N.reset();
                     Some(cmd)
                 },
                 ReceiverState::Error(_) => {
-                    self.recv.reset();
+                    self.$N.reset();
                     None
                 }
                 _ => None,
-            };
-
-            Ok(res)
-        }
-    }
-
-    pub struct Receiver2<RECV1, RECV2, PIN> {
-        recv1: RECV1,
-        recv2: RECV2,
-        pin: PIN,
-    }
-
-    impl<RECV1, RECV2, CMD1, CMD2, CMDERR2, CMDERR1, PIN, ERR> Receiver2<RECV1, RECV2, PIN>
-        where
-            RECV1: crate::Receiver<Cmd = CMD1, Err = CMDERR1>,
-            RECV2: crate::Receiver<Cmd = CMD2, Err = CMDERR2>,
-            PIN: InputPin<Error = ERR>,
-    {
-        pub fn new(recv1: RECV1, recv2: RECV2, pin: PIN) -> Self {
-            Self {
-                pin,
-                recv1,
-                recv2,
             }
-        }
-
-        pub fn step(&mut self, ts: u32) -> Result<Option<(Option<CMD1>, Option<CMD2>)>, ERR> {
-
-            let pinval = self.pin.is_low()?;
-
-            let res1 = match self.recv1.sample(pinval, ts) {
-                ReceiverState::Done(cmd) => {
-                    self.recv1.reset();
-                    Some(cmd)
-                }
-                ReceiverState::Error(_) => {
-                    self.recv1.reset();
-                    None
-                }
-                _ => None,
-            };
-
-            let res2 = match self.recv2.sample(pinval, ts) {
-                ReceiverState::Done(cmd) => {
-                    self.recv2.reset();
-                    Some(cmd)
-                }
-                ReceiverState::Error(_) => {
-                    self.recv2.reset();
-                    None
-                }
-                _ => None,
-            };
-
-            Ok(Some((res1, res2)))
+            ),* ))
         }
     }
+
+    };
+}
+
+    impl_receiver!(Receiver1, [
+                (recv1, RECV1, CMD1, CMDERR1)
+            ]);
+
+    impl_receiver!(Receiver2, [
+                (recv1, RECV1, CMD1, CMDERR1),
+                (recv2, RECV2, CMD2, CMDERR2)
+            ]);
+
+    impl_receiver!(Receiver3, [
+                (recv1, RECV1, CMD1, CMDERR1),
+                (recv2, RECV2, CMD2, CMDERR2),
+                (recv3, RECV3, CMD3, CMDERR3)
+            ]);
+
+    impl_receiver!(Receiver4, [
+                (recv1, RECV1, CMD1, CMDERR1),
+                (recv2, RECV2, CMD2, CMDERR2),
+                (recv3, RECV3, CMD3, CMDERR3),
+                (recv4, RECV4, CMD4, CMDERR4)
+            ]);
 }
 
 #[cfg(feature = "protocol-dev")]

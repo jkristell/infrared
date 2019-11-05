@@ -32,7 +32,7 @@ const TIMER_FREQ: u32 = 40_000;
 static mut TIMER: Option<Timer<TIM2>> = None;
 
 // Receiver for multiple protocols
-static mut RECEIVER: Option<Receiver2<NecReceiver, Rc5Receiver, PB8<Input<Floating>>>> = None;
+static mut RECEIVER: Option<Receiver2<PB8<Input<Floating>>, NecReceiver, Rc5Receiver>> = None;
 
 
 #[entry]
@@ -58,7 +58,7 @@ fn main() -> ! {
 
     let nec = NecReceiver::new(TIMER_FREQ);
     let rc5 = Rc5Receiver::new(TIMER_FREQ);
-    let receiver = Receiver2::new(nec, rc5, irinpin);
+    let receiver = Receiver2::new(irinpin, nec, rc5);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
@@ -82,7 +82,7 @@ fn TIM2() {
 
     let receiver = unsafe { RECEIVER.as_mut().unwrap() };
 
-    if let Some((neccmd, rc5cmd)) = receiver.step(*COUNT).unwrap() {
+    if let Ok((neccmd, rc5cmd)) = receiver.step(*COUNT) {
         if let Some(cmd) = neccmd {
             hprintln!("nec: {} {}", cmd.addr, cmd.cmd).unwrap();
         }
