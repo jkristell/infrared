@@ -1,12 +1,21 @@
-use core::ops::Range;
+//! # Samsung BluRay Player Protocol
+//!
+//! Protocol used on some Samsung BluRay players and probably other devices from Samsung.
+//!
+//! Pulse distance coding is used with. After the Header the 16 bit address is sent. Then a pause
+//! followed by 4 bits that I'm not sure if should be considered part of the address or just some
+//! sync data. After this the 8 bit command is sent twice, second time inverted.
+//!
 
+use core::ops::Range;
 use crate::{Receiver, ProtocolId, ReceiverState};
 
+
 #[derive(Debug)]
-pub struct S36Receiver {
-    pub state: S36State,
+pub struct SbpReceiver {
+    pub state: SbpState,
     pub address: u16,
-    pub bitbuf: u32,
+    pub command: u32,
     pub prev_sampletime: u32,
     prev_pinval: bool,
     pub tolerances: Tolerances,
@@ -14,13 +23,13 @@ pub struct S36Receiver {
 }
 
 #[derive(Debug)]
-pub struct S36Command {
+pub struct SbpCommand {
     pub address: u16,
     pub command: u8,
     pub valid: bool,
 }
 
-impl S36Command {
+impl SbpCommand {
 
     pub fn from_receiver(address: u16, mut command: u32) -> Self {
 
@@ -40,16 +49,14 @@ impl S36Command {
 
 #[derive(Debug, Copy, Clone)]
 // Internal receiver state
-pub enum S36State {
+pub enum SbpState {
     // Waiting for first pulse
     Init,
     // Receiving address
-    ReceivingAddress(u32),
-
+    Address(u16),
     Divider,
-
     // Receiving data
-    Receiving(u32),
+    Command(u16),
     // Command received
     Done,
     // In error state
@@ -58,42 +65,40 @@ pub enum S36State {
     Disabled,
 }
 
-pub type S36Result = ReceiverState<S36Command, ()>;
+pub type SbpResult = ReceiverState<SbpCommand, ()>;
 
-
-impl S36Receiver {
+impl SbpReceiver {
 
     pub fn new(samplerate: u32) -> Self {
         Self {
-            state: S36State::Init,
+            state: SbpState::Init,
             delta: 0,
             address: 0,
-            bitbuf: 0,
+            command: 0,
             prev_sampletime: 0,
             prev_pinval: false,
             tolerances: Tolerances::from_timing(&DISTS, samplerate)
         }
     }
 
-    fn receiver_state(&self) -> S36Result {
+    fn receiver_state(&self) -> SbpResult {
         use ReceiverState::*;
         // Internalstate to ReceiverState
         match self.state {
-            S36State::Init => Idle,
-            S36State::Done => Done(S36Command::from_receiver(self.address, self.bitbuf)),
-            S36State::Err(e) => Error(e),
-            S36State::Disabled => Disabled,
+            SbpState::Init => Idle,
+            SbpState::Done => Done(SbpCommand::from_receiver(self.address, self.command)),
+            SbpState::Err(e) => Error(e),
+            SbpState::Disabled => Disabled,
             _ => Receiving,
         }
     }
-
 }
 
 
-impl Receiver for S36Receiver {
-    type Cmd = S36Command;
+impl Receiver for SbpReceiver {
+    type Cmd = SbpCommand;
     type Err = ();
-    const PROTOCOL_ID: ProtocolId = ProtocolId::S36;
+    const PROTOCOL_ID: ProtocolId = ProtocolId::Sbp;
 
     fn sample(&mut self, pinval: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err> {
 
@@ -105,11 +110,10 @@ impl Receiver for S36Receiver {
         }
 
         self.receiver_state()
-
     }
 
     fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err> {
-        use S36State::*;
+        use SbpState::*;
         use PulseWidth::*;
 
         if rising {
@@ -125,25 +129,25 @@ impl Receiver for S36Receiver {
             let pulsewidth = self.tolerances.pulsewidth(delta);
 
             let newstate = match (self.state, pulsewidth) {
-                (Init,            Sync)     => ReceivingAddress(0),
+                (Init,            Sync)     => Address(0),
                 (Init,            _)        => Init,
 
-                (ReceivingAddress(15),   One)      => {self.address |= 1 << 15; Divider},
-                (ReceivingAddress(15),   Zero)     => Divider,
-                (ReceivingAddress(bit),  One)      => {self.address |= 1 << bit; ReceivingAddress(bit + 1)},
-                (ReceivingAddress(bit),  Zero)     => ReceivingAddress(bit + 1),
-                (ReceivingAddress(_),    _)        => Err(()),
+                (Address(15),   One)      => {self.address |= 1 << 15; Divider},
+                (Address(15),   Zero)     => Divider,
+                (Address(bit),  One)      => {self.address |= 1 << bit; Address(bit + 1)},
+                (Address(bit),  Zero)     => Address(bit + 1),
+                (Address(_),    _)        => Err(()),
 
-                (Divider, Paus)             => Receiving(0),
+                (Divider, Paus)             => Command(0),
                 (Divider, _) => Err(()),
 
-                (Receiving(19),   One)      => {self.bitbuf |= 1 << 19; Done},
-                (Receiving(19),   Zero)     => Done,
+                (Command(19),   One)      => {self.command |= 1 << 19; Done},
+                (Command(19),   Zero)     => Done,
 
-                (Receiving(bit),  One)      => {self.bitbuf |= 1 << bit; Receiving(bit + 1)},
-                (Receiving(bit),  Zero)     => Receiving(bit + 1),
+                (Command(bit),  One)      => {self.command |= 1 << bit; Command(bit + 1)},
+                (Command(bit),  Zero)     => Command(bit + 1),
 
-                (Receiving(_),    _)        => Err(()),
+                (Command(_),    _)        => Err(()),
 
                 (Done,            _)        => Done,
                 (Err(err),        _)        => Err(err),
@@ -157,15 +161,15 @@ impl Receiver for S36Receiver {
     }
 
     fn reset(&mut self) {
-        self.state = S36State::Init;
+        self.state = SbpState::Init;
         self.address = 0;
-        self.bitbuf = 0;
+        self.command = 0;
         self.prev_sampletime = 0;
         self.prev_pinval = false;
     }
 
     fn disable(&mut self) {
-        self.state = S36State::Disabled;
+        self.state = SbpState::Disabled;
     }
 }
 
