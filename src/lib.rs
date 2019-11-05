@@ -26,7 +26,7 @@ pub use receiver::{Receiver, ReceiverState};
 
 #[cfg(feature = "embedded-hal")]
 pub mod hal {
-    pub use crate::receiver::hal::{Receiver1, Receiver2, Receiver3, Receiver4};
+    pub use crate::receiver::hal::{Receiver, Receiver2, Receiver3, Receiver4};
     pub use crate::transmitter::PwmTransmitter;
 }
 

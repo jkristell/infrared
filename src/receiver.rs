@@ -35,7 +35,7 @@ pub mod hal {
     use embedded_hal::digital::v2::InputPin;
     use crate::ReceiverState;
 
-    macro_rules! impl_receiver {
+    macro_rules! create_receiver {
     ($ty:ident, [ $( ($N:ident, $P:ident, $C:ident, $E:ident) ),* ]) =>
     {
     pub struct $ty<PIN, $( $P ),* > {
@@ -82,22 +82,22 @@ pub mod hal {
     };
 }
 
-    impl_receiver!(Receiver1, [
+    create_receiver!(Receiver, [
                 (recv1, RECV1, CMD1, CMDERR1)
             ]);
 
-    impl_receiver!(Receiver2, [
+    create_receiver!(Receiver2, [
                 (recv1, RECV1, CMD1, CMDERR1),
                 (recv2, RECV2, CMD2, CMDERR2)
             ]);
 
-    impl_receiver!(Receiver3, [
+    create_receiver!(Receiver3, [
                 (recv1, RECV1, CMD1, CMDERR1),
                 (recv2, RECV2, CMD2, CMDERR2),
                 (recv3, RECV3, CMD3, CMDERR3)
             ]);
 
-    impl_receiver!(Receiver4, [
+    create_receiver!(Receiver4, [
                 (recv1, RECV1, CMD1, CMDERR1),
                 (recv2, RECV2, CMD2, CMDERR2),
                 (recv3, RECV3, CMD3, CMDERR3),
