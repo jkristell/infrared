@@ -1,0 +1,21 @@
+[package]
+name = "infrared-examples"
+version = "0.1.0"
+authors = ["Johan Kristell <johan@jott.se>"]
+edition = "2018"
+description = "Infrared examples"
+
+[dependencies]
+
+[workspace]
+members = [
+    "receiver",
+    "multireceiver",
+    "transmitter",
+]
+
+[profile.release]
+codegen-units = 1
+incremental = false
+debug = true
+lto = true

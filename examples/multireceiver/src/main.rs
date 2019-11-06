@@ -17,7 +17,7 @@ use stm32f1xx_hal::{
 };
 
 use infrared::{
-    hal::Receiver3,
+    hal::HalReceiver3,
     nec::*,
     rc5::*,
     remotes::{
@@ -32,7 +32,7 @@ const TIMER_FREQ: u32 = 40_000;
 static mut TIMER: Option<Timer<TIM2>> = None;
 
 // Receiver for multiple protocols
-static mut RECEIVER: Option<Receiver3<PB8<Input<Floating>>,
+static mut RECEIVER: Option<HalReceiver3<PB8<Input<Floating>>,
     NecReceiver,
     NecSamsungReceiver,
     Rc5Receiver,
@@ -63,10 +63,10 @@ fn main() -> ! {
     let nec = NecReceiver::new(TIMER_FREQ);
     let nes = NecSamsungReceiver::new(TIMER_FREQ);
     let rc5 = Rc5Receiver::new(TIMER_FREQ);
-    let receiver = Receiver3::new(inpin,
-                                  nec,
-                                  nes,
-                                  rc5);
+    let receiver = HalReceiver3::new(inpin,
+                                     nec,
+                                     nes,
+                                     rc5);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
@@ -92,14 +92,17 @@ fn TIM2() {
 
     if let Ok((neccmd, nescmd, rc5cmd)) = receiver.step(*COUNT) {
 
+        // We have a NEC Command
         if let Some(cmd) = neccmd {
             hprintln!("nec: {} {}", cmd.addr, cmd.cmd).unwrap();
         }
 
+        // We have Samsung-flavoured NEC Command
         if let Some(cmd) = nescmd {
             hprintln!("nec: {} {}", cmd.addr, cmd.cmd).unwrap();
         }
 
+        // We have a Rc5 Command
         if let Some(cmd) = rc5cmd {
             // Print the command if recognized as a Rc5 CD-player command
             if let Some(decoded) = Rc5CdPlayer.decode_with_address(cmd) {

@@ -7,10 +7,17 @@ A library for using infrared remote controls with Rust.
  - The NEC Protocol and the Samsung variant of it
  - Philips Rc5
  - Philips Rc6
+ - "Samsung BluRay Player protocol" (Please let know if it has a real name :))
 
 ### Examples
+
+```rust
+
+```
+
+
  - Receiving, NEC, Rc5 and Rc6 ``examples/receiver``
- - Transmitting NEC ``examples/transmitter``
+ - Transmitting NEC, Rc5 ``examples/transmitter``
  - [Blipper](https://github.com/jkristell/blipper) - An application for working
  with transmitters and receivers from a host computer
   
@@ -30,13 +37,13 @@ A library for using infrared remote controls with Rust.
 See the examples.
 
 ## Near time goals
- - Implement transmit for Rc5 and Rc6
+ - Implement transmit for Rc6
  - Implement support for more remotes of different kinds
- - Investigate if the pwm traits from Embedded-hal can be used
  - Hw Timer-Capture based example
     
 ## Long time goals
 USB/Network support to be able to create "universal remote control" types of applications.
+Work started in [Blipper](https://github.com/jkristell/blipper) repository.
     
 ## References
 

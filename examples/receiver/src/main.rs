@@ -17,16 +17,16 @@ use stm32f1xx_hal::{
 };
 
 use infrared::{
-    hal::Receiver,
+    hal::HalReceiver,
     nec::*,
 };
 
-const FREQ: u32 = 40_000;
+const TIMER_FREQ: u32 = 40_000;
 
 static mut TIMER: Option<Timer<TIM2>> = None;
 
 // Receiver
-static mut RECEIVER: Option<Receiver<
+static mut RECEIVER: Option<HalReceiver<
     PB8<Input<Floating>>,
     NecReceiver,
 >> = None;
@@ -50,11 +50,11 @@ fn main() -> ! {
     let mut gpiob = device.GPIOB.split(&mut rcc.apb2);
     let irinpin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
 
-    let mut timer = Timer::tim2(device.TIM2, FREQ.hz(), clocks, &mut rcc.apb1);
+    let mut timer = Timer::tim2(device.TIM2, TIMER_FREQ.hz(), clocks, &mut rcc.apb1);
     timer.listen(Event::Update);
 
-    let nec = NecReceiver::new(FREQ);
-    let receiver = Receiver::new(irinpin, nec);
+    let nec = NecReceiver::new(TIMER_FREQ);
+    let receiver = HalReceiver::new(irinpin, nec);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
@@ -83,7 +83,7 @@ fn TIM2() {
     }
 
     // Clear the interrupt
-    let timer = unsafe { &mut TIMER.as_mut().unwrap() };
+    let timer = unsafe { TIMER.as_mut().unwrap() };
     timer.clear_update_interrupt_flag();
 
     *COUNT = COUNT.wrapping_add(1);

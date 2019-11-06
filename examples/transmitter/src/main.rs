@@ -20,12 +20,17 @@ use infrared::{
     rc5::*,
 };
 
+use infrared::remotes::{
+    *,
+    rc5::Rc5CdPlayer,
+};
+
 const FREQ: u32 = 20_000;
 
 // Global timer
 static mut TIMER: Option<Timer<TIM2>> = None;
 // transmitter
-static mut NECTX: Option<Rc5Transmitter> = None;
+static mut TRANSMITTER: Option<Rc5Transmitter> = None;
 // Pwm channel
 static mut PWM: Option<Pwm<TIM4, C4>> = None;
 // Our remote control we want to act like
@@ -55,8 +60,6 @@ fn main() -> ! {
         .pclk1(24.mhz())
         .freeze(&mut flash.acr);
 
-    assert!(clocks.usbclk_valid());
-
     let mut timer = Timer::tim2(device.TIM2, FREQ.hz(), clocks, &mut rcc.apb1);
     timer.listen(Event::Update);
 
@@ -79,7 +82,7 @@ fn main() -> ! {
     // Safe because the devices are only used in the interrupt handler
     unsafe {
         TIMER.replace(timer);
-        NECTX.replace(Rc5Transmitter::new(FREQ));
+        TRANSMITTER.replace(Rc5Transmitter::new(FREQ));
         PWM.replace(c4);
     }
 
@@ -95,16 +98,27 @@ fn TIM2() {
     static mut COUNT: u32 = 0;
 
     // Clear the interrupt
-    let timer = unsafe { &mut TIMER.as_mut().unwrap() };
+    let timer = unsafe { TIMER.as_mut().unwrap() };
     timer.clear_update_interrupt_flag();
 
     // Get handles to the transmitter and the pwm
-    let transmitter = unsafe { NECTX.as_mut().unwrap() };
+    let transmitter = unsafe { TRANSMITTER.as_mut().unwrap() };
     let pwm = unsafe { PWM.as_mut().unwrap() };
 
     if *COUNT % FREQ == 0 {
-        // Next Channel on my Samsung TV
-        let cmd = Rc5Command::new(20, 15, false);
+
+        // The device we want to send the command to
+        let cdplayer = Rc5CdPlayer;
+
+        // The button
+        let button = StandardButton::Next;
+
+        // The encoded result
+        let cmd = cdplayer.encode(button).unwrap();
+
+        // You could also construct the command manually
+        // let cmd = Rc5Command::new(20, 15, false);
+
         transmitter.load(cmd);
     }
 

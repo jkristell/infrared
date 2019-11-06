@@ -36,14 +36,15 @@ pub mod hal {
     use crate::ReceiverState;
 
     macro_rules! create_receiver {
-    ($ty:ident, [ $( ($N:ident, $P:ident, $C:ident, $E:ident) ),* ]) =>
+    ($name:ident, [ $( ($N:ident, $P:ident, $C:ident, $E:ident) ),* ]) =>
     {
-    pub struct $ty<PIN, $( $P ),* > {
+    /// HAL receiver
+    pub struct $name<PIN, $( $P ),* > {
         pin: PIN,
         $( $N : $P ),*
     }
 
-    impl<PIN, PINERR, $( $P, $C, $E ),* > $ty <PIN, $( $P ),* >
+    impl<PIN, PINERR, $( $P, $C, $E ),* > $name <PIN, $( $P ),* >
     where
         PIN: InputPin<Error = PINERR>,
         $( $P: crate::Receiver<Cmd = $C, Err = $E> ),*
@@ -82,26 +83,26 @@ pub mod hal {
     };
 }
 
-    create_receiver!(Receiver, [
-                (recv1, RECV1, CMD1, CMDERR1)
+    create_receiver!(HalReceiver, [
+                (recv1, RECV1, CMD1, RECVERR1)
             ]);
 
-    create_receiver!(Receiver2, [
-                (recv1, RECV1, CMD1, CMDERR1),
-                (recv2, RECV2, CMD2, CMDERR2)
+    create_receiver!(HalReceiver2, [
+                (recv1, RECV1, CMD1, RECVERR1),
+                (recv2, RECV2, CMD2, RECVERR2)
             ]);
 
-    create_receiver!(Receiver3, [
-                (recv1, RECV1, CMD1, CMDERR1),
-                (recv2, RECV2, CMD2, CMDERR2),
-                (recv3, RECV3, CMD3, CMDERR3)
+    create_receiver!(HalReceiver3, [
+                (recv1, RECV1, CMD1, RECVERR1),
+                (recv2, RECV2, CMD2, RECVERR2),
+                (recv3, RECV3, CMD3, RECVERR3)
             ]);
 
-    create_receiver!(Receiver4, [
-                (recv1, RECV1, CMD1, CMDERR1),
-                (recv2, RECV2, CMD2, CMDERR2),
-                (recv3, RECV3, CMD3, CMDERR3),
-                (recv4, RECV4, CMD4, CMDERR4)
+    create_receiver!(HalReceiver4, [
+                (recv1, RECV1, CMD1, RECVERR1),
+                (recv2, RECV2, CMD2, RECVERR2),
+                (recv3, RECV3, CMD3, RECVERR3),
+                (recv4, RECV4, CMD4, RECVERR4)
             ]);
 }
 
