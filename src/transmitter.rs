@@ -1,4 +1,3 @@
-
 #[derive(Debug)]
 pub enum TransmitterState {
     /// Transmitter is ready for transmitting
@@ -23,7 +22,7 @@ pub trait PwmTransmitter<CMD>: Transmitter<CMD> {
     /// Step the transmit loop and output on `pwm`
     fn pwmstep<PWMPIN, DUTY>(&mut self, ts: u32, pwm: &mut PWMPIN) -> TransmitterState
     where
-        PWMPIN: embedded_hal::PwmPin<Duty=DUTY>,
+        PWMPIN: embedded_hal::PwmPin<Duty = DUTY>,
     {
         let state = self.step(ts);
         match state {
