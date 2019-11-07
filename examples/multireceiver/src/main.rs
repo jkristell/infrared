@@ -60,13 +60,11 @@ fn main() -> ! {
     let mut timer = Timer::tim2(device.TIM2, TIMER_FREQ.hz(), clocks, &mut rcc.apb1);
     timer.listen(Event::Update);
 
+    // Create a receiver that reacts on 3 different kinds of remote controls
     let nec = NecReceiver::new(TIMER_FREQ);
     let nes = NecSamsungReceiver::new(TIMER_FREQ);
     let rc5 = Rc5Receiver::new(TIMER_FREQ);
-    let receiver = HalReceiver3::new(inpin,
-                                     nec,
-                                     nes,
-                                     rc5);
+    let receiver = HalReceiver3::new(inpin, nec, nes, rc5);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
