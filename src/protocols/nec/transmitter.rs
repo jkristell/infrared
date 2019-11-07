@@ -29,7 +29,10 @@ struct NSamples {
 }
 
 impl<NECTYPE: NecTypeTrait> NecTypeTransmitter<NECTYPE> {
-    pub fn new(period: u32) -> Self {
+
+    pub fn new(samplerate: u32) -> Self {
+        let period: u32 = (1 * 1000) / (samplerate / 1000);
+
         let samples = NSamples::new(period, &NECTYPE::PULSEDISTANCE);
         Self {
             state: TransmitStateInternal::Idle,
@@ -118,7 +121,7 @@ impl<NECTYPE> Transmitter<NecCommand> for NecTypeTransmitter<NECTYPE>
 }
 
 #[cfg(feature = "embedded-hal")]
-impl<NECTYPE: NecTypeTrait> PwmTransmitter<NecCommand> for NecTypeTransmitter<NECTYPE> {}
+impl<NECTYPE: NecTypeTrait> hal::PwmTransmitter<NecCommand> for NecTypeTransmitter<NECTYPE> {}
 
 impl NSamples {
     pub const fn new(period: u32, pulsedistance: &Pulsedistance) -> Self {

@@ -17,18 +17,25 @@ use stm32f1xx_hal::{
 };
 
 use infrared::{
-    hal::HalReceiver,
+    hal::HalReceiver3,
     nec::*,
+    rc5::*,
+    remotes::{
+        RemoteControl,
+        rc5::Rc5CdPlayer
+    },
 };
+
 
 const TIMER_FREQ: u32 = 40_000;
 
 static mut TIMER: Option<Timer<TIM2>> = None;
 
-// Receiver
-static mut RECEIVER: Option<HalReceiver<
-    PB8<Input<Floating>>,
+// Receiver for multiple protocols
+static mut RECEIVER: Option<HalReceiver3<PB8<Input<Floating>>,
     NecReceiver,
+    NecSamsungReceiver,
+    Rc5Receiver,
 >> = None;
 
 
@@ -48,13 +55,16 @@ fn main() -> ! {
         .freeze(&mut flash.acr);
 
     let mut gpiob = device.GPIOB.split(&mut rcc.apb2);
-    let irinpin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
+    let inpin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
 
     let mut timer = Timer::tim2(device.TIM2, TIMER_FREQ.hz(), clocks, &mut rcc.apb1);
     timer.listen(Event::Update);
 
+    // Create a receiver that reacts on 3 different kinds of remote controls
     let nec = NecReceiver::new(TIMER_FREQ);
-    let receiver = HalReceiver::new(irinpin, nec);
+    let nes = NecSamsungReceiver::new(TIMER_FREQ);
+    let rc5 = Rc5Receiver::new(TIMER_FREQ);
+    let receiver = HalReceiver3::new(inpin, nec, nes, rc5);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
@@ -78,8 +88,27 @@ fn TIM2() {
 
     let receiver = unsafe { RECEIVER.as_mut().unwrap() };
 
-    if let Some(cmd) = receiver.step(*COUNT).unwrap() {
-        hprintln!("nec: {} {}", cmd.addr, cmd.cmd).unwrap();
+    if let Ok((neccmd, nescmd, rc5cmd)) = receiver.step(*COUNT) {
+
+        // We have a NEC Command
+        if let Some(cmd) = neccmd {
+            hprintln!("nec: {} {}", cmd.addr, cmd.cmd).unwrap();
+        }
+
+        // We have Samsung-flavoured NEC Command
+        if let Some(cmd) = nescmd {
+            hprintln!("nec: {} {}", cmd.addr, cmd.cmd).unwrap();
+        }
+
+        // We have a Rc5 Command
+        if let Some(cmd) = rc5cmd {
+            // Print the command if recognized as a Rc5 CD-player command
+            if let Some(decoded) = Rc5CdPlayer.decode_with_address(cmd) {
+                hprintln!("rc5(CD): {:?}", decoded).unwrap();
+            } else {
+                hprintln!("rc5: {} {}", cmd.addr, cmd.cmd).unwrap();
+            }
+        }
     }
 
     // Clear the interrupt

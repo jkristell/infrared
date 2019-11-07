@@ -1,33 +1,17 @@
-use crate::remotecontrol::RemoteControl;
+use crate::remotes::remotecontrol::{DeviceType, RemoteControl, StandardButton};
+use crate::remotecontrol_standardbutton;
+
 use crate::nec::NecCommand;
-use crate::nec_buttons;
+use crate::ProtocolId;
 
-const SAMSUNGTV_ADDR: u8 = 7;
-
-#[derive(Copy, Clone)]
-/// Samsung Tv Remote Control
-pub struct SamsungTv;
-
-impl RemoteControl<NecCommand> for SamsungTv {
-    type Button = SamsungTvButton;
-
-    fn decode(&self, cmd: NecCommand) -> Option<SamsungTvButton> {
-        if cmd.addr != SAMSUNGTV_ADDR {
-            return None;
-        }
-        to_button(cmd.cmd)
-    }
-
-    fn encode(&self, action: SamsungTvButton) -> NecCommand {
-        NecCommand {
-            addr: SAMSUNGTV_ADDR,
-            cmd: from_button(action),
-        }
-    }
-}
-
-nec_buttons!(
-    SamsungTvButton, [
+remotecontrol_standardbutton!(
+    SamsungTv,
+    ProtocolId::NecSamsung,
+    "Samsung TV",
+    DeviceType::TV,
+    7,
+    NecCommand,
+    [
         (2, Power),
         (1, Source),
         (4, One),

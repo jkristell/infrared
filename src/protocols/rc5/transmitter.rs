@@ -21,7 +21,7 @@ pub struct Rc5Transmitter {
 }
 
 impl Rc5Transmitter {
-    pub fn new_for_samplerate(samplerate: u32) -> Self {
+    pub fn new(samplerate: u32) -> Self {
 
         let samples = (samplerate * 889) / 1_000_000;
 
@@ -91,4 +91,4 @@ impl Transmitter<Rc5Command> for Rc5Transmitter {
 }
 
 #[cfg(feature = "embedded-hal")]
-impl PwmTransmitter<Rc5Command> for Rc5Transmitter {}
+impl hal::PwmTransmitter<Rc5Command> for Rc5Transmitter {}

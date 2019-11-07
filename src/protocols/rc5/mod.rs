@@ -1,7 +1,5 @@
-
 pub mod receiver;
 pub mod transmitter;
-
 pub use receiver::{Rc5Receiver};
 pub use transmitter::Rc5Transmitter;
 
@@ -14,7 +12,7 @@ const ADDR_SHIFT: u32 = 6;
 const START_SHIFT: u32 = 12;
 const TOGGLE_SHIFT: u32 = 11;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct Rc5Command {
     pub addr: u8,
     pub cmd: u8,
@@ -23,16 +21,6 @@ pub struct Rc5Command {
 }
 
 impl Rc5Command {
-    pub const fn from_bits(data: u16) -> Self {
-
-        let addr = ((data & ADDR_MASK) >> ADDR_SHIFT) as u8;
-        let cmd = (data & CMD_MASK) as u8;
-        let start = ((data & START_MASK) >> START_SHIFT) as u8;
-        let toggle = ((data & TOGGLE_MASK) >> TOGGLE_SHIFT) as u8;
-
-        Self {addr, cmd, start, toggle}
-    }
-
     pub const fn new(addr: u8, cmd: u8, toggle: bool) -> Self {
         Self {
             addr,
@@ -42,15 +30,22 @@ impl Rc5Command {
         }
     }
 
-    pub fn to_bits(&self) -> u16 {
+    pub const fn from_bits(bits: u16) -> Self {
+        let addr = ((bits & ADDR_MASK) >> ADDR_SHIFT) as u8;
+        let cmd = (bits & CMD_MASK) as u8;
+        let start = ((bits & START_MASK) >> START_SHIFT) as u8;
+        let toggle = ((bits & TOGGLE_MASK) >> TOGGLE_SHIFT) as u8;
 
+        Self {addr, cmd, start, toggle}
+    }
+
+    pub fn to_bits(&self) -> u16 {
         u16::from(self.addr) << ADDR_SHIFT |
         u16::from(self.cmd) |
         u16::from(self.toggle) << TOGGLE_SHIFT |
         u16::from(self.start) << START_SHIFT
     }
 }
-
 
 
 #[cfg(test)]
@@ -83,7 +78,7 @@ mod tests {
 
         for dist in dists.iter() {
             edge = !edge;
-            tot += dist;
+            tot += *dist;
             state = recv.sample_edge(edge, tot);
         }
 
@@ -98,7 +93,7 @@ mod tests {
     #[test]
     fn rc5_transmit() {
 
-        let mut tx = Rc5Transmitter::new_for_samplerate(40_000);
+        let mut tx = Rc5Transmitter::new(40_000);
 
         tx.load(Rc5Command::new(20, 9, false));
 

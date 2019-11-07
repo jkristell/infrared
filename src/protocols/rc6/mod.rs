@@ -1,6 +1,6 @@
 use core::ops::Range;
-use crate::{Receiver, ReceiverState};
-#[cfg(feature="protocol-dev")]
+use crate::{Receiver, ReceiverState, ProtocolId};
+#[cfg(feature = "protocol-dev")]
 use crate::ReceiverDebug;
 
 #[derive(Debug)]
@@ -11,9 +11,16 @@ pub struct Rc6Command {
 }
 
 impl Rc6Command {
-    pub fn new(data: u32, toggle: bool) -> Self {
-        let addr = (data >> 8) as u8;
-        let cmd = (data & 0xFF) as u8;
+
+    pub fn new(addr: u8, cmd: u8) -> Self {
+        Self {
+            addr, cmd, toggle: false
+        }
+    }
+
+    pub fn from_bits(bits: u32, toggle: bool) -> Self {
+        let addr = (bits >> 8) as u8;
+        let cmd = (bits & 0xFF) as u8;
         Self {addr, cmd, toggle}
     }
 }
@@ -35,7 +42,7 @@ pub struct Rc6Receiver {
     pub last: u32,
     pub rc6_counter: u32,
 
-    #[cfg(feature="protocol-dev")]
+    #[cfg(feature = "protocol-dev")]
     pub debug: ReceiverDebug<Rc6State, Option<u32>>,
 }
 
@@ -50,7 +57,7 @@ impl Rc6Receiver {
             rc6_counter: 0,
             headerdata: 0,
             toggle: false,
-            #[cfg(feature="protocol-dev")]
+            #[cfg(feature = "protocol-dev")]
             debug: ReceiverDebug {
                 state: Rc6State::Idle,
                 state_new: Rc6State::Idle,
@@ -85,7 +92,7 @@ impl Rc6Receiver {
         use ReceiverState::*;
         match self.state {
             Rc6State::Idle => Idle,
-            Rc6State::Done => Done(Rc6Command::new(self.data, self.toggle)),
+            Rc6State::Done => Done(Rc6Command::from_bits(self.data, self.toggle)),
             Rc6State::Error(err) => Error(err),
             _ => Receiving
         }
@@ -112,6 +119,7 @@ const FALLING: bool = false;
 impl Receiver for Rc6Receiver {
     type Cmd = Rc6Command;
     type Err = Rc6Error;
+    const PROTOCOL_ID: ProtocolId = ProtocolId::Rc6;
 
     fn sample(&mut self, pinval: bool, timestamp: u32) -> Rc6Result {
 
@@ -160,7 +168,7 @@ impl Receiver for Rc6Receiver {
             (HeaderData(_), _, None)        => Idle,
 
             (Trailing, FALLING, Some(3))    => { self.toggle = false; Data(15) },
-            (Trailing, RISING, Some(2))     => { self.toggle = true; Data(15) },
+            (Trailing, RISING,  Some(2))    => { self.toggle = true; Data(15) },
             (Trailing, FALLING, Some(1))    => Trailing,
             (Trailing, _, _)                => Idle,
 
@@ -170,13 +178,13 @@ impl Receiver for Rc6Receiver {
             (Data(n), RISING,   Some(_)) if odd    => Data(n-1),
             (Data(n), FALLING,  Some(_)) if odd    => { self.data |= 1 << n; Data(n-1) },
             (Data(n), _,        Some(_))           => Data(n),
-            (Data(_),      _,   None)              => Error(Rc6Error::Data(delta)),
+            (Data(_), _,        None)              => Error(Rc6Error::Data(delta)),
 
             (Done, _, _)        => Done,
             (Error(err), _, _)  => Error(err),
         };
 
-        #[cfg(feature="protocol-dev")]
+        #[cfg(feature = "protocol-dev")]
         {
             self.debug.state = self.state;
             self.debug.state_new = newstate;
