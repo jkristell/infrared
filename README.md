@@ -10,13 +10,8 @@ A library for using infrared remote controls with Rust.
  - "Samsung BluRay Player protocol" (Please let know if it has a real name :))
 
 ### Examples
-
-```rust
-
-```
-
-
- - Receiving, NEC, Rc5 and Rc6 ``examples/receiver``
+ - Simple receiver for NEC ``examples/receiver``
+ - Multi receiver for NEC, NecSamsung and Rc5 ``examples/multireceiver``
  - Transmitting NEC, Rc5 ``examples/transmitter``
  - [Blipper](https://github.com/jkristell/blipper) - An application for working
  with transmitters and receivers from a host computer
@@ -32,12 +27,11 @@ A library for using infrared remote controls with Rust.
 
 ![Boards](http://jott.se/wp-content/uploads/2019/09/txrx_setup.jpg)
 
-
 ## How to use it
 See the examples.
 
 ## Near time goals
- - Implement transmit for Rc6
+ - Implement transmit for Rc6 and Samsung BluRay Player protocol
  - Implement support for more remotes of different kinds
  - Hw Timer-Capture based example
     
