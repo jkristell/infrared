@@ -34,7 +34,7 @@ See the examples.
  - Implement transmit for Rc6 and Samsung BluRay Player protocol
  - Implement support for more remotes of different kinds
  - Hw Timer-Capture based example
-    
+
 ## Long time goals
 USB/Network support to be able to create "universal remote control" types of applications.
 Work started in [Blipper](https://github.com/jkristell/blipper) repository.
