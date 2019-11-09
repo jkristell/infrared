@@ -1,12 +1,3 @@
-[package]
-name = "infrared-examples"
-version = "0.1.0"
-authors = ["Johan Kristell <johan@jott.se>"]
-edition = "2018"
-description = "Infrared examples"
-
-[dependencies]
-
 [workspace]
 members = [
     "receiver",
