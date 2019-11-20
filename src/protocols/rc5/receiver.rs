@@ -5,6 +5,7 @@ use crate::{Receiver, ReceiverState, ProtocolId};
 #[cfg(feature = "protocol-dev")]
 use crate::ReceiverDebug;
 use crate::rc5::Rc5Command;
+use crate::receiver::ReceiverError;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Rc5Error {
@@ -66,7 +67,7 @@ impl Rc5Receiver {
         match self.state {
             Rc5State::Idle => Idle,
             Rc5State::Done => Done(Rc5Command::from_bits(self.bitbuf)),
-            Rc5State::Error(err) => Error(err),
+            Rc5State::Error(err) => Error(ReceiverError::Data(0)), //TODO
             _ => Receiving
         }
     }
@@ -84,11 +85,10 @@ pub enum Rc5State {
 const RISING: bool = true;
 const FALLING: bool = false;
 
-type Rc5Res = ReceiverState<Rc5Command, Rc5Error>;
+type Rc5Res = ReceiverState<Rc5Command>;
 
 impl Receiver for Rc5Receiver {
     type Cmd = Rc5Command;
-    type Err = Rc5Error;
     const PROTOCOL_ID: ProtocolId = ProtocolId::Rc5;
 
     fn sample(&mut self, pinval: bool, sampletime: u32) -> Rc5Res {

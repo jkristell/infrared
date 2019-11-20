@@ -5,6 +5,7 @@ use crate::{Receiver, ReceiverState, ProtocolId};
 #[cfg(feature = "protocol-dev")]
 use crate::ReceiverDebug;
 use crate::protocols::nec::{NecTypeTrait, NecCommand};
+use crate::receiver::ReceiverError;
 
 
 #[derive(Debug, Clone, Copy)]
@@ -16,7 +17,7 @@ pub enum NecError {
     Data,
 }
 
-pub type NecResult = ReceiverState<NecCommand, NecError>;
+pub type NecResult = ReceiverState<NecCommand>;
 
 pub struct NecTypeReceiver<NECTYPE> {
     // State
@@ -83,7 +84,7 @@ impl<NECTYPE: NecTypeTrait> NecTypeReceiver<NECTYPE> {
             NecState::Init => Idle,
             NecState::Done => Done(NECTYPE::decode_command(self.bitbuf)),
             NecState::RepeatDone => Done(NECTYPE::decode_command(self.lastcommand)),
-            NecState::Err(e) => Error(e),
+            NecState::Err(e) => Error(ReceiverError::Data(0)), //TODO:
             NecState::Disabled => Disabled,
             _ => Receiving,
         }
@@ -92,10 +93,9 @@ impl<NECTYPE: NecTypeTrait> NecTypeReceiver<NECTYPE> {
 
 impl<NECTYPE: NecTypeTrait> Receiver for NecTypeReceiver<NECTYPE> {
     type Cmd = NecCommand;
-    type Err = NecError;
     const PROTOCOL_ID: ProtocolId = NECTYPE::PROTOCOL;
 
-    fn sample(&mut self, pinval: bool, timestamp: u32) -> ReceiverState<NecCommand, NecError> {
+    fn sample(&mut self, pinval: bool, timestamp: u32) -> ReceiverState<NecCommand> {
 
         let rising_edge = pinval && !self.prev_pinval;
         self.prev_pinval = pinval;
@@ -107,7 +107,7 @@ impl<NECTYPE: NecTypeTrait> Receiver for NecTypeReceiver<NECTYPE> {
         self.receiver_state()
     }
 
-    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err> {
+    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd> {
         use NecState::*;
         use PulseWidth::*;
 

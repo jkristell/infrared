@@ -9,6 +9,7 @@
 
 use core::ops::Range;
 use crate::{Receiver, ProtocolId, ReceiverState};
+use crate::receiver::ReceiverError;
 
 
 #[derive(Debug)]
@@ -64,7 +65,7 @@ pub enum SbpState {
     Disabled,
 }
 
-pub type SbpResult = ReceiverState<SbpCommand, ()>;
+pub type SbpResult = ReceiverState<SbpCommand>;
 
 impl SbpReceiver {
 
@@ -85,7 +86,7 @@ impl SbpReceiver {
         match self.state {
             SbpState::Init => Idle,
             SbpState::Done => Done(SbpCommand::from_receiver(self.address, self.command)),
-            SbpState::Err(e) => Error(e),
+            SbpState::Err(e) => Error(ReceiverError::Data(0)), //TODO
             SbpState::Disabled => Disabled,
             _ => Receiving,
         }
@@ -95,10 +96,9 @@ impl SbpReceiver {
 
 impl Receiver for SbpReceiver {
     type Cmd = SbpCommand;
-    type Err = ();
     const PROTOCOL_ID: ProtocolId = ProtocolId::Sbp;
 
-    fn sample(&mut self, pinval: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err> {
+    fn sample(&mut self, pinval: bool, sampletime: u32) -> ReceiverState<Self::Cmd> {
 
         let rising_edge = pinval && !self.prev_pinval;
         self.prev_pinval = pinval;
@@ -110,7 +110,7 @@ impl Receiver for SbpReceiver {
         self.receiver_state()
     }
 
-    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err> {
+    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd> {
         use SbpState::*;
         use PulseWidth::*;
 

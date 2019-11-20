@@ -2,6 +2,7 @@ use core::ops::Range;
 use crate::{Receiver, ReceiverState, ProtocolId};
 #[cfg(feature = "protocol-dev")]
 use crate::ReceiverDebug;
+use crate::receiver::ReceiverError;
 
 #[derive(Debug)]
 pub struct Rc6Command {
@@ -93,13 +94,13 @@ impl Rc6Receiver {
         match self.state {
             Rc6State::Idle => Idle,
             Rc6State::Done => Done(Rc6Command::from_bits(self.data, self.toggle)),
-            Rc6State::Error(err) => Error(err),
+            Rc6State::Error(err) => Error(ReceiverError::Data(0)), //TODO:
             _ => Receiving
         }
     }
 }
 
-type Rc6Result = ReceiverState<Rc6Command, Rc6Error>;
+type Rc6Result = ReceiverState<Rc6Command>;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Rc6State {
@@ -118,7 +119,6 @@ const FALLING: bool = false;
 
 impl Receiver for Rc6Receiver {
     type Cmd = Rc6Command;
-    type Err = Rc6Error;
     const PROTOCOL_ID: ProtocolId = ProtocolId::Rc6;
 
     fn sample(&mut self, pinval: bool, timestamp: u32) -> Rc6Result {

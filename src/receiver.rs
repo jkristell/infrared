@@ -1,33 +1,41 @@
 use crate::ProtocolId;
 
-#[derive(PartialEq, Eq, Copy, Clone)]
-/// Protocol decoder state
-pub enum ReceiverState<CMD, ERR> {
-    Idle,
-    Receiving,
-    Done(CMD),
-    Error(ERR),
-    Disabled,
-}
 
 /// Receiver trait
 pub trait Receiver {
     /// The resulting command type
     type Cmd;
-    /// Receive Error
-    type Err;
     /// Protocol id
     const PROTOCOL_ID: ProtocolId;
 
     /// Sample
-    fn sample(&mut self, pinval: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err>;
+    fn sample(&mut self, pinval: bool, sampletime: u32) -> ReceiverState<Self::Cmd>;
     /// Sample on known edge
-    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err>;
+    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd>;
     /// Reset receiver
     fn reset(&mut self);
     /// Disable receiver
     fn disable(&mut self);
 }
+
+
+#[derive(PartialEq, Eq, Copy, Clone)]
+/// Protocol decoder state
+pub enum ReceiverState<CMD> {
+    Idle,
+    Receiving,
+    Done(CMD),
+    Error(ReceiverError),
+    Disabled,
+}
+
+#[derive(PartialEq, Eq, Copy, Clone)]
+pub enum ReceiverError {
+    Address(u32),
+    Data(u32),
+    Other(u32),
+}
+
 
 
 #[cfg(feature = "embedded-hal")]

@@ -18,17 +18,16 @@ pub struct LoggingReceiver {
     /// Samplenum with pin change
     pub prev_samplenum: u32,
     /// Our state
-    pub state: ReceiverState<(), ()>,
+    pub state: ReceiverState<()>,
 }
 
 
 impl Receiver for LoggingReceiver {
     type Cmd = ();
-    type Err = ();
     const PROTOCOL_ID: ProtocolId = ProtocolId::Logging;
 
 
-    fn sample(&mut self, pinval: bool, samplenum: u32) -> ReceiverState<(), ()> {
+    fn sample(&mut self, pinval: bool, samplenum: u32) -> ReceiverState<()> {
 
         if !self.ready() {
             return self.state;
@@ -46,7 +45,7 @@ impl Receiver for LoggingReceiver {
         self.state
     }
 
-    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err> {
+    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd> {
 
         if !self.ready() {
             return self.state;
