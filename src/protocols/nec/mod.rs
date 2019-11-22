@@ -6,7 +6,7 @@ pub mod transmitter;
 mod tests;
 
 use crate::ProtocolId;
-pub use receiver::{NecError, NecResult, NecTypeReceiver};
+pub use receiver::{NecTypeReceiver};
 pub use transmitter::NecTypeTransmitter;
 
 pub struct StandardType;

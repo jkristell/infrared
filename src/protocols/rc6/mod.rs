@@ -1,5 +1,5 @@
 use core::ops::Range;
-use crate::{Receiver, ReceiverState, ProtocolId};
+use crate::{ReceiverStateMachine, ReceiverState, ProtocolId};
 #[cfg(feature = "protocol-dev")]
 use crate::ReceiverDebug;
 use crate::receiver::ReceiverError;
@@ -117,7 +117,7 @@ pub enum Rc6State {
 const RISING: bool = true;
 const FALLING: bool = false;
 
-impl Receiver for Rc6Receiver {
+impl ReceiverStateMachine for Rc6Receiver {
     type Cmd = Rc6Command;
     const PROTOCOL_ID: ProtocolId = ProtocolId::Rc6;
 

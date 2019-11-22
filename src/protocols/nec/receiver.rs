@@ -1,30 +1,19 @@
 use core::ops::Range;
 
 use crate::nec::Pulsedistance;
-use crate::{Receiver, ReceiverState, ProtocolId};
+use crate::{ReceiverStateMachine, ReceiverState, ProtocolId};
 #[cfg(feature = "protocol-dev")]
 use crate::ReceiverDebug;
 use crate::protocols::nec::{NecTypeTrait, NecCommand};
-use crate::receiver::ReceiverError;
+use crate::receiver::{ReceiverError, ReceiverHal};
 
 
-#[derive(Debug, Clone, Copy)]
-/// Error when receiving
-pub enum NecError {
-    /// Couldn't determine the type of message
-    CommandType(u32),
-    /// Receiving data but failed to read bit
-    Data,
-}
-
-pub type NecResult = ReceiverState<NecCommand>;
 
 pub struct NecTypeReceiver<NECTYPE> {
     // State
     state: NecState,
+    last_event: u32,
     pub bitbuf: u32,
-    prev_sampletime: u32,
-    prev_pinval: bool,
     // Timing and tolerances
     tolerance: Tolerances,
     lastcommand: u32,
@@ -46,7 +35,7 @@ pub enum NecState {
     // Repeat command received
     RepeatDone,
     // In error state
-    Err(NecError),
+    Err(ReceiverError),
     // Disabled
     Disabled,
 }
@@ -61,8 +50,7 @@ impl<NECTYPE: NecTypeTrait> NecTypeReceiver<NECTYPE> {
         let tol = Tolerances::from_timing(timing, samplerate);
         Self {
             state: NecState::Init,
-            prev_sampletime: 0,
-            prev_pinval: false,
+            last_event: 0,
             bitbuf: 0,
             lastcommand: 0,
             nectype: core::marker::PhantomData,
@@ -77,7 +65,7 @@ impl<NECTYPE: NecTypeTrait> NecTypeReceiver<NECTYPE> {
         }
     }
 
-    fn receiver_state(&self) -> NecResult {
+    fn receiver_state(&self) -> ReceiverState<NecCommand> {
         use ReceiverState::*;
         // Internalstate to ReceiverState
         match self.state {
@@ -91,37 +79,24 @@ impl<NECTYPE: NecTypeTrait> NecTypeReceiver<NECTYPE> {
     }
 }
 
-impl<NECTYPE: NecTypeTrait> Receiver for NecTypeReceiver<NECTYPE> {
+impl<NECTYPE> ReceiverStateMachine for NecTypeReceiver<NECTYPE>
+where
+    NECTYPE: NecTypeTrait,
+{
     type Cmd = NecCommand;
-    const PROTOCOL_ID: ProtocolId = NECTYPE::PROTOCOL;
+    const ID: ProtocolId = NECTYPE::PROTOCOL;
 
-    fn sample(&mut self, pinval: bool, timestamp: u32) -> ReceiverState<NecCommand> {
-
-        let rising_edge = pinval && !self.prev_pinval;
-        self.prev_pinval = pinval;
-
-        if rising_edge {
-            return self.sample_edge(true, timestamp);
-        }
-
-        self.receiver_state()
-    }
-
-    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd> {
+    fn event(&mut self, rising: bool, time: u32) -> ReceiverState<Self::Cmd> {
         use NecState::*;
         use PulseWidth::*;
 
         if rising {
 
-            let mut delta = sampletime.wrapping_sub(self.prev_sampletime);
+            // Calculate the nbr of samples since last rising edge
+            let nsamples = time.wrapping_sub(self.last_event);
 
-            if delta >= core::u16::MAX.into() {
-                delta = 0;
-            }
-
-            self.prev_sampletime = sampletime;
-
-            let pulsewidth = self.tolerance.pulsewidth(delta);
+            // Map the nbr of samples to a pulsewidth
+            let pulsewidth = self.tolerance.pulsewidth(nsamples);
 
             let newstate = match (self.state, pulsewidth) {
                 (Init,            Sync)     => Receiving(0),
@@ -134,7 +109,7 @@ impl<NECTYPE: NecTypeTrait> Receiver for NecTypeReceiver<NECTYPE> {
                 (Receiving(bit),  One)      => {self.bitbuf |= 1 << bit; Receiving(bit + 1)},
                 (Receiving(bit),  Zero)     => Receiving(bit + 1),
 
-                (Receiving(_),    _)        => Err(NecError::Data),
+                (Receiving(_),    _)        => Err(ReceiverError::Data(0)),
 
                 (Done,            _)        => Done,
                 (RepeatDone,      _)        => RepeatDone,
@@ -146,9 +121,10 @@ impl<NECTYPE: NecTypeTrait> Receiver for NecTypeReceiver<NECTYPE> {
             {
                 self.debug.state = self.state;
                 self.debug.state_new = newstate;
-                self.debug.delta = delta as u16;
+                self.debug.delta = nsamples as u16;
             }
 
+            self.last_event = time;
             self.state = newstate;
         }
 
@@ -157,16 +133,72 @@ impl<NECTYPE: NecTypeTrait> Receiver for NecTypeReceiver<NECTYPE> {
 
     fn reset(&mut self) {
         self.state = NecState::Init;
-        self.prev_sampletime = 0;
-        self.prev_pinval = false;
+        self.last_event = 0;
         self.lastcommand = if self.bitbuf == 0 {self.lastcommand} else {self.bitbuf};
         self.bitbuf = 0;
     }
+}
 
-    fn disable(&mut self) {
-        self.state = NecState::Disabled;
+#[cfg(feature = "embedded-hal")]
+mod ehal {
+    use super::*;
+    use embedded_hal;
+    use embedded_hal::digital::v2::InputPin;
+
+    struct HalReceiver<NECTYPE, PIN> {
+        sm: NecTypeReceiver<NECTYPE>,
+        prev_pinval: bool,
+        pin: PIN,
+    }
+
+    impl<NECTYPE, PIN> HalReceiver<NECTYPE, PIN>
+    where
+        NECTYPE: NecTypeTrait,
+    {
+        pub fn new(pin: PIN, sr: u32) -> Self {
+            Self {
+                sm: NecTypeReceiver::new(sr),
+                prev_pinval: false,
+                pin: pin,
+            }
+        }
+    }
+
+    impl<NECTYPE, PIN, PINERR> ReceiverHal<PIN, PINERR, NecCommand> for HalReceiver<NECTYPE, PIN>
+    where
+        NECTYPE: NecTypeTrait,
+        PIN: InputPin<Error=PINERR>,
+    {
+        fn sample(&mut self, time: u32) -> Result<Option<NecCommand>, PINERR> {
+
+            let pinval = self.pin.is_low()?;
+
+            let rising = pinval && !self.prev_pinval;
+            self.prev_pinval = pinval;
+
+            if rising {
+                let state = self.sm.event(true, time);
+
+                if let ReceiverState::Done(cmd) = state {
+                    return Ok(Some(cmd));
+                }
+
+                if ReceiverState::Error == state {
+                    self.sm.reset();
+                }
+            }
+
+            Ok(None)
+        }
+
+        fn disable(&mut self) {
+            unimplemented!()
+        }
     }
 }
+
+
+
 
 #[derive(Debug, Clone)]
 pub struct Tolerances {

@@ -25,11 +25,11 @@ mod transmitter;
 pub use transmitter::{TransmitterState, Transmitter};
 
 mod receiver;
-pub use receiver::{Receiver, ReceiverState};
+pub use receiver::{ReceiverStateMachine, ReceiverState};
 
 #[cfg(feature = "embedded-hal")]
 pub mod hal {
-    pub use crate::receiver::hal::{HalReceiver, HalReceiver2, HalReceiver3, HalReceiver4};
+    //pub use crate::receiver::hal::{HalReceiver, HalReceiver2, HalReceiver3, HalReceiver4};
     pub use crate::transmitter::PwmTransmitter;
 }
 
@@ -40,7 +40,7 @@ pub mod remotes;
 pub use receiver::ReceiverDebug;
 
 pub mod prelude {
-    pub use crate::Receiver;
+    pub use crate::ReceiverStateMachine;
     pub use crate::Transmitter;
     pub use crate::ReceiverState;
     pub use crate::TransmitterState;

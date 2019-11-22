@@ -1,5 +1,5 @@
 use core::ops::Range;
-use crate::{Receiver, ReceiverState, ProtocolId};
+use crate::{ReceiverStateMachine, ReceiverState, ProtocolId};
 
 
 #[cfg(feature = "protocol-dev")]
@@ -87,7 +87,7 @@ const FALLING: bool = false;
 
 type Rc5Res = ReceiverState<Rc5Command>;
 
-impl Receiver for Rc5Receiver {
+impl ReceiverStateMachine for Rc5Receiver {
     type Cmd = Rc5Command;
     const PROTOCOL_ID: ProtocolId = ProtocolId::Rc5;
 

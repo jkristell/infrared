@@ -8,7 +8,7 @@
 //!
 
 use core::ops::Range;
-use crate::{Receiver, ProtocolId, ReceiverState};
+use crate::{ReceiverStateMachine, ProtocolId, ReceiverState};
 use crate::receiver::ReceiverError;
 
 
@@ -94,7 +94,7 @@ impl SbpReceiver {
 }
 
 
-impl Receiver for SbpReceiver {
+impl ReceiverStateMachine for SbpReceiver {
     type Cmd = SbpCommand;
     const PROTOCOL_ID: ProtocolId = ProtocolId::Sbp;
 

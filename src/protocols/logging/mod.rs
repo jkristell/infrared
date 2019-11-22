@@ -1,4 +1,4 @@
-use crate::{Receiver, ReceiverState, ProtocolId};
+use crate::{ReceiverStateMachine, ReceiverState, ProtocolId};
 
 const BUF_LEN: usize = 128;
 
@@ -22,7 +22,7 @@ pub struct LoggingReceiver {
 }
 
 
-impl Receiver for LoggingReceiver {
+impl ReceiverStateMachine for LoggingReceiver {
     type Cmd = ();
     const PROTOCOL_ID: ProtocolId = ProtocolId::Logging;
 

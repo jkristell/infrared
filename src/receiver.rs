@@ -1,22 +1,39 @@
 use crate::ProtocolId;
 
 
-/// Receiver trait
-pub trait Receiver {
+/// Receiver state machine
+pub trait ReceiverStateMachine {
+    /// Protocol id
+    const ID: ProtocolId;
     /// The resulting command type
     type Cmd;
-    /// Protocol id
-    const PROTOCOL_ID: ProtocolId;
 
-    /// Sample
-    fn sample(&mut self, pinval: bool, sampletime: u32) -> ReceiverState<Self::Cmd>;
-    /// Sample on known edge
-    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd>;
+    /// Add event to state machine
+    fn event(&mut self, edge: bool, time: u32) -> ReceiverState<Self::Cmd>;
     /// Reset receiver
     fn reset(&mut self);
+}
+
+
+/// Receiver Hal
+pub trait ReceiverHal<PIN, PINERR, CMD> {
+    /// Sample
+    fn sample(&mut self, sampletime: u32) -> Result<Option<CMD>, PINERR>;
+
     /// Disable receiver
     fn disable(&mut self);
 }
+
+/*
+
+
+    /// Sample
+    fn sample(&mut self, pinval: bool, sampletime: u32) -> ReceiverState<Self::Cmd>;
+
+    /// Disable receiver
+    fn disable(&mut self);
+
+*/
 
 
 #[derive(PartialEq, Eq, Copy, Clone)]
@@ -29,14 +46,14 @@ pub enum ReceiverState<CMD> {
     Disabled,
 }
 
-#[derive(PartialEq, Eq, Copy, Clone)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum ReceiverError {
     Address(u32),
     Data(u32),
     Other(u32),
 }
 
-
+/*
 
 #[cfg(feature = "embedded-hal")]
 pub mod hal {
@@ -113,6 +130,8 @@ pub mod hal {
                 (recv4, RECV4, CMD4, RECVERR4)
             ]);
 }
+
+*/
 
 #[cfg(feature = "protocol-dev")]
 pub struct ReceiverDebug<STATE, EXTRA> {
