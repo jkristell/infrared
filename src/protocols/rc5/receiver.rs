@@ -89,19 +89,9 @@ type Rc5Res = ReceiverState<Rc5Command>;
 
 impl ReceiverStateMachine for Rc5Receiver {
     type Cmd = Rc5Command;
-    const PROTOCOL_ID: ProtocolId = ProtocolId::Rc5;
+    const ID: ProtocolId = ProtocolId::Rc5;
 
-    fn sample(&mut self, pinval: bool, sampletime: u32) -> Rc5Res {
-
-        let edge = self.pinval != pinval;
-        if edge {
-            return self.sample_edge(pinval, sampletime);
-        }
-
-        self.receiver_state()
-    }
-
-    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> Rc5Res {
+    fn event(&mut self, rising: bool, sampletime: u32) -> Rc5Res {
         use Rc5State::*;
 
         let delta = self.delta(sampletime);
@@ -153,8 +143,8 @@ impl ReceiverStateMachine for Rc5Receiver {
         self.rc5cntr = 0;
     }
 
-    fn disable(&mut self) {
-        self.state = Rc5State::Disabled;
+    fn for_samplerate(samplerate: u32) -> Self {
+        Self::new(samplerate)
     }
 }
 

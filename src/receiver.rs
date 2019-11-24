@@ -8,6 +8,9 @@ pub trait ReceiverStateMachine {
     /// The resulting command type
     type Cmd;
 
+    // Create
+    fn for_samplerate(samplerate: u32) -> Self;
+
     /// Add event to state machine
     fn event(&mut self, edge: bool, time: u32) -> ReceiverState<Self::Cmd>;
     /// Reset receiver
@@ -16,24 +19,22 @@ pub trait ReceiverStateMachine {
 
 
 /// Receiver Hal
-pub trait ReceiverHal<PIN, PINERR, CMD> {
+pub trait ReceiverHal<PIN, PINERR, CMD>
+where
+    CMD: crate::remotes::RemoteControlCommand,
+{
     /// Sample
     fn sample(&mut self, sampletime: u32) -> Result<Option<CMD>, PINERR>;
+
+    #[cfg(feature = "remotes")]
+    fn sample_remote<REMOTE>(&mut self, sampletime: u32) -> Result<Option<REMOTE::Button>, PINERR>
+    where
+    REMOTE: crate::remotes::RemoteControl<Command=CMD>;
 
     /// Disable receiver
     fn disable(&mut self);
 }
 
-/*
-
-
-    /// Sample
-    fn sample(&mut self, pinval: bool, sampletime: u32) -> ReceiverState<Self::Cmd>;
-
-    /// Disable receiver
-    fn disable(&mut self);
-
-*/
 
 
 #[derive(PartialEq, Eq, Copy, Clone)]

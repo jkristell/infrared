@@ -1,4 +1,4 @@
-use crate::nec::{Pulsedistance, NecCommand};
+use crate::nec::{NecTiming, NecCommand};
 use crate::prelude::*;
 use crate::protocols::nec::NecTypeTrait;
 
@@ -124,13 +124,13 @@ impl<NECTYPE> Transmitter<NecCommand> for NecTypeTransmitter<NECTYPE>
 impl<NECTYPE: NecTypeTrait> hal::PwmTransmitter<NecCommand> for NecTypeTransmitter<NECTYPE> {}
 
 impl NSamples {
-    pub const fn new(period: u32, pulsedistance: &Pulsedistance) -> Self {
+    pub const fn new(period: u32, pulsedistance: &NecTiming) -> Self {
         Self {
-            header_high: pulsedistance.header_high / period,
-            header_low: pulsedistance.header_low / period,
-            zero_low: pulsedistance.zero_low / period,
-            data_high: pulsedistance.data_high / period,
-            one_low: pulsedistance.one_low / period,
+            header_high: pulsedistance.hh / period,
+            header_low: pulsedistance.hl / period,
+            zero_low: pulsedistance.zl / period,
+            data_high: pulsedistance.dh / period,
+            one_low: pulsedistance.ol / period,
         }
     }
 }

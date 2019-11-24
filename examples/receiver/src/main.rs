@@ -17,8 +17,11 @@ use stm32f1xx_hal::{
 };
 
 use infrared::{
-    hal::HalReceiver,
+    hal::GenericHalReceiver,
+    hal::ReceiverHal,
     nec::*,
+    rc5::*,
+    remotes::rc5::*,
 };
 
 const TIMER_FREQ: u32 = 40_000;
@@ -26,9 +29,9 @@ const TIMER_FREQ: u32 = 40_000;
 static mut TIMER: Option<Timer<TIM2>> = None;
 
 // Receiver
-static mut RECEIVER: Option<HalReceiver<
+static mut RECEIVER: Option<GenericHalReceiver<
     PB8<Input<Floating>>,
-    NecReceiver,
+    Rc5Receiver,
 >> = None;
 
 
@@ -53,8 +56,9 @@ fn main() -> ! {
     let mut timer = Timer::tim2(device.TIM2, TIMER_FREQ.hz(), clocks, &mut rcc.apb1);
     timer.listen(Event::Update);
 
-    let nec = NecReceiver::new(TIMER_FREQ);
-    let receiver = HalReceiver::new(irinpin, nec);
+    //let nec = NecReceiver::new(TIMER_FREQ);
+    //let receiver = GenericHalReceiver::new(irinpin, nec);
+    let receiver = GenericHalReceiver::new_test(irinpin);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
@@ -78,8 +82,8 @@ fn TIM2() {
 
     let receiver = unsafe { RECEIVER.as_mut().unwrap() };
 
-    if let Some(cmd) = receiver.step(*COUNT).unwrap() {
-        hprintln!("nec: {} {}", cmd.addr, cmd.cmd).unwrap();
+    if let Some(button) = receiver.sample_remote::<Rc5CdPlayer>(*COUNT).unwrap() {
+        hprintln!("Button: {:?}", button).unwrap();
     }
 
     // Clear the interrupt

@@ -15,14 +15,14 @@ macro_rules! remotecontrol_standardbutton {
             const MODEL: &'static str = $rcmodel;
             const MAPPING: &'static [(u8, StandardButton)] = &[ $(($cmd, StandardButton::$name),)+ ];
 
-            fn decode(&self, cmdid: u8) -> Option<StandardButton> {
+            fn decode(cmdid: u8) -> Option<StandardButton> {
                 match cmdid {
                     $($cmd => Some(StandardButton::$name),)+
                     _ => None,
                 }
             }
 
-            fn encode(&self, button: Self::Button) -> Option<Self::Command> {
+            fn encode(button: Self::Button) -> Option<Self::Command> {
                 let stdcmd = match button {
                     $(StandardButton::$name => Some($cmd),)+
                     _ => None,

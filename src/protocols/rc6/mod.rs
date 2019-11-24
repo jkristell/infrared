@@ -119,18 +119,9 @@ const FALLING: bool = false;
 
 impl ReceiverStateMachine for Rc6Receiver {
     type Cmd = Rc6Command;
-    const PROTOCOL_ID: ProtocolId = ProtocolId::Rc6;
+    const ID: ProtocolId = ProtocolId::Rc6;
 
-    fn sample(&mut self, pinval: bool, timestamp: u32) -> Rc6Result {
-
-        if self.pinval != pinval {
-            return self.sample_edge(pinval, timestamp);
-        }
-
-        self.receiver_state()
-    }
-
-    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> Rc6Result {
+    fn event(&mut self, rising: bool, sampletime: u32) -> Rc6Result {
         use Rc6State::*;
 
         let delta = self.delta(sampletime);
@@ -205,8 +196,8 @@ impl ReceiverStateMachine for Rc6Receiver {
         self.rc6_counter = 0;
     }
 
-    fn disable(&mut self) {
-        unimplemented!()
+    fn for_samplerate(samplerate: u32) -> Self {
+        Self::new(samplerate)
     }
 }
 

@@ -33,18 +33,18 @@ pub trait RemoteControl {
     const MAPPING: &'static [(u8, StandardButton)] = &[];
 
     /// Try to map a command into an Button for this remote
-    fn decode_with_address(&self, cmd: Self::Command) -> Option<Self::Button> {
+    fn decode_with_address(cmd: Self::Command) -> Option<Self::Button> {
         if cmd.address() != Self::ADDR {
             return None;
         }
-        self.decode(cmd.command())
+        Self::decode(cmd.command())
     }
 
     /// Map `cmdnum` to button
-    fn decode(&self, cmdnum: u8) -> Option<Self::Button>;
+    fn decode(cmdnum: u8) -> Option<Self::Button>;
 
     /// Encode a button into a command
-    fn encode(&self, button: Self::Button) -> Option<Self::Command>;
+    fn encode(button: Self::Button) -> Option<Self::Command>;
 }
 
 #[allow(non_camel_case_types)]
