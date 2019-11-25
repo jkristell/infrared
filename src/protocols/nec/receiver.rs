@@ -154,14 +154,6 @@ where
 
 }
 
-#[cfg(feature = "embedded-hal")]
-mod ehal {
-    use super::*;
-    use embedded_hal;
-    use embedded_hal::digital::v2::InputPin;
-    use crate::receiver::ReceiverHal;
-
-}
 
 #[derive(Debug)]
 enum PulseWidth {

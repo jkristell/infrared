@@ -1,5 +1,7 @@
 use crate::ProtocolId;
 
+use crate::Command;
+
 #[derive(Debug)]
 pub enum DeviceType {
     Generic,
@@ -9,18 +11,13 @@ pub enum DeviceType {
     BluRayPlayer,
 }
 
-pub trait RemoteControlCommand {
-    fn construct(addr: u16, cmd: u8) -> Self;
-    fn address(&self) -> u16;
-    fn command(&self) -> u8;
-}
 
 /// A trait describing a Remote Control
 pub trait RemoteControl {
     /// The type of the buttons
     type Button;
     /// The type of command
-    type Command: RemoteControlCommand;
+    type Command: Command;
     /// The IR protocol
     const PROTOCOL_ID: ProtocolId;
     /// Device adress

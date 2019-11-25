@@ -2,6 +2,7 @@ pub mod receiver;
 pub mod transmitter;
 pub use receiver::{Rc5Receiver};
 pub use transmitter::Rc5Transmitter;
+use crate::Command;
 
 const ADDR_MASK: u16   = 0b_0000_0111_1100_0000;
 const CMD_MASK: u16    = 0b_0000_0000_0011_1111;
@@ -46,6 +47,21 @@ impl Rc5Command {
         u16::from(self.start) << START_SHIFT
     }
 }
+
+impl Command for Rc5Command {
+    fn construct(addr: u16, cmd: u8) -> Self {
+        Rc5Command::new(addr as u8, cmd, false)
+    }
+
+    fn address(&self) -> u16 {
+        self.addr as u16
+    }
+
+    fn command(&self) -> u8 {
+        self.cmd
+    }
+}
+
 
 
 #[cfg(test)]

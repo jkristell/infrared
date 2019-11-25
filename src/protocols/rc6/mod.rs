@@ -1,5 +1,5 @@
 use core::ops::Range;
-use crate::{ReceiverStateMachine, ReceiverState, ProtocolId};
+use crate::{ReceiverStateMachine, ReceiverState, ProtocolId, Command};
 #[cfg(feature = "protocol-dev")]
 use crate::ReceiverDebug;
 use crate::receiver::ReceiverError;
@@ -26,12 +26,20 @@ impl Rc6Command {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum Rc6Error {
-    Header(u16),
-    Data(u16),
-    Rc6Version(u16),
+impl Command for Rc6Command {
+    fn construct(addr: u16, cmd: u8) -> Self {
+        Rc6Command::new(addr as u8, cmd)
+    }
+
+    fn address(&self) -> u16 {
+        self.addr as u16
+    }
+
+    fn command(&self) -> u8 {
+        self.cmd
+    }
 }
+
 
 pub struct Rc6Receiver {
     samplerate: u32,
@@ -94,7 +102,7 @@ impl Rc6Receiver {
         match self.state {
             Rc6State::Idle => Idle,
             Rc6State::Done => Done(Rc6Command::from_bits(self.data, self.toggle)),
-            Rc6State::Error(err) => Error(ReceiverError::Data(0)), //TODO:
+            Rc6State::Error(err) => Error(err), //TODO:
             _ => Receiving
         }
     }
@@ -111,7 +119,7 @@ pub enum Rc6State {
     Trailing,
     Data(u32),
     Done,
-    Error(Rc6Error),
+    Error(ReceiverError),
 }
 
 const RISING: bool = true;
@@ -169,7 +177,7 @@ impl ReceiverStateMachine for Rc6Receiver {
             (Data(n), RISING,   Some(_)) if odd    => Data(n-1),
             (Data(n), FALLING,  Some(_)) if odd    => { self.data |= 1 << n; Data(n-1) },
             (Data(n), _,        Some(_))           => Data(n),
-            (Data(_), _,        None)              => Error(Rc6Error::Data(delta)),
+            (Data(_), _,        None)              => Error(ReceiverError::Data(delta as u32)),
 
             (Done, _, _)        => Done,
             (Error(err), _, _)  => Error(err),

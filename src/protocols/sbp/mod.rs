@@ -7,7 +7,7 @@
 //! After this the 8 bit command is sent twice, second time inverted.
 //!
 
-use crate::{ReceiverStateMachine, ProtocolId, ReceiverState};
+use crate::{ReceiverStateMachine, ProtocolId, ReceiverState, Command};
 use crate::receiver::ReceiverError;
 use crate::protocols::utils::Ranges;
 
@@ -45,6 +45,25 @@ impl SbpCommand {
         }
     }
 }
+
+impl Command for SbpCommand {
+    fn construct(address: u16, command: u8) -> Self {
+        SbpCommand {
+            address,
+            command,
+            valid: true,
+        }
+    }
+
+    fn address(&self) -> u16 {
+        self.address
+    }
+
+    fn command(&self) -> u8 {
+        self.command
+    }
+}
+
 
 #[derive(Debug, Copy, Clone)]
 // Internal receiver state

@@ -5,7 +5,7 @@ pub mod transmitter;
 #[cfg(test)]
 mod tests;
 
-use crate::ProtocolId;
+use crate::{ProtocolId, Command};
 pub use receiver::{NecTypeReceiver};
 pub use transmitter::NecTypeTransmitter;
 
@@ -33,6 +33,22 @@ impl NecCommand {
         NecCommand { addr, cmd }
     }
 }
+
+impl Command for NecCommand {
+    fn construct(addr: u16, cmd: u8) -> Self {
+        NecCommand::new(addr, cmd)
+    }
+
+    fn address(&self) -> u16 {
+        self.addr as u16
+    }
+
+    fn command(&self) -> u8 {
+        self.cmd
+    }
+}
+
+
 
 pub trait NecTypeTrait {
     const PULSEDISTANCE: &'static NecTiming;

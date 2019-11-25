@@ -7,12 +7,6 @@ use crate::ReceiverDebug;
 use crate::rc5::Rc5Command;
 use crate::receiver::ReceiverError;
 
-#[derive(Clone, Copy, Debug)]
-pub enum Rc5Error {
-    Header(u16),
-    Data(u16),
-}
-
 pub struct Rc5Receiver {
     samplerate: u32,
     state: Rc5State,
@@ -67,7 +61,7 @@ impl Rc5Receiver {
         match self.state {
             Rc5State::Idle => Idle,
             Rc5State::Done => Done(Rc5Command::from_bits(self.bitbuf)),
-            Rc5State::Error(err) => Error(ReceiverError::Data(0)), //TODO
+            Rc5State::Error(err) => Error(err),
             _ => Receiving
         }
     }
@@ -78,7 +72,7 @@ pub enum Rc5State {
     Idle,
     Data(u8),
     Done,
-    Error(Rc5Error),
+    Error(ReceiverError),
     Disabled,
 }
 
@@ -118,7 +112,7 @@ impl ReceiverStateMachine for Rc5Receiver {
             (Data(bit),     FALLING, Some(_)) if odd => Data(bit-1),
 
             (Data(bit),     _,      Some(_))         => Data(bit),
-            (Data(_),       _,      None)            => Error(Rc5Error::Data(delta)),
+            (Data(_),       _,      None)            => Error(ReceiverError::Data(delta as u32)),
             (Done,          _,      _)               => Done,
             (Error(err),    _,      _)               => Error(err),
             (Disabled,      _,      _)               => Disabled,

@@ -2,7 +2,7 @@
 macro_rules! remotecontrol_standardbutton {
     ( $rcname:tt, $protocol:path, $rcmodel:expr, $rctype:path, $rcaddr:expr, $rccmd:tt, [$( ($cmd:expr, $name:tt) ),* $(,)?] ) => {
 
-        use crate::remotes::remotecontrol::RemoteControlCommand;
+        use crate::Command;
 
         pub struct $rcname;
 
