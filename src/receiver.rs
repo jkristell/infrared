@@ -111,6 +111,7 @@ pub mod ehal {
     /// HAL receiver
     pub struct $name<PIN, $( $P ),* > {
         pin: PIN,
+        pinval: bool,
         $( $N : $P ),*
     }
 
@@ -123,6 +124,7 @@ pub mod ehal {
         pub fn new_from_sm(pin: PIN, $( $N : $P ),* ) -> Self {
             Self {
                 pin,
+                pinval: false,
                 $( $N ),*,
             }
         }
@@ -130,6 +132,7 @@ pub mod ehal {
         pub fn new(pin: PIN, samplerate: u32) -> Self {
             Self {
                 pin,
+                pinval: false,
                 $( $N: $P::for_samplerate(samplerate)),*,
             }
         }
@@ -138,23 +141,28 @@ pub mod ehal {
             self.pin
         }
 
-        #[allow(unused_parens)]
         pub fn step(&mut self, ts: u32) -> Result<( $( Option<$C>),*), PINERR> {
             let pinval = self.pin.is_low()?;
 
-            Ok(($(
-            match self.$N.event(pinval, ts) {
-                ReceiverState::Done(cmd) => {
-                    self.$N.reset();
-                    Some(cmd)
-                },
-                ReceiverState::Error(_) => {
-                    self.$N.reset();
-                    None
+            if self.pinval != pinval {
+                self.pinval = pinval;
+
+                Ok(($(
+                match self.$N.event(pinval, ts) {
+                    ReceiverState::Done(cmd) => {
+                        self.$N.reset();
+                        Some(cmd)
+                    },
+                    ReceiverState::Error(_) => {
+                        self.$N.reset();
+                        None
+                    }
+                    _ => None,
                 }
-                _ => None,
+                ),* ))
+            } else {
+                Ok(Default::default())
             }
-            ),* ))
         }
     }
 

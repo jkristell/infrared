@@ -17,9 +17,10 @@ use stm32f1xx_hal::{
 };
 
 use infrared::{
-    hal::HalReceiver3,
+    hal::HalReceiver4,
     nec::*,
     rc5::*,
+    rc6::*,
     remotes::{
         RemoteControl,
         rc5::Rc5CdPlayer
@@ -32,10 +33,11 @@ const TIMER_FREQ: u32 = 40_000;
 static mut TIMER: Option<Timer<TIM2>> = None;
 
 // Receiver for multiple protocols
-static mut RECEIVER: Option<HalReceiver3<PB8<Input<Floating>>,
+static mut RECEIVER: Option<HalReceiver4<PB8<Input<Floating>>,
     NecReceiver,
     NecSamsungReceiver,
     Rc5Receiver,
+    Rc6Receiver,
 >> = None;
 
 
@@ -61,7 +63,7 @@ fn main() -> ! {
     timer.listen(Event::Update);
 
     // Create a receiver that reacts on 3 different kinds of remote controls
-    let receiver = HalReceiver3::new(inpin, TIMER_FREQ);
+    let receiver = HalReceiver4::new(inpin, TIMER_FREQ);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
@@ -85,7 +87,7 @@ fn TIM2() {
 
     let receiver = unsafe { RECEIVER.as_mut().unwrap() };
 
-    if let Ok((neccmd, nescmd, rc5cmd)) = receiver.step(*SAMPLECOUNTER) {
+    if let Ok((neccmd, nescmd, rc5cmd, rc6cmd)) = receiver.step(*SAMPLECOUNTER) {
 
         // We have a NEC Command
         if let Some(cmd) = neccmd {
@@ -105,6 +107,10 @@ fn TIM2() {
             } else {
                 hprintln!("rc5: {} {}", cmd.addr, cmd.cmd).unwrap();
             }
+        }
+
+        if let Some(cmd) = rc6cmd {
+            hprintln!("rc6: {} {}", cmd.addr, cmd.cmd).ok();
         }
     }
 
