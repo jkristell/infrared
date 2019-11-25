@@ -9,4 +9,4 @@ pub mod sbp;
 
 pub mod utils;
 
-//pub mod logging;
+pub mod logging;

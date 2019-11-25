@@ -65,7 +65,7 @@ impl<NECTYPE: NecTypeTrait> NecTypeReceiver<NECTYPE> {
                 state: NecState::Init,
                 state_new: NecState::Init,
                 delta: 0,
-                extra: tol.clone(),
+                extra: ranges.clone(),
             },
             ranges,
         }
@@ -151,12 +151,11 @@ where
         self.lastcommand = if self.bitbuf == 0 {self.lastcommand} else {self.bitbuf};
         self.bitbuf = 0;
     }
-
 }
 
 
-#[derive(Debug)]
-enum PulseWidth {
+#[derive(Debug, Clone)]
+pub enum PulseWidth {
     Sync = 0,
     Repeat = 1,
     Zero = 2,

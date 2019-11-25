@@ -68,6 +68,11 @@ pub mod ehal {
             }
         }
 
+        pub fn destroy(self) -> PIN {
+            self.pin
+        }
+
+
         pub fn sample(&mut self, sample: u32) -> Result<Option<CMD>, PINERR> {
             let pinval = self.pin.is_low()?;
 
@@ -96,25 +101,12 @@ pub mod ehal {
         {
             self
                 .sample(sampletime)
-                .map(|opt| opt.and_then(|cmd| REMOTE::decode_with_address(cmd)))
+                .map(|opt| opt.and_then(|cmd| REMOTE::decode_command(cmd)))
         }
-
     }
-}
-
-
-
-
-
-/*
-
-#[cfg(feature = "embedded-hal")]
-pub mod hal {
-    use embedded_hal::digital::v2::InputPin;
-    use crate::ReceiverState;
 
     macro_rules! create_receiver {
-    ($name:ident, [ $( ($N:ident, $P:ident, $C:ident, $E:ident) ),* ]) =>
+    ($name:ident, [ $( ($N:ident, $P:ident, $C:ident) ),* ]) =>
     {
     /// HAL receiver
     pub struct $name<PIN, $( $P ),* > {
@@ -122,15 +114,23 @@ pub mod hal {
         $( $N : $P ),*
     }
 
-    impl<PIN, PINERR, $( $P, $C, $E ),* > $name <PIN, $( $P ),* >
+    impl<PIN, PINERR, $( $P, $C ),* > $name <PIN, $( $P ),* >
     where
         PIN: InputPin<Error = PINERR>,
-        $( $P: crate::Receiver<Cmd = $C, Err = $E> ),*
+        $( $P: ReceiverStateMachine<Cmd = $C>),*,
+        $( $C: crate::Command ),*,
     {
-        pub fn new(pin: PIN, $( $N : $P ),* ) -> Self {
+        pub fn new_from_sm(pin: PIN, $( $N : $P ),* ) -> Self {
             Self {
                 pin,
                 $( $N ),*,
+            }
+        }
+
+        pub fn new(pin: PIN, samplerate: u32) -> Self {
+            Self {
+                pin,
+                $( $N: $P::for_samplerate(samplerate)),*,
             }
         }
 
@@ -143,7 +143,7 @@ pub mod hal {
             let pinval = self.pin.is_low()?;
 
             Ok(($(
-            match self.$N.sample(pinval, ts) {
+            match self.$N.event(pinval, ts) {
                 ReceiverState::Done(cmd) => {
                     self.$N.reset();
                     Some(cmd)
@@ -161,30 +161,26 @@ pub mod hal {
     };
 }
 
-    create_receiver!(HalReceiver, [
-                (recv1, RECV1, CMD1, RECVERR1)
-            ]);
 
     create_receiver!(HalReceiver2, [
-                (recv1, RECV1, CMD1, RECVERR1),
-                (recv2, RECV2, CMD2, RECVERR2)
+                (recv1, RECV1, CMD1),
+                (recv2, RECV2, CMD2)
             ]);
 
     create_receiver!(HalReceiver3, [
-                (recv1, RECV1, CMD1, RECVERR1),
-                (recv2, RECV2, CMD2, RECVERR2),
-                (recv3, RECV3, CMD3, RECVERR3)
+                (recv1, RECV1, CMD1),
+                (recv2, RECV2, CMD2),
+                (recv3, RECV3, CMD3)
             ]);
 
     create_receiver!(HalReceiver4, [
-                (recv1, RECV1, CMD1, RECVERR1),
-                (recv2, RECV2, CMD2, RECVERR2),
-                (recv3, RECV3, CMD3, RECVERR3),
-                (recv4, RECV4, CMD4, RECVERR4)
+                (recv1, RECV1, CMD1),
+                (recv2, RECV2, CMD2),
+                (recv3, RECV3, CMD3),
+                (recv4, RECV4, CMD4)
             ]);
 }
 
-*/
 
 #[cfg(feature = "protocol-dev")]
 pub struct ReceiverDebug<STATE, EXTRA> {

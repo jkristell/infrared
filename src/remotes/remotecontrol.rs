@@ -28,7 +28,7 @@ pub trait RemoteControl {
     const MAPPING: &'static [(u8, StandardButton)] = &[];
 
     /// Try to map a command into an Button for this remote
-    fn decode_with_address(cmd: Self::Command) -> Option<Self::Button> {
+    fn decode_command(cmd: Self::Command) -> Option<Self::Button> {
         if cmd.address() != Self::ADDR {
             return None;
         }
