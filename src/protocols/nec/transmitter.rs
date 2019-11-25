@@ -1,6 +1,6 @@
 use crate::nec::{NecTiming, NecCommand};
 use crate::prelude::*;
-use crate::protocols::nec::NecTypeTrait;
+use crate::protocols::nec::NecVariant;
 
 enum TransmitStateInternal {
     Idle,
@@ -28,12 +28,12 @@ struct NSamples {
     one_low: u32,
 }
 
-impl<NECTYPE: NecTypeTrait> NecTypeTransmitter<NECTYPE> {
+impl<NECTYPE: NecVariant> NecTypeTransmitter<NECTYPE> {
 
     pub fn new(samplerate: u32) -> Self {
         let period: u32 = (1 * 1000) / (samplerate / 1000);
 
-        let samples = NSamples::new(period, &NECTYPE::PULSEDISTANCE);
+        let samples = NSamples::new(period, &NECTYPE::TIMING);
         Self {
             state: TransmitStateInternal::Idle,
             samples,
@@ -45,7 +45,7 @@ impl<NECTYPE: NecTypeTrait> NecTypeTransmitter<NECTYPE> {
 }
 
 impl<NECTYPE> Transmitter<NecCommand> for NecTypeTransmitter<NECTYPE>
-    where NECTYPE: NecTypeTrait,
+    where NECTYPE: NecVariant,
 {
     fn load(&mut self, cmd: NecCommand) {
         self.cmd = NECTYPE::encode_command(cmd);
@@ -121,7 +121,7 @@ impl<NECTYPE> Transmitter<NecCommand> for NecTypeTransmitter<NECTYPE>
 }
 
 #[cfg(feature = "embedded-hal")]
-impl<NECTYPE: NecTypeTrait> hal::PwmTransmitter<NecCommand> for NecTypeTransmitter<NECTYPE> {}
+impl<NECTYPE: NecVariant> hal::PwmTransmitter<NecCommand> for NecTypeTransmitter<NECTYPE> {}
 
 impl NSamples {
     pub const fn new(period: u32, pulsedistance: &NecTiming) -> Self {

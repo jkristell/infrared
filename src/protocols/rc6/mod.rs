@@ -42,7 +42,7 @@ impl Command for Rc6Command {
 }
 
 
-pub struct Rc6Receiver {
+pub struct Rc6 {
     samplerate: u32,
     state: Rc6State,
     pub pinval: bool,
@@ -56,7 +56,7 @@ pub struct Rc6Receiver {
     pub debug: ReceiverDebug<Rc6State, Option<u32>>,
 }
 
-impl Rc6Receiver {
+impl Rc6 {
     pub fn new(samplerate: u32) -> Self {
         Self {
             samplerate,
@@ -126,7 +126,7 @@ pub enum Rc6State {
 const RISING: bool = true;
 const FALLING: bool = false;
 
-impl ReceiverStateMachine for Rc6Receiver {
+impl ReceiverStateMachine for Rc6 {
     type Cmd = Rc6Command;
     const ID: ProtocolId = ProtocolId::Rc6;
 
@@ -226,7 +226,7 @@ const fn range(len: u32, percent: u32) -> Range<u32> {
 
 #[cfg(test)]
 mod tests {
-    use crate::rc6::Rc6Receiver;
+    use crate::rc6::Rc6;
     use crate::prelude::*;
 
     #[test]
@@ -236,7 +236,7 @@ mod tests {
                      16, 37, 17, 19, 34, 19, 17, 19, 16, 19, 17, 19, 16, 20, 16, 19,
                      16, 37, 34, 20];
 
-        let mut recv = Rc6Receiver::new(40_000);
+        let mut recv = Rc6::new(40_000);
         let mut edge = false;
         let mut tot = 0;
         let mut state = ReceiverState::Idle;

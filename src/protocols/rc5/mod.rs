@@ -1,6 +1,6 @@
 pub mod receiver;
 pub mod transmitter;
-pub use receiver::{Rc5Receiver};
+pub use receiver::Rc5;
 pub use transmitter::Rc5Transmitter;
 use crate::Command;
 
@@ -66,7 +66,7 @@ impl Command for Rc5Command {
 
 #[cfg(test)]
 mod tests {
-    use crate::rc5::Rc5Receiver;
+    use crate::rc5::Rc5;
     use crate::prelude::*;
     use crate::protocols::rc5::{Rc5Command, Rc5Transmitter};
 
@@ -87,7 +87,7 @@ mod tests {
             35, 37,
             70, 37];
 
-        let mut recv = Rc5Receiver::new(40_000);
+        let mut recv = Rc5::new(40_000);
         let mut edge = false;
         let mut tot = 0;
         let mut state = ReceiverState::Idle;

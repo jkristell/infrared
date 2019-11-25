@@ -187,6 +187,14 @@ pub mod ehal {
                 (recv3, RECV3, CMD3),
                 (recv4, RECV4, CMD4)
             ]);
+    create_receiver!(HalReceiver5, [
+                (recv1, RECV1, CMD1),
+                (recv2, RECV2, CMD2),
+                (recv3, RECV3, CMD3),
+                (recv4, RECV4, CMD4),
+                (recv5, RECV5, CMD5)
+            ]);
+
 }
 
 

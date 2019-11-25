@@ -12,7 +12,7 @@ use crate::receiver::ReceiverError;
 use crate::protocols::utils::Ranges;
 
 #[derive(Debug)]
-pub struct SbpReceiver {
+pub struct Sbp {
     state: SbpState,
     address: u16,
     command: u32,
@@ -86,7 +86,7 @@ pub enum SbpState {
 
 pub type SbpResult = ReceiverState<SbpCommand>;
 
-impl SbpReceiver {
+impl Sbp {
 
     pub fn new(samplerate: u32) -> Self {
         let nsamples = nsamples_from_timing(&TIMING, samplerate);
@@ -116,7 +116,7 @@ impl SbpReceiver {
 }
 
 
-impl ReceiverStateMachine for SbpReceiver {
+impl ReceiverStateMachine for Sbp {
     type Cmd = SbpCommand;
     const ID: ProtocolId = ProtocolId::Sbp;
 

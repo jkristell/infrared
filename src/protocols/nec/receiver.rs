@@ -2,13 +2,13 @@
 use crate::prelude::*;
 #[cfg(feature = "protocol-dev")]
 use crate::ReceiverDebug;
-use crate::protocols::nec::{NecTypeTrait, NecCommand};
+use crate::protocols::nec::{NecVariant, NecCommand};
 use crate::nec::NecTiming;
 use crate::receiver::{ReceiverError};
 use crate::protocols::utils::{Ranges};
 
 
-pub struct NecTypeReceiver<NECTYPE> {
+pub struct NecType<NECTYPE> {
     // State
     state: NecState,
     // Time of last event
@@ -44,9 +44,9 @@ pub enum NecState {
 }
 
 
-impl<NECTYPE: NecTypeTrait> NecTypeReceiver<NECTYPE> {
+impl<NECTYPE: NecVariant> NecType<NECTYPE> {
     pub fn new(samplerate: u32) -> Self {
-        let timing = NECTYPE::PULSEDISTANCE;
+        let timing = NECTYPE::TIMING;
         Self::new_from_timing(samplerate, timing)
     }
 
@@ -92,15 +92,15 @@ impl<NECTYPE: NecTypeTrait> NecTypeReceiver<NECTYPE> {
     }
 }
 
-impl<NECTYPE> ReceiverStateMachine for NecTypeReceiver<NECTYPE>
+impl<NECTYPE> ReceiverStateMachine for NecType<NECTYPE>
 where
-    NECTYPE: NecTypeTrait,
+    NECTYPE: NecVariant,
 {
     type Cmd = NecCommand;
     const ID: ProtocolId = NECTYPE::PROTOCOL;
 
     fn for_samplerate(samplerate: u32) -> Self {
-        let timing = NECTYPE::PULSEDISTANCE;
+        let timing = NECTYPE::TIMING;
         Self::new_from_timing(samplerate, timing)
     }
 

@@ -6,20 +6,20 @@ pub mod transmitter;
 mod tests;
 
 use crate::{ProtocolId, Command};
-pub use receiver::{NecTypeReceiver};
+pub use receiver::{NecType};
 pub use transmitter::NecTypeTransmitter;
 
-pub struct StandardType;
-pub struct SamsungType;
+pub struct NecStandard;
+pub struct SamsungVariant;
 /// NecVariant with 16 bit adress, 8 bit command
-pub struct Nec16Type;
+pub struct Nec16Variant;
 
-pub type NecReceiver = NecTypeReceiver<StandardType>;
-pub type NecSamsungReceiver = NecTypeReceiver<SamsungType>;
-pub type Nec16Receiver = NecTypeReceiver<Nec16Type>;
+pub type Nec = NecType<NecStandard>;
+pub type NecSamsung = NecType<SamsungVariant>;
+pub type Nec16 = NecType<Nec16Variant>;
 
-pub type NecTransmitter = NecTypeTransmitter<StandardType>;
-pub type NecSamsungTransmitter = NecTypeTransmitter<SamsungType>;
+pub type NecTransmitter = NecTypeTransmitter<NecStandard>;
+pub type NecSamsungTransmitter = NecTypeTransmitter<SamsungVariant>;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 /// A Nec Command
@@ -48,10 +48,8 @@ impl Command for NecCommand {
     }
 }
 
-
-
-pub trait NecTypeTrait {
-    const PULSEDISTANCE: &'static NecTiming;
+pub trait NecVariant {
+    const TIMING: &'static NecTiming;
     const PROTOCOL: ProtocolId;
 
     fn encode_command(cmd: NecCommand) -> u32;
@@ -59,9 +57,9 @@ pub trait NecTypeTrait {
     fn verify_command(bits: u32) -> bool;
 }
 
-impl NecTypeTrait for StandardType {
+impl NecVariant for NecStandard {
     const PROTOCOL: ProtocolId = ProtocolId::Nec;
-    const PULSEDISTANCE: &'static NecTiming = &STANDARD_DIST;
+    const TIMING: &'static NecTiming = &STANDARD_DIST;
 
     fn encode_command(NecCommand { addr, cmd }: NecCommand) -> u32 {
         let addr = u32::from(addr) | (u32::from(!addr) & 0xFF) << 8;
@@ -80,9 +78,9 @@ impl NecTypeTrait for StandardType {
     }
 }
 
-impl NecTypeTrait for Nec16Type {
+impl NecVariant for Nec16Variant {
     const PROTOCOL: ProtocolId = ProtocolId::Nec16;
-    const PULSEDISTANCE: &'static NecTiming = &STANDARD_DIST;
+    const TIMING: &'static NecTiming = &STANDARD_DIST;
 
     fn encode_command(NecCommand { addr, cmd }: NecCommand) -> u32 {
         let addr = u32::from(addr);
@@ -101,9 +99,9 @@ impl NecTypeTrait for Nec16Type {
     }
 }
 
-impl NecTypeTrait for SamsungType {
+impl NecVariant for SamsungVariant {
     const PROTOCOL: ProtocolId = ProtocolId::NecSamsung;
-    const PULSEDISTANCE: &'static NecTiming = &NecTiming {
+    const TIMING: &'static NecTiming = &NecTiming {
         hh: 4500,
         hl: 4500,
         rl: 2250,

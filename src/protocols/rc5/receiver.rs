@@ -6,7 +6,7 @@ use crate::ReceiverDebug;
 use crate::rc5::Rc5Command;
 use crate::receiver::ReceiverError;
 
-pub struct Rc5Receiver {
+pub struct Rc5 {
     samplerate: u32,
     state: Rc5State,
     pinval: bool,
@@ -18,7 +18,7 @@ pub struct Rc5Receiver {
     pub debug: ReceiverDebug<Rc5State, Option<u32>>,
 }
 
-impl Rc5Receiver {
+impl Rc5 {
     pub fn new(samplerate: u32) -> Self {
         Self {
             samplerate,
@@ -81,7 +81,7 @@ const FALLING: bool = false;
 
 type Rc5Res = ReceiverState<Rc5Command>;
 
-impl ReceiverStateMachine for Rc5Receiver {
+impl ReceiverStateMachine for Rc5 {
     const ID: ProtocolId = ProtocolId::Rc5;
     type Cmd = Rc5Command;
 
