@@ -1,4 +1,4 @@
-use crate::ProtocolId;
+use crate::{ProtocolId, Command};
 
 
 /// Receiver state machine
@@ -6,7 +6,7 @@ pub trait ReceiverStateMachine {
     /// Protocol id
     const ID: ProtocolId;
     /// The resulting command type
-    type Cmd;
+    type Cmd: Command;
 
     // Create
     fn for_samplerate(samplerate: u32) -> Self;
@@ -36,39 +36,23 @@ pub enum ReceiverError {
 
 #[cfg(feature = "embedded-hal")]
 pub mod ehal {
-    use crate::protocols::sbp::SbpReceiver;
-    use crate::{ReceiverStateMachine, ReceiverState};
-    use crate::receiver::ReceiverState::Receiving;
-    use crate::remotes::RemoteControl;
+    use embedded_hal::digital::v2::InputPin;
+    use crate::receiver::{ReceiverStateMachine, ReceiverState};
 
-    /// Receiver Hal
-    pub trait ReceiverHal<PIN, PINERR, CMD>
-        where
-            CMD: crate::Command,
-    {
-        /// Sample
-        fn sample(&mut self, sampletime: u32) -> Result<Option<CMD>, PINERR>;
-
-        #[cfg(feature = "remotes")]
-        fn sample_remote<REMOTE>(&mut self, sampletime: u32) -> Result<Option<REMOTE::Button>, PINERR>
-            where
-                REMOTE: crate::remotes::RemoteControl<Command=CMD>;
-
-        /// Disable receiver
-        fn disable(&mut self);
-    }
-
-
-
-    pub struct GenericHalReceiver<PIN, SM> {
+    pub struct HalReceiver<PIN, SM> {
         sm: SM,
         pin: PIN,
         pinval: bool,
     }
 
-    impl<CMD, PIN, SM: ReceiverStateMachine<Cmd=CMD>> GenericHalReceiver<PIN, SM> {
+    impl<CMD, PIN, PINERR, SM> HalReceiver<PIN, SM>
+    where
+        CMD: crate::Command,
+        SM: ReceiverStateMachine<Cmd=CMD>,
+        PIN: InputPin<Error=PINERR>,
+    {
 
-        pub fn new(pin: PIN, sm: SM) -> Self {
+        pub fn new_from_sm(pin: PIN, sm: SM) -> Self {
             Self {
                 sm,
                 pin,
@@ -76,26 +60,19 @@ pub mod ehal {
             }
         }
 
-        pub fn new_test(pin: PIN) -> Self {
+        pub fn new(pin: PIN, samplerate: u32) -> Self {
             Self {
-                sm: SM::for_samplerate(40_000),
+                sm: SM::for_samplerate(samplerate),
                 pin,
                 pinval: false,
             }
         }
-    }
 
-    impl<SM, PIN, PINERR, CMD> ReceiverHal<PIN, PINERR, CMD> for GenericHalReceiver<PIN, SM>
-        where
-            CMD: crate::Command,
-            SM: ReceiverStateMachine<Cmd=CMD>,
-            PIN: embedded_hal::digital::v2::InputPin<Error=PINERR>,
-    {
-        fn sample(&mut self, sampletime: u32) -> Result<Option<CMD>, PINERR> {
+        pub fn sample(&mut self, sample: u32) -> Result<Option<CMD>, PINERR> {
             let pinval = self.pin.is_low()?;
 
             if self.pinval != pinval {
-                let r = self.sm.event(pinval, sampletime);
+                let r = self.sm.event(pinval, sample);
 
                 if let ReceiverState::Done(cmd) = r {
                     self.sm.reset();
@@ -113,20 +90,16 @@ pub mod ehal {
         }
 
         #[cfg(feature = "remotes")]
-        fn sample_remote<REMOTE>(&mut self, sampletime: u32) -> Result<Option<REMOTE::Button>, PINERR>
-            where
-                REMOTE: crate::remotes::RemoteControl<Command=CMD>,
+        pub fn sample_remote<REMOTE>(&mut self, sampletime: u32) -> Result<Option<REMOTE::Button>, PINERR>
+        where
+            REMOTE: crate::remotes::RemoteControl<Command=CMD>,
         {
             self
                 .sample(sampletime)
                 .map(|opt| opt.and_then(|cmd| REMOTE::decode_with_address(cmd)))
         }
 
-        fn disable(&mut self) {
-            unimplemented!()
-        }
     }
-
 }
 
 

@@ -7,7 +7,7 @@
 //! After this the 8 bit command is sent twice, second time inverted.
 //!
 
-use crate::{ReceiverStateMachine, ProtocolId, ReceiverState, Command};
+use crate::prelude::*;
 use crate::receiver::ReceiverError;
 use crate::protocols::utils::Ranges;
 
@@ -79,7 +79,7 @@ pub enum SbpState {
     // Command received
     Done,
     // In error state
-    Err(()),
+    Err(ReceiverError),
     // Disabled
     Disabled,
 }
@@ -108,7 +108,7 @@ impl SbpReceiver {
         match self.state {
             Init        => ReceiverState::Idle,
             Done        => ReceiverState::Done(SbpCommand::from_receiver(self.address, self.command)),
-            Err(_e)     => ReceiverState::Error(ReceiverError::Data(0)), //TODO
+            Err(e)     => ReceiverState::Error(e),
             Disabled    => ReceiverState::Disabled,
             _           => ReceiverState::Receiving,
         }
@@ -148,16 +148,16 @@ impl ReceiverStateMachine for SbpReceiver {
                 (Address(15),   Zero)       => Divider,
                 (Address(bit),  One)        => {self.address |= 1 << bit; Address(bit + 1)},
                 (Address(bit),  Zero)       => Address(bit + 1),
-                (Address(_),    _)          => Err(()),
+                (Address(_),    _)          => Err(ReceiverError::Address(0)),
 
                 (Divider,       Paus)       => Command(0),
-                (Divider,       _)          => Err(()),
+                (Divider,       _)          => Err(ReceiverError::Data(0)),
 
                 (Command(19),   One)        => {self.command |= 1 << 19; Done},
                 (Command(19),   Zero)       => Done,
                 (Command(bit),  One)        => {self.command |= 1 << bit; Command(bit + 1)},
                 (Command(bit),  Zero)       => Command(bit + 1),
-                (Command(_),    _)          => Err(()),
+                (Command(_),    _)          => Err(ReceiverError::Data(0)),
 
                 (Done,          _)          => Done,
                 (Err(err),      _)          => Err(err),

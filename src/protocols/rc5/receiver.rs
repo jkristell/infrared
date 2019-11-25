@@ -1,6 +1,5 @@
 use core::ops::Range;
-use crate::{ReceiverStateMachine, ReceiverState, ProtocolId};
-
+use crate::prelude::*;
 
 #[cfg(feature = "protocol-dev")]
 use crate::ReceiverDebug;
@@ -57,12 +56,13 @@ impl Rc5Receiver {
     }
 
     fn receiver_state(&self) -> Rc5Res {
-        use ReceiverState::*;
+        use Rc5State::*;
+
         match self.state {
-            Rc5State::Idle => Idle,
-            Rc5State::Done => Done(Rc5Command::from_bits(self.bitbuf)),
-            Rc5State::Error(err) => Error(err),
-            _ => Receiving
+            Idle        => ReceiverState::Idle,
+            Done        => ReceiverState::Done(Rc5Command::from_bits(self.bitbuf)),
+            Error(err) => ReceiverState::Error(err),
+            _           => ReceiverState::Receiving
         }
     }
 }
@@ -82,8 +82,12 @@ const FALLING: bool = false;
 type Rc5Res = ReceiverState<Rc5Command>;
 
 impl ReceiverStateMachine for Rc5Receiver {
-    type Cmd = Rc5Command;
     const ID: ProtocolId = ProtocolId::Rc5;
+    type Cmd = Rc5Command;
+
+    fn for_samplerate(samplerate: u32) -> Self {
+        Self::new(samplerate)
+    }
 
     fn event(&mut self, rising: bool, sampletime: u32) -> Rc5Res {
         use Rc5State::*;
@@ -135,10 +139,6 @@ impl ReceiverStateMachine for Rc5Receiver {
         self.pinval = false;
         self.bitbuf = 0;
         self.rc5cntr = 0;
-    }
-
-    fn for_samplerate(samplerate: u32) -> Self {
-        Self::new(samplerate)
     }
 }
 

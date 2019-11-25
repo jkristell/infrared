@@ -17,8 +17,7 @@ use stm32f1xx_hal::{
 };
 
 use infrared::{
-    hal::GenericHalReceiver,
-    hal::ReceiverHal,
+    hal::HalReceiver,
     nec::*,
     rc5::*,
     remotes::rc5::*,
@@ -29,7 +28,7 @@ const TIMER_FREQ: u32 = 40_000;
 static mut TIMER: Option<Timer<TIM2>> = None;
 
 // Receiver
-static mut RECEIVER: Option<GenericHalReceiver<
+static mut RECEIVER: Option<HalReceiver<
     PB8<Input<Floating>>,
     Rc5Receiver,
 >> = None;
@@ -58,7 +57,7 @@ fn main() -> ! {
 
     //let nec = NecReceiver::new(TIMER_FREQ);
     //let receiver = GenericHalReceiver::new(irinpin, nec);
-    let receiver = GenericHalReceiver::new_test(irinpin);
+    let receiver = HalReceiver::new(irinpin, TIMER_FREQ);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {

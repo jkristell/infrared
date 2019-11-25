@@ -17,22 +17,18 @@ pub enum ProtocolId {
     Logging = 31,
 }
 
-
-mod protocols;
-pub use protocols::*;
-
-mod transmitter;
-pub use transmitter::{TransmitterState, Transmitter};
-
-mod receiver;
-pub use receiver::{ReceiverStateMachine, ReceiverState};
-
-
 pub trait Command {
     fn construct(addr: u16, cmd: u8) -> Self;
     fn address(&self) -> u16;
     fn command(&self) -> u8;
 }
+
+
+mod protocols;
+pub use protocols::*;
+
+pub mod transmitter;
+pub mod receiver;
 
 
 #[cfg(feature = "embedded-hal")]
@@ -48,10 +44,9 @@ pub mod remotes;
 pub use receiver::ReceiverDebug;
 
 pub mod prelude {
-    pub use crate::ReceiverStateMachine;
-    pub use crate::Transmitter;
-    pub use crate::ReceiverState;
-    pub use crate::TransmitterState;
+    pub use crate::{Command, ProtocolId};
+    pub use crate::transmitter::{TransmitterState, Transmitter};
+    pub use crate::receiver::{ReceiverStateMachine, ReceiverState};
     #[cfg(feature = "embedded-hal")]
     pub use crate::hal;
 }
