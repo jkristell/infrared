@@ -16,6 +16,7 @@ macro_rules! remotecontrol_standardbutton {
             const MAPPING: &'static [(u8, StandardButton)] = &[ $(($cmd, StandardButton::$name),)+ ];
 
             fn decode(cmdid: u8) -> Option<StandardButton> {
+
                 match cmdid {
                     $($cmd => Some(StandardButton::$name),)+
                     _ => None,

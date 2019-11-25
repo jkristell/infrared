@@ -1,6 +1,4 @@
-use crate::ProtocolId;
-
-use crate::Command;
+use crate::{Command, ProtocolId};
 
 #[derive(Debug)]
 pub enum DeviceType {

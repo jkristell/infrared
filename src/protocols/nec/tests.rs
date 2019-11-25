@@ -19,7 +19,7 @@ fn standard_nec() {
     for dist in dists.iter() {
         edge = !edge;
         tot += *dist;
-        state = recv.sample_edge(edge, tot);
+        state = recv.event(edge, tot);
     }
 
     if let ReceiverState::Done(cmd) = state {
