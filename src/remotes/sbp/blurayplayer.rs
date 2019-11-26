@@ -1,5 +1,5 @@
-use crate::{ProtocolId};
 use crate::protocols::sbp::SbpCommand;
+use crate::ProtocolId;
 
 use crate::remotecontrol_standardbutton;
 

@@ -5,8 +5,8 @@ pub mod transmitter;
 #[cfg(test)]
 mod tests;
 
-use crate::{ProtocolId, Command};
-pub use receiver::{NecType};
+use crate::{Command, ProtocolId};
+pub use receiver::NecType;
 pub use transmitter::NecTypeTransmitter;
 
 pub struct NecStandard;

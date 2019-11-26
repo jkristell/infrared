@@ -1,12 +1,12 @@
 pub mod receiver;
 pub mod transmitter;
+use crate::Command;
 pub use receiver::Rc5;
 pub use transmitter::Rc5Transmitter;
-use crate::Command;
 
-const ADDR_MASK: u16   = 0b_0000_0111_1100_0000;
-const CMD_MASK: u16    = 0b_0000_0000_0011_1111;
-const START_MASK: u16  = 0b_0011_0000_0000_0000;
+const ADDR_MASK: u16 = 0b_0000_0111_1100_0000;
+const CMD_MASK: u16 = 0b_0000_0000_0011_1111;
+const START_MASK: u16 = 0b_0011_0000_0000_0000;
 const TOGGLE_MASK: u16 = 0b_0000_1000_0000_0000;
 
 const ADDR_SHIFT: u32 = 6;
@@ -37,14 +37,19 @@ impl Rc5Command {
         let start = ((bits & START_MASK) >> START_SHIFT) as u8;
         let toggle = ((bits & TOGGLE_MASK) >> TOGGLE_SHIFT) as u8;
 
-        Self {addr, cmd, start, toggle}
+        Self {
+            addr,
+            cmd,
+            start,
+            toggle,
+        }
     }
 
     pub fn to_bits(&self) -> u16 {
-        u16::from(self.addr) << ADDR_SHIFT |
-        u16::from(self.cmd) |
-        u16::from(self.toggle) << TOGGLE_SHIFT |
-        u16::from(self.start) << START_SHIFT
+        u16::from(self.addr) << ADDR_SHIFT
+            | u16::from(self.cmd)
+            | u16::from(self.toggle) << TOGGLE_SHIFT
+            | u16::from(self.start) << START_SHIFT
     }
 }
 
@@ -62,13 +67,11 @@ impl Command for Rc5Command {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
-    use crate::rc5::Rc5;
     use crate::prelude::*;
     use crate::protocols::rc5::{Rc5Command, Rc5Transmitter};
+    use crate::rc5::Rc5;
 
     #[test]
     fn rc5_command() {
@@ -78,14 +81,9 @@ mod tests {
 
     #[test]
     fn command() {
-
-        let dists = [0, 37, 34,
-            72, 72, 73, 70, 72,
-            36, 37, 34, 36, 36, 36,
-
-            71, 73,
-            35, 37,
-            70, 37];
+        let dists = [
+            0, 37, 34, 72, 72, 73, 70, 72, 36, 37, 34, 36, 36, 36, 71, 73, 35, 37, 70, 37,
+        ];
 
         let mut recv = Rc5::new(40_000);
         let mut edge = false;
@@ -108,7 +106,6 @@ mod tests {
 
     #[test]
     fn rc5_transmit() {
-
         let mut tx = Rc5Transmitter::new(40_000);
 
         tx.load(Rc5Command::new(20, 9, false));
@@ -132,4 +129,3 @@ mod tests {
         }
     }
 }
-

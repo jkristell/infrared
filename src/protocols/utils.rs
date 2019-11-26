@@ -1,5 +1,5 @@
-use core::ops::Range;
 use core::marker::PhantomData;
+use core::ops::Range;
 
 #[derive(Debug, Clone)]
 pub struct Ranges<T> {
@@ -7,13 +7,11 @@ pub struct Ranges<T> {
     pd: PhantomData<T>,
 }
 
-
 impl<T> Ranges<T>
 where
     T: Default + From<usize>,
 {
     pub fn new(vals: &([(u32, u32); 4])) -> Self {
-
         Ranges {
             r: [
                 make_range(vals[0].0, vals[0].1),
@@ -25,9 +23,7 @@ where
         }
     }
 
-
     pub fn pulsewidth(&self, samples: u32) -> T {
-
         for i in 0..self.r.len() {
             if self.r[i].contains(&samples) {
                 return T::from(i);
@@ -42,4 +38,3 @@ const fn make_range(units: u32, percent: u32) -> Range<u32> {
     let tol = (units * percent) / 100;
     (units - tol..units + tol)
 }
-

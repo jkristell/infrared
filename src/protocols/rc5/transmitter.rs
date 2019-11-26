@@ -1,4 +1,3 @@
-
 use crate::prelude::*;
 use crate::rc5::Rc5Command;
 
@@ -11,7 +10,6 @@ pub enum State {
     Disabled,
 }
 
-
 pub struct Rc5Transmitter {
     pub state: State,
     samples: u32,
@@ -22,7 +20,6 @@ pub struct Rc5Transmitter {
 
 impl Rc5Transmitter {
     pub fn new(samplerate: u32) -> Self {
-
         let samples = (samplerate * 889) / 1_000_000;
 
         Self {
@@ -30,7 +27,7 @@ impl Rc5Transmitter {
             samples,
             cmd: Rc5Command::from_bits(0),
             bits: 0,
-            ts: 0
+            ts: 0,
         }
     }
 
@@ -38,7 +35,6 @@ impl Rc5Transmitter {
         ts.wrapping_sub(self.ts) >= self.samples
     }
 }
-
 
 impl Transmitter<Rc5Command> for Rc5Transmitter {
     fn load(&mut self, cmd: Rc5Command) {
@@ -57,16 +53,16 @@ impl Transmitter<Rc5Command> for Rc5Transmitter {
                 // Start sending first bit, and start with the second half
                 self.ts = ts;
                 Tx(13, true)
-            },
+            }
             (Tx(0, true), true) => Done,
             (Tx(n, false), true) => {
                 self.ts = ts;
                 Tx(n, true)
-            },
+            }
             (Tx(n, true), true) => {
                 self.ts = ts;
-                Tx(n-1, false)
-            },
+                Tx(n - 1, false)
+            }
             (Tx(n, h), _) => Tx(n, h),
             (Done, _) => Done,
             (Disabled, _) => Disabled,

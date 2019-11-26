@@ -1,5 +1,5 @@
-use crate::receiver::{ReceiverStateMachine, ReceiverState, };
 use crate::prelude::*;
+use crate::receiver::{ReceiverState, ReceiverStateMachine};
 
 const BUF_LEN: usize = 128;
 
@@ -48,7 +48,6 @@ impl ReceiverStateMachine for LoggingReceiver {
     }
 
     fn event(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd> {
-
         if !self.ready() {
             return self.state;
         }

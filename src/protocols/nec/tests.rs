@@ -1,15 +1,14 @@
-use crate::protocols::nec::{Nec, SamsungVariant, NecStandard, Nec16Variant};
-use crate::prelude::*;
 use crate::nec::{NecCommand, NecVariant};
+use crate::prelude::*;
+use crate::protocols::nec::{Nec, Nec16Variant, NecStandard, SamsungVariant};
 
 #[test]
 fn standard_nec() {
-    let dists = [0, 363, 177,
-                 24, 21, 24, 21, 24, 21, 24, 21, 24, 21, 24, 20, 24, 21, 24, 21,
-                 24, 66, 24, 66, 24, 65, 25, 65, 24, 66, 24, 66, 24, 65, 25, 65,
-                 24, 21, 24, 21, 24, 66, 24, 65, 24, 21, 24, 21, 24, 21, 24, 21,
-                 24, 65, 25, 65, 24, 21, 24, 21, 24, 66, 24, 65, 25, 65, 24, 66,
-                 24];
+    let dists = [
+        0, 363, 177, 24, 21, 24, 21, 24, 21, 24, 21, 24, 21, 24, 20, 24, 21, 24, 21, 24, 66, 24,
+        66, 24, 65, 25, 65, 24, 66, 24, 66, 24, 65, 25, 65, 24, 21, 24, 21, 24, 66, 24, 65, 24, 21,
+        24, 21, 24, 21, 24, 21, 24, 65, 25, 65, 24, 21, 24, 21, 24, 66, 24, 65, 25, 65, 24, 66, 24,
+    ];
 
     let mut recv = Nec::new(40_000);
     let mut edge = false;
@@ -73,4 +72,3 @@ fn cmd_nec16() {
     let cmd2 = Nec16Variant::decode_command(bits);
     assert_eq!(cmd, cmd2);
 }
-

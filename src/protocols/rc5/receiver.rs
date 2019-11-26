@@ -1,10 +1,10 @@
-use core::ops::Range;
 use crate::prelude::*;
+use core::ops::Range;
 
-#[cfg(feature = "protocol-dev")]
-use crate::ReceiverDebug;
 use crate::rc5::Rc5Command;
 use crate::receiver::ReceiverError;
+#[cfg(feature = "protocol-dev")]
+use crate::ReceiverDebug;
 
 pub struct Rc5 {
     samplerate: u32,
@@ -33,7 +33,7 @@ impl Rc5 {
                 state_new: Rc5State::Idle,
                 delta: 0,
                 extra: None,
-            }
+            },
         }
     }
 
@@ -95,20 +95,29 @@ impl ReceiverStateMachine for Rc5 {
         let odd = self.rc5cntr & 1 == 0;
 
         let newstate = match (self.state, rising, rc5units) {
-            (Idle,          FALLING, _)              => Idle,
-            (Idle,          RISING,  _)              => {self.bitbuf |= 1 << 13; Data(12)},
+            (Idle, FALLING, _) => Idle,
+            (Idle, RISING, _) => {
+                self.bitbuf |= 1 << 13;
+                Data(12)
+            }
 
-            (Data(0),       RISING,  Some(_)) if odd => {self.bitbuf |= 1; Done},
-            (Data(0),       FALLING, Some(_)) if odd => Done,
+            (Data(0), RISING, Some(_)) if odd => {
+                self.bitbuf |= 1;
+                Done
+            }
+            (Data(0), FALLING, Some(_)) if odd => Done,
 
-            (Data(bit),     RISING,  Some(_)) if odd => {self.bitbuf |= 1 << bit; Data(bit-1)},
-            (Data(bit),     FALLING, Some(_)) if odd => Data(bit-1),
+            (Data(bit), RISING, Some(_)) if odd => {
+                self.bitbuf |= 1 << bit;
+                Data(bit - 1)
+            }
+            (Data(bit), FALLING, Some(_)) if odd => Data(bit - 1),
 
-            (Data(bit),     _,      Some(_))         => Data(bit),
-            (Data(_),       _,      None)            => Error(ReceiverError::Data(delta as u32)),
-            (Done,          _,      _)               => Done,
-            (Error(err),    _,      _)               => Error(err),
-            (Disabled,      _,      _)               => Disabled,
+            (Data(bit), _, Some(_)) => Data(bit),
+            (Data(_), _, None) => Error(ReceiverError::Data(delta as u32)),
+            (Done, _, _) => Done,
+            (Error(err), _, _) => Error(err),
+            (Disabled, _, _) => Disabled,
         };
 
         #[cfg(feature = "protocol-dev")]
@@ -122,10 +131,10 @@ impl ReceiverStateMachine for Rc5 {
         self.state = newstate;
 
         match self.state {
-            Idle        => ReceiverState::Idle,
-            Done        => ReceiverState::Done(Rc5Command::from_bits(self.bitbuf)),
-            Error(err)  => ReceiverState::Error(err),
-            _           => ReceiverState::Receiving
+            Idle => ReceiverState::Idle,
+            Done => ReceiverState::Done(Rc5Command::from_bits(self.bitbuf)),
+            Error(err) => ReceiverState::Error(err),
+            _ => ReceiverState::Receiving,
         }
     }
 

@@ -1,12 +1,10 @@
-
+use crate::nec::NecTiming;
 use crate::prelude::*;
+use crate::protocols::nec::{NecCommand, NecVariant};
+use crate::protocols::utils::Ranges;
+use crate::receiver::ReceiverError;
 #[cfg(feature = "protocol-dev")]
 use crate::ReceiverDebug;
-use crate::protocols::nec::{NecVariant, NecCommand};
-use crate::nec::NecTiming;
-use crate::receiver::{ReceiverError};
-use crate::protocols::utils::{Ranges};
-
 
 pub struct NecType<NECTYPE> {
     // State
@@ -42,7 +40,6 @@ pub enum NecState {
     // Disabled
     Disabled,
 }
-
 
 impl<NECTYPE: NecVariant> NecType<NECTYPE> {
     pub fn new(samplerate: u32) -> Self {
@@ -91,7 +88,6 @@ where
         Self::new_from_timing(samplerate, timing)
     }
 
-
     fn event(&mut self, rising: bool, time: u32) -> ReceiverState<Self::Cmd> {
         use NecState::*;
         use PulseWidth::*;
@@ -104,22 +100,28 @@ where
             let pulsewidth = self.ranges.pulsewidth(nsamples);
 
             let newstate = match (self.state, pulsewidth) {
-                (Init,            Sync)     => Receiving(0),
-                (Init,            Repeat)   => RepeatDone,
-                (Init,            _)        => Init,
+                (Init, Sync) => Receiving(0),
+                (Init, Repeat) => RepeatDone,
+                (Init, _) => Init,
 
-                (Receiving(31),   One)      => {self.bitbuf |= 1 << 31; Done},
-                (Receiving(31),   Zero)     => Done,
+                (Receiving(31), One) => {
+                    self.bitbuf |= 1 << 31;
+                    Done
+                }
+                (Receiving(31), Zero) => Done,
 
-                (Receiving(bit),  One)      => {self.bitbuf |= 1 << bit; Receiving(bit + 1)},
-                (Receiving(bit),  Zero)     => Receiving(bit + 1),
+                (Receiving(bit), One) => {
+                    self.bitbuf |= 1 << bit;
+                    Receiving(bit + 1)
+                }
+                (Receiving(bit), Zero) => Receiving(bit + 1),
 
-                (Receiving(_),    _)        => Err(ReceiverError::Data(0)),
+                (Receiving(_), _) => Err(ReceiverError::Data(0)),
 
-                (Done,            _)        => Done,
-                (RepeatDone,      _)        => RepeatDone,
-                (Err(err),        _)        => Err(err),
-                (Disabled,        _)        => Disabled,
+                (Done, _) => Done,
+                (RepeatDone, _) => RepeatDone,
+                (Err(err), _) => Err(err),
+                (Disabled, _) => Disabled,
             };
 
             #[cfg(feature = "protocol-dev")]
@@ -130,23 +132,26 @@ where
         }
 
         match self.state {
-            Init        => ReceiverState::Idle,
-            Done        => ReceiverState::Done(NECTYPE::decode_command(self.bitbuf)),
-            RepeatDone  => ReceiverState::Done(NECTYPE::decode_command(self.lastcommand)),
-            Err(e)      => ReceiverState::Error(e),
-            Disabled    => ReceiverState::Disabled,
-            _           => ReceiverState::Receiving,
+            Init => ReceiverState::Idle,
+            Done => ReceiverState::Done(NECTYPE::decode_command(self.bitbuf)),
+            RepeatDone => ReceiverState::Done(NECTYPE::decode_command(self.lastcommand)),
+            Err(e) => ReceiverState::Error(e),
+            Disabled => ReceiverState::Disabled,
+            _ => ReceiverState::Receiving,
         }
     }
 
     fn reset(&mut self) {
         self.state = NecState::Init;
         self.last_event = 0;
-        self.lastcommand = if self.bitbuf == 0 {self.lastcommand} else {self.bitbuf};
+        self.lastcommand = if self.bitbuf == 0 {
+            self.lastcommand
+        } else {
+            self.bitbuf
+        };
         self.bitbuf = 0;
     }
 }
-
 
 #[derive(Debug, Clone)]
 pub enum PulseWidth {
@@ -156,7 +161,6 @@ pub enum PulseWidth {
     One = 3,
     NotAPulseWidth = 4,
 }
-
 
 impl Default for PulseWidth {
     fn default() -> Self {
@@ -176,7 +180,6 @@ impl From<usize> for PulseWidth {
     }
 }
 
-
 const fn nsamples_from_timing(t: &NecTiming, samplerate: u32) -> [(u32, u32); 4] {
     let per: u32 = 1000 / (samplerate / 1000);
     [
@@ -186,7 +189,3 @@ const fn nsamples_from_timing(t: &NecTiming, samplerate: u32) -> [(u32, u32); 4]
         ((t.dh + t.ol) / per, 10),
     ]
 }
-
-
-
-

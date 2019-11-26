@@ -9,7 +9,6 @@ pub enum DeviceType {
     BluRayPlayer,
 }
 
-
 /// A trait describing a Remote Control
 pub trait RemoteControl {
     /// The type of the buttons

@@ -8,8 +8,8 @@
 //!
 
 use crate::prelude::*;
-use crate::receiver::ReceiverError;
 use crate::protocols::utils::Ranges;
+use crate::receiver::ReceiverError;
 
 #[derive(Debug)]
 pub struct Sbp {
@@ -29,9 +29,7 @@ pub struct SbpCommand {
 }
 
 impl SbpCommand {
-
     pub fn from_receiver(address: u16, mut command: u32) -> Self {
-
         // Discard the 4 unknown bits
         command >>= 4;
 
@@ -40,8 +38,8 @@ impl SbpCommand {
 
         Self {
             address,
-            command: (command ) as u8,
-            valid
+            command: (command) as u8,
+            valid,
         }
     }
 }
@@ -63,7 +61,6 @@ impl Command for SbpCommand {
         self.command
     }
 }
-
 
 #[derive(Debug, Copy, Clone)]
 // Internal receiver state
@@ -87,7 +84,6 @@ pub enum SbpState {
 pub type SbpResult = ReceiverState<SbpCommand>;
 
 impl Sbp {
-
     pub fn new(samplerate: u32) -> Self {
         let nsamples = nsamples_from_timing(&TIMING, samplerate);
         let ranges = Ranges::new(&nsamples);
@@ -106,15 +102,14 @@ impl Sbp {
         use SbpState::*;
         // Internalstate to ReceiverState
         match self.state {
-            Init        => ReceiverState::Idle,
-            Done        => ReceiverState::Done(SbpCommand::from_receiver(self.address, self.command)),
-            Err(e)     => ReceiverState::Error(e),
-            Disabled    => ReceiverState::Disabled,
-            _           => ReceiverState::Receiving,
+            Init => ReceiverState::Idle,
+            Done => ReceiverState::Done(SbpCommand::from_receiver(self.address, self.command)),
+            Err(e) => ReceiverState::Error(e),
+            Disabled => ReceiverState::Disabled,
+            _ => ReceiverState::Receiving,
         }
     }
 }
-
 
 impl ReceiverStateMachine for Sbp {
     type Cmd = SbpCommand;
@@ -124,10 +119,9 @@ impl ReceiverStateMachine for Sbp {
         Self::new(samplerate)
     }
 
-
     fn event(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd> {
-        use SbpState::*;
         use SbpPulse::*;
+        use SbpState::*;
 
         if rising {
             let mut delta = sampletime.wrapping_sub(self.prev_sampletime);
@@ -141,27 +135,39 @@ impl ReceiverStateMachine for Sbp {
             let pulsewidth = self.ranges.pulsewidth(delta);
 
             let newstate = match (self.state, pulsewidth) {
-                (Init,          Sync)       => Address(0),
-                (Init,          _)          => Init,
+                (Init, Sync) => Address(0),
+                (Init, _) => Init,
 
-                (Address(15),   One)        => {self.address |= 1 << 15; Divider},
-                (Address(15),   Zero)       => Divider,
-                (Address(bit),  One)        => {self.address |= 1 << bit; Address(bit + 1)},
-                (Address(bit),  Zero)       => Address(bit + 1),
-                (Address(_),    _)          => Err(ReceiverError::Address(0)),
+                (Address(15), One) => {
+                    self.address |= 1 << 15;
+                    Divider
+                }
+                (Address(15), Zero) => Divider,
+                (Address(bit), One) => {
+                    self.address |= 1 << bit;
+                    Address(bit + 1)
+                }
+                (Address(bit), Zero) => Address(bit + 1),
+                (Address(_), _) => Err(ReceiverError::Address(0)),
 
-                (Divider,       Paus)       => Command(0),
-                (Divider,       _)          => Err(ReceiverError::Data(0)),
+                (Divider, Paus) => Command(0),
+                (Divider, _) => Err(ReceiverError::Data(0)),
 
-                (Command(19),   One)        => {self.command |= 1 << 19; Done},
-                (Command(19),   Zero)       => Done,
-                (Command(bit),  One)        => {self.command |= 1 << bit; Command(bit + 1)},
-                (Command(bit),  Zero)       => Command(bit + 1),
-                (Command(_),    _)          => Err(ReceiverError::Data(0)),
+                (Command(19), One) => {
+                    self.command |= 1 << 19;
+                    Done
+                }
+                (Command(19), Zero) => Done,
+                (Command(bit), One) => {
+                    self.command |= 1 << bit;
+                    Command(bit + 1)
+                }
+                (Command(bit), Zero) => Command(bit + 1),
+                (Command(_), _) => Err(ReceiverError::Data(0)),
 
-                (Done,          _)          => Done,
-                (Err(err),      _)          => Err(err),
-                (Disabled,      _)          => Disabled,
+                (Done, _) => Done,
+                (Err(err), _) => Err(err),
+                (Disabled, _) => Disabled,
             };
 
             self.state = newstate;
@@ -177,7 +183,6 @@ impl ReceiverStateMachine for Sbp {
         self.prev_sampletime = 0;
         self.prev_pinval = false;
     }
-
 }
 
 const fn nsamples_from_timing(t: &SbpTiming, samplerate: u32) -> [(u32, u32); 4] {
@@ -203,7 +208,6 @@ struct SbpTiming {
     zero: u32,
     /// One low
     one: u32,
-
 }
 
 const TIMING: SbpTiming = SbpTiming {
@@ -241,5 +245,3 @@ impl From<usize> for SbpPulse {
         }
     }
 }
-
-

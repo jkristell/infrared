@@ -1,5 +1,4 @@
-use crate::{ProtocolId, Command};
-
+use crate::{Command, ProtocolId};
 
 /// Receiver state machine
 pub trait ReceiverStateMachine {
@@ -33,7 +32,6 @@ pub enum ReceiverError {
     Other(u32),
 }
 
-
 #[cfg(feature = "protocol-dev")]
 pub struct ReceiverDebug<STATE, EXTRA> {
     pub state: STATE,
@@ -41,4 +39,3 @@ pub struct ReceiverDebug<STATE, EXTRA> {
     pub delta: u16,
     pub extra: EXTRA,
 }
-

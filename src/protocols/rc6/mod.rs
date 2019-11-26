@@ -1,9 +1,9 @@
 use core::ops::Range;
 
 use crate::prelude::*;
+use crate::receiver::ReceiverError;
 #[cfg(feature = "protocol-dev")]
 use crate::ReceiverDebug;
-use crate::receiver::ReceiverError;
 
 #[derive(Debug)]
 pub struct Rc6Command {
@@ -13,17 +13,18 @@ pub struct Rc6Command {
 }
 
 impl Rc6Command {
-
     pub fn new(addr: u8, cmd: u8) -> Self {
         Self {
-            addr, cmd, toggle: false
+            addr,
+            cmd,
+            toggle: false,
         }
     }
 
     pub fn from_bits(bits: u32, toggle: bool) -> Self {
         let addr = (bits >> 8) as u8;
         let cmd = (bits & 0xFF) as u8;
-        Self {addr, cmd, toggle}
+        Self { addr, cmd, toggle }
     }
 }
 
@@ -40,7 +41,6 @@ impl Command for Rc6Command {
         self.cmd
     }
 }
-
 
 pub struct Rc6 {
     samplerate: u32,
@@ -73,12 +73,11 @@ impl Rc6 {
                 state_new: Rc6State::Idle,
                 delta: 0,
                 extra: None,
-            }
+            },
         }
     }
 
     fn interval_to_units(&self, interval: u16) -> Option<u32> {
-
         let interval = u32::from(interval);
 
         for i in 1..=6 {
@@ -113,8 +112,6 @@ pub enum Rc6State {
     Error(ReceiverError),
 }
 
-
-
 const RISING: bool = true;
 const FALLING: bool = false;
 
@@ -143,41 +140,52 @@ impl ReceiverStateMachine for Rc6 {
         let odd = self.rc6_counter & 1 == 1;
 
         let newstate = match (self.state, rising, n_units) {
-            (Idle,          FALLING,    _)      => Idle,
-            (Idle,          RISING,     _)      => Leading,
-            (Leading,       FALLING, Some(6))   => LeadingPaus,
-            (Leading, _, _)                     => Idle,
-            (LeadingPaus,   RISING,  Some(2))   => HeaderData(3),
-            (LeadingPaus, _, _)                 => Idle,
-
+            (Idle, FALLING, _) => Idle,
+            (Idle, RISING, _) => Leading,
+            (Leading, FALLING, Some(6)) => LeadingPaus,
+            (Leading, _, _) => Idle,
+            (LeadingPaus, RISING, Some(2)) => HeaderData(3),
+            (LeadingPaus, _, _) => Idle,
 
             (HeaderData(n), _, Some(_)) if odd => {
-                self.headerdata |= if rising {0} else {1} << n;
+                self.headerdata |= if rising { 0 } else { 1 } << n;
                 if n == 0 {
                     Trailing
                 } else {
-                    HeaderData(n-1)
+                    HeaderData(n - 1)
                 }
-            },
+            }
 
-            (HeaderData(n), _, Some(_))     => HeaderData(n),
-            (HeaderData(_), _, None)        => Idle,
+            (HeaderData(n), _, Some(_)) => HeaderData(n),
+            (HeaderData(_), _, None) => Idle,
 
-            (Trailing, FALLING, Some(3))    => { self.toggle = false; Data(15) },
-            (Trailing, RISING,  Some(2))    => { self.toggle = true; Data(15) },
-            (Trailing, FALLING, Some(1))    => Trailing,
-            (Trailing, _, _)                => Idle,
+            (Trailing, FALLING, Some(3)) => {
+                self.toggle = false;
+                Data(15)
+            }
+            (Trailing, RISING, Some(2)) => {
+                self.toggle = true;
+                Data(15)
+            }
+            (Trailing, FALLING, Some(1)) => Trailing,
+            (Trailing, _, _) => Idle,
 
-            (Data(0), RISING,   Some(_)) if odd    => Done,
-            (Data(0), FALLING,  Some(_)) if odd    => { self.data |= 1; Done },
-            (Data(0), _,        Some(_))           => Data(0),
-            (Data(n), RISING,   Some(_)) if odd    => Data(n-1),
-            (Data(n), FALLING,  Some(_)) if odd    => { self.data |= 1 << n; Data(n-1) },
-            (Data(n), _,        Some(_))           => Data(n),
-            (Data(_), _,        None)              => Error(ReceiverError::Data(delta as u32)),
+            (Data(0), RISING, Some(_)) if odd => Done,
+            (Data(0), FALLING, Some(_)) if odd => {
+                self.data |= 1;
+                Done
+            }
+            (Data(0), _, Some(_)) => Data(0),
+            (Data(n), RISING, Some(_)) if odd => Data(n - 1),
+            (Data(n), FALLING, Some(_)) if odd => {
+                self.data |= 1 << n;
+                Data(n - 1)
+            }
+            (Data(n), _, Some(_)) => Data(n),
+            (Data(_), _, None) => Error(ReceiverError::Data(delta as u32)),
 
-            (Done, _, _)        => Done,
-            (Error(err), _, _)  => Error(err),
+            (Done, _, _) => Done,
+            (Error(err), _, _) => Error(err),
         };
 
         #[cfg(feature = "protocol-dev")]
@@ -191,10 +199,10 @@ impl ReceiverStateMachine for Rc6 {
         self.state = newstate;
 
         match self.state {
-            Idle        => ReceiverState::Idle,
-            Done        => ReceiverState::Done(Rc6Command::from_bits(self.data, self.toggle)),
-            Error(err)  => ReceiverState::Error(err),
-            _           => ReceiverState::Receiving
+            Idle => ReceiverState::Idle,
+            Done => ReceiverState::Done(Rc6Command::from_bits(self.data, self.toggle)),
+            Error(err) => ReceiverState::Error(err),
+            _ => ReceiverState::Receiving,
         }
     }
 
@@ -216,7 +224,7 @@ const fn rc6_multiplier(samplerate: u32, multiplier: u32) -> Range<u32> {
 const fn range(len: u32, percent: u32) -> Range<u32> {
     let tol = (len * percent) / 100;
 
-     Range {
+    Range {
         start: len - tol - 2,
         end: len + tol + 4,
     }
@@ -224,15 +232,15 @@ const fn range(len: u32, percent: u32) -> Range<u32> {
 
 #[cfg(test)]
 mod tests {
-    use crate::rc6::Rc6;
     use crate::prelude::*;
+    use crate::rc6::Rc6;
 
     #[test]
     fn basic() {
-        let dists = [0, 108,
-                     34, 19, 34, 19, 16, 20, 16, 19, 34, 36, 16, 37, 34, 20, 16, 19,
-                     16, 37, 17, 19, 34, 19, 17, 19, 16, 19, 17, 19, 16, 20, 16, 19,
-                     16, 37, 34, 20];
+        let dists = [
+            0, 108, 34, 19, 34, 19, 16, 20, 16, 19, 34, 36, 16, 37, 34, 20, 16, 19, 16, 37, 17, 19,
+            34, 19, 17, 19, 16, 19, 17, 19, 16, 20, 16, 19, 16, 37, 34, 20,
+        ];
 
         let mut recv = Rc6::new(40_000);
         let mut edge = false;
@@ -253,6 +261,3 @@ mod tests {
         }
     }
 }
-
-
-

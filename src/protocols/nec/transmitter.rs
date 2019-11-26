@@ -1,4 +1,4 @@
-use crate::nec::{NecTiming, NecCommand};
+use crate::nec::{NecCommand, NecTiming};
 use crate::prelude::*;
 use crate::protocols::nec::NecVariant;
 
@@ -29,7 +29,6 @@ struct NSamples {
 }
 
 impl<NECTYPE: NecVariant> NecTypeTransmitter<NECTYPE> {
-
     pub fn new(samplerate: u32) -> Self {
         let period: u32 = (1 * 1000) / (samplerate / 1000);
 
@@ -45,7 +44,8 @@ impl<NECTYPE: NecVariant> NecTypeTransmitter<NECTYPE> {
 }
 
 impl<NECTYPE> Transmitter<NecCommand> for NecTypeTransmitter<NECTYPE>
-    where NECTYPE: NecVariant,
+where
+    NECTYPE: NecVariant,
 {
     fn load(&mut self, cmd: NecCommand) {
         self.cmd = NECTYPE::encode_command(cmd);

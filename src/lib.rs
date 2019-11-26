@@ -29,17 +29,14 @@ pub trait Command {
     fn command(&self) -> u8;
 }
 
-
 mod protocols;
 pub use protocols::*;
 
-pub mod transmitter;
 pub mod receiver;
-
+pub mod transmitter;
 
 #[cfg(feature = "embedded-hal")]
 pub mod hal;
-
 
 #[cfg(feature = "remotes")]
 pub mod remotes;
@@ -48,10 +45,9 @@ pub mod remotes;
 pub use receiver::ReceiverDebug;
 
 pub mod prelude {
-    pub use crate::{Command, ProtocolId};
-    pub use crate::transmitter::{TransmitterState, Transmitter};
-    pub use crate::receiver::{ReceiverStateMachine, ReceiverState};
     #[cfg(feature = "embedded-hal")]
     pub use crate::hal;
+    pub use crate::receiver::{ReceiverState, ReceiverStateMachine};
+    pub use crate::transmitter::{Transmitter, TransmitterState};
+    pub use crate::{Command, ProtocolId};
 }
-
