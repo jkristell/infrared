@@ -38,16 +38,8 @@ pub mod receiver;
 
 
 #[cfg(feature = "embedded-hal")]
-pub mod hal {
-    pub use crate::receiver::hal::{
-        HalReceiver,
-        HalReceiver2,
-        HalReceiver3,
-        HalReceiver4,
-        HalReceiver5,
-    };
-    pub use crate::transmitter::PwmTransmitter;
-}
+pub mod hal;
+
 
 #[cfg(feature = "remotes")]
 pub mod remotes;
