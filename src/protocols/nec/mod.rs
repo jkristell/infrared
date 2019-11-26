@@ -58,8 +58,8 @@ pub trait NecVariant {
 }
 
 impl NecVariant for NecStandard {
-    const PROTOCOL: ProtocolId = ProtocolId::Nec;
     const TIMING: &'static NecTiming = &STANDARD_DIST;
+    const PROTOCOL: ProtocolId = ProtocolId::Nec;
 
     fn encode_command(NecCommand { addr, cmd }: NecCommand) -> u32 {
         let addr = u32::from(addr) | (u32::from(!addr) & 0xFF) << 8;
@@ -79,8 +79,8 @@ impl NecVariant for NecStandard {
 }
 
 impl NecVariant for Nec16Variant {
-    const PROTOCOL: ProtocolId = ProtocolId::Nec16;
     const TIMING: &'static NecTiming = &STANDARD_DIST;
+    const PROTOCOL: ProtocolId = ProtocolId::Nec16;
 
     fn encode_command(NecCommand { addr, cmd }: NecCommand) -> u32 {
         let addr = u32::from(addr);
@@ -100,7 +100,6 @@ impl NecVariant for Nec16Variant {
 }
 
 impl NecVariant for SamsungVariant {
-    const PROTOCOL: ProtocolId = ProtocolId::NecSamsung;
     const TIMING: &'static NecTiming = &NecTiming {
         hh: 4500,
         hl: 4500,
@@ -109,6 +108,7 @@ impl NecVariant for SamsungVariant {
         dh: 560,
         ol: 1690,
     };
+    const PROTOCOL: ProtocolId = ProtocolId::NecSamsung;
 
     fn encode_command(NecCommand { addr, cmd }: NecCommand) -> u32 {
         // Address is inverted and command is repeated

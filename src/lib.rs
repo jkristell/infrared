@@ -39,7 +39,7 @@ pub mod receiver;
 
 #[cfg(feature = "embedded-hal")]
 pub mod hal {
-    pub use crate::receiver::ehal::{
+    pub use crate::receiver::hal::{
         HalReceiver,
         HalReceiver2,
         HalReceiver3,

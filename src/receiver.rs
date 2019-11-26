@@ -8,9 +8,8 @@ pub trait ReceiverStateMachine {
     /// The resulting command type
     type Cmd: Command;
 
-    // Create
+    /// Create
     fn for_samplerate(samplerate: u32) -> Self;
-
     /// Add event to state machine
     fn event(&mut self, edge: bool, time: u32) -> ReceiverState<Self::Cmd>;
     /// Reset receiver
@@ -35,7 +34,7 @@ pub enum ReceiverError {
 }
 
 #[cfg(feature = "embedded-hal")]
-pub mod ehal {
+pub mod hal {
     use embedded_hal::digital::v2::InputPin;
     use crate::receiver::{ReceiverStateMachine, ReceiverState};
 
@@ -71,7 +70,6 @@ pub mod ehal {
         pub fn destroy(self) -> PIN {
             self.pin
         }
-
 
         pub fn sample(&mut self, sample: u32) -> Result<Option<CMD>, PINERR> {
             let pinval = self.pin.is_low()?;

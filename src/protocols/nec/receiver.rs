@@ -71,19 +71,6 @@ impl<NECTYPE: NecVariant> NecType<NECTYPE> {
         }
     }
 
-    fn receiver_state(&self) -> ReceiverState<NecCommand> {
-        use NecState::*;
-        // Internalstate to ReceiverState
-        match self.state {
-            Init        => ReceiverState::Idle,
-            Done        => ReceiverState::Done(NECTYPE::decode_command(self.bitbuf)),
-            RepeatDone  => ReceiverState::Done(NECTYPE::decode_command(self.lastcommand)),
-            Err(e) => ReceiverState::Error(e),
-            Disabled    => ReceiverState::Disabled,
-            _           => ReceiverState::Receiving,
-        }
-    }
-
     #[cfg(feature = "protocol-dev")]
     fn update_debug(&mut self, newstate: NecState, nsamples: u32) {
         self.debug.state = self.state;
@@ -142,7 +129,14 @@ where
             self.state = newstate;
         }
 
-        self.receiver_state()
+        match self.state {
+            Init        => ReceiverState::Idle,
+            Done        => ReceiverState::Done(NECTYPE::decode_command(self.bitbuf)),
+            RepeatDone  => ReceiverState::Done(NECTYPE::decode_command(self.lastcommand)),
+            Err(e)      => ReceiverState::Error(e),
+            Disabled    => ReceiverState::Disabled,
+            _           => ReceiverState::Receiving,
+        }
     }
 
     fn reset(&mut self) {

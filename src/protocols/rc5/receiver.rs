@@ -54,17 +54,6 @@ impl Rc5 {
         }
         delta as u16
     }
-
-    fn receiver_state(&self) -> Rc5Res {
-        use Rc5State::*;
-
-        match self.state {
-            Idle        => ReceiverState::Idle,
-            Done        => ReceiverState::Done(Rc5Command::from_bits(self.bitbuf)),
-            Error(err) => ReceiverState::Error(err),
-            _           => ReceiverState::Receiving
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -123,15 +112,21 @@ impl ReceiverStateMachine for Rc5 {
         };
 
         #[cfg(feature = "protocol-dev")]
-            {
-                self.debug.state = self.state;
-                self.debug.state_new = newstate;
-                self.debug.delta = delta;
-                self.debug.extra = rc5units;
-            }
+        {
+            self.debug.state = self.state;
+            self.debug.state_new = newstate;
+            self.debug.delta = delta;
+            self.debug.extra = rc5units;
+        }
 
         self.state = newstate;
-        self.receiver_state()
+
+        match self.state {
+            Idle        => ReceiverState::Idle,
+            Done        => ReceiverState::Done(Rc5Command::from_bits(self.bitbuf)),
+            Error(err)  => ReceiverState::Error(err),
+            _           => ReceiverState::Receiving
+        }
     }
 
     fn reset(&mut self) {

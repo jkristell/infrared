@@ -97,16 +97,6 @@ impl Rc6 {
         }
         delta as u16
     }
-
-    fn receiver_state(&self) -> Rc6Result {
-        use ReceiverState::*;
-        match self.state {
-            Rc6State::Idle => Idle,
-            Rc6State::Done => Done(Rc6Command::from_bits(self.data, self.toggle)),
-            Rc6State::Error(err) => Error(err), //TODO:
-            _ => Receiving
-        }
-    }
 }
 
 type Rc6Result = ReceiverState<Rc6Command>;
@@ -123,12 +113,18 @@ pub enum Rc6State {
     Error(ReceiverError),
 }
 
+
+
 const RISING: bool = true;
 const FALLING: bool = false;
 
 impl ReceiverStateMachine for Rc6 {
-    type Cmd = Rc6Command;
     const ID: ProtocolId = ProtocolId::Rc6;
+    type Cmd = Rc6Command;
+
+    fn for_samplerate(samplerate: u32) -> Self {
+        Self::new(samplerate)
+    }
 
     fn event(&mut self, rising: bool, sampletime: u32) -> Rc6Result {
         use Rc6State::*;
@@ -193,7 +189,13 @@ impl ReceiverStateMachine for Rc6 {
         }
 
         self.state = newstate;
-        self.receiver_state()
+
+        match self.state {
+            Idle        => ReceiverState::Idle,
+            Done        => ReceiverState::Done(Rc6Command::from_bits(self.data, self.toggle)),
+            Error(err)  => ReceiverState::Error(err),
+            _           => ReceiverState::Receiving
+        }
     }
 
     fn reset(&mut self) {
@@ -203,10 +205,6 @@ impl ReceiverStateMachine for Rc6 {
         self.last = 0;
         self.headerdata = 0;
         self.rc6_counter = 0;
-    }
-
-    fn for_samplerate(samplerate: u32) -> Self {
-        Self::new(samplerate)
     }
 }
 
