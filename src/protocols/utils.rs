@@ -43,3 +43,40 @@ const fn make_range(units: u32, percent: u32) -> Range<u32> {
     (units - tol..units + tol)
 }
 
+
+pub fn sampletime_diff(prev: u32, cur: u32) -> u32 {
+    use core::{u32, u16, i16};
+    let nsamples = cur.wrapping_sub(prev);
+
+    if nsamples <= u32::MAX/2 {
+        (nsamples as i32).abs() as u32
+    }
+    else {
+        0
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::protocols::utils::sampletime_diff;
+
+    #[test]
+    fn sampletime() {
+        use std::{u32, u16, i16};
+
+        let tests = [
+            (10, 20, 10),
+            (u32::MAX, 9, 10),
+            (u32::MAX-10, 99, 110),
+            (u32::MAX, (u32::MAX/2-1), (u32::MAX/2)),
+            (u32::MAX-1000, (u32::MAX/2-1001), (u32::MAX/2)),
+            (u32::MAX, (u32::MAX/2) as u32, 0),
+        ];
+
+        for &(t0, t1, res) in &tests {
+            let r = sampletime_diff(t0, t1);
+            assert_eq!(r, res);
+        }
+    }
+}
+
