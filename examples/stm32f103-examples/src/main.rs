@@ -34,7 +34,7 @@ static mut TIMER: Option<Timer<TIM2>> = None;
 // Receiver
 static mut RECEIVER: Option<HalReceiver<
     PB8<Input<Floating>>,
-    NecReceiver,
+    Nec,
 >> = None;
 
 
@@ -59,8 +59,6 @@ fn main() -> ! {
     let mut timer = Timer::tim2(device.TIM2, TIMER_FREQ.hz(), clocks, &mut rcc.apb1);
     timer.listen(Event::Update);
 
-    //let nec = NecReceiver::new(TIMER_FREQ);
-    //let receiver = GenericHalReceiver::new(irinpin, nec);
     let receiver = HalReceiver::new(irinpin, TIMER_FREQ);
 
     // Safe because the devices are only used in the interrupt handler
@@ -91,7 +89,7 @@ fn TIM2() {
         use StandardButton::*;
 
         match button {
-            Play => hprintln!("Play was pressed!").unwrap(),
+            Play_Paus => hprintln!("Play was pressed!").unwrap(),
             _ => hprintln!("Button: {:?}", button).unwrap(),
         }
     }

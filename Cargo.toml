@@ -10,6 +10,9 @@ keywords = ["infrared", "remote", "rc5", "rc6", "nec"]
 categories = ["no-std", "embedded"]
 license = "MIT OR Apache-2.0"
 
+[workspace]
+exclude = ["examples/"]
+
 [features]
 default = ["nec", "rc5", "rc6", "sbp"]
 nec = []
