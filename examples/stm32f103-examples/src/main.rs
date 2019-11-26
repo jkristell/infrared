@@ -17,7 +17,7 @@ use stm32f1xx_hal::{
 
 #[allow(unused_imports)]
 use infrared::{
-    hal::HalReceiver,
+    hal::InfraredReceiverRemote,
     nec::*,
     rc5::*,
     remotes::{
@@ -32,9 +32,10 @@ const TIMER_FREQ: u32 = 40_000;
 static mut TIMER: Option<Timer<TIM2>> = None;
 
 // Receiver
-static mut RECEIVER: Option<HalReceiver<
+static mut RECEIVER: Option<InfraredReceiverRemote<
     PB8<Input<Floating>>,
     Nec,
+    SpecialForMp3,
 >> = None;
 
 
@@ -59,7 +60,7 @@ fn main() -> ! {
     let mut timer = Timer::tim2(device.TIM2, TIMER_FREQ.hz(), clocks, &mut rcc.apb1);
     timer.listen(Event::Update);
 
-    let receiver = HalReceiver::new(irinpin, TIMER_FREQ);
+    let receiver = InfraredReceiverRemote::new(irinpin, TIMER_FREQ);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
@@ -67,8 +68,8 @@ fn main() -> ! {
         RECEIVER.replace(receiver);
     }
 
-    // Enable the timer interrupt
     unsafe {
+        // Enable the timer interrupt
         pac::NVIC::unmask(pac::Interrupt::TIM2);
     }
 
@@ -85,13 +86,14 @@ fn TIM2() {
 
     let receiver = unsafe { RECEIVER.as_mut().unwrap() };
 
-    if let Some(button) = receiver.sample_remote::<SpecialForMp3>(*SAMPLECOUNTER).unwrap() {
+    if let Ok(Some(button)) = receiver.sample(*SAMPLECOUNTER) {
         use StandardButton::*;
 
         match button {
             Play_Paus => hprintln!("Play was pressed!").unwrap(),
+            Power => hprintln!("Power on/off").unwrap(),
             _ => hprintln!("Button: {:?}", button).unwrap(),
-        }
+        };
     }
 
     // Clear the interrupt
