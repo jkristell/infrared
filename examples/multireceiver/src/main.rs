@@ -17,9 +17,11 @@ use stm32f1xx_hal::{
 };
 
 use infrared::{
-    hal::HalReceiver3,
+    hal::HalReceiver5,
     nec::*,
     rc5::*,
+    rc6::*,
+    sbp::*,
     remotes::{
         RemoteControl,
         rc5::Rc5CdPlayer
@@ -32,10 +34,12 @@ const TIMER_FREQ: u32 = 40_000;
 static mut TIMER: Option<Timer<TIM2>> = None;
 
 // Receiver for multiple protocols
-static mut RECEIVER: Option<HalReceiver3<PB8<Input<Floating>>,
-    NecReceiver,
-    NecSamsungReceiver,
-    Rc5Receiver,
+static mut RECEIVER: Option<HalReceiver5<PB8<Input<Floating>>,
+    Nec,
+    NecSamsung,
+    Rc5,
+    Rc6,
+    Sbp,
 >> = None;
 
 
@@ -61,10 +65,7 @@ fn main() -> ! {
     timer.listen(Event::Update);
 
     // Create a receiver that reacts on 3 different kinds of remote controls
-    let nec = NecReceiver::new(TIMER_FREQ);
-    let nes = NecSamsungReceiver::new(TIMER_FREQ);
-    let rc5 = Rc5Receiver::new(TIMER_FREQ);
-    let receiver = HalReceiver3::new(inpin, nec, nes, rc5);
+    let receiver = HalReceiver5::new(inpin, TIMER_FREQ);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
@@ -84,11 +85,11 @@ fn main() -> ! {
 
 #[interrupt]
 fn TIM2() {
-    static mut COUNT: u32 = 0;
+    static mut SAMPLECOUNTER: u32 = 0;
 
     let receiver = unsafe { RECEIVER.as_mut().unwrap() };
 
-    if let Ok((neccmd, nescmd, rc5cmd)) = receiver.step(*COUNT) {
+    if let Ok((neccmd, nescmd, rc5cmd, rc6cmd, sbpcmd)) = receiver.step(*SAMPLECOUNTER) {
 
         // We have a NEC Command
         if let Some(cmd) = neccmd {
@@ -103,18 +104,27 @@ fn TIM2() {
         // We have a Rc5 Command
         if let Some(cmd) = rc5cmd {
             // Print the command if recognized as a Rc5 CD-player command
-            if let Some(decoded) = Rc5CdPlayer.decode_with_address(cmd) {
+            if let Some(decoded) = Rc5CdPlayer::decode_command(cmd) {
                 hprintln!("rc5(CD): {:?}", decoded).unwrap();
             } else {
                 hprintln!("rc5: {} {}", cmd.addr, cmd.cmd).unwrap();
             }
         }
+
+        if let Some(cmd) = rc6cmd {
+            hprintln!("rc6: {} {}", cmd.addr, cmd.cmd).ok();
+        }
+
+        if let Some(cmd) = sbpcmd {
+            hprintln!("sbp: {} {}", cmd.address, cmd.command).ok();
+        }
+
     }
 
     // Clear the interrupt
     let timer = unsafe { TIMER.as_mut().unwrap() };
     timer.clear_update_interrupt_flag();
 
-    *COUNT = COUNT.wrapping_add(1);
+    *SAMPLECOUNTER = SAMPLECOUNTER.wrapping_add(1);
 }
 

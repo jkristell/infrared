@@ -1,4 +1,5 @@
-use crate::{Receiver, ReceiverState, ProtocolId};
+use crate::receiver::{ReceiverStateMachine, ReceiverState, };
+use crate::prelude::*;
 
 const BUF_LEN: usize = 128;
 
@@ -18,35 +19,35 @@ pub struct LoggingReceiver {
     /// Samplenum with pin change
     pub prev_samplenum: u32,
     /// Our state
-    pub state: ReceiverState<(), ()>,
+    pub state: ReceiverState<DummyCommand>,
 }
 
+#[derive(Eq, PartialEq, Copy, Clone)]
+pub struct DummyCommand;
 
-impl Receiver for LoggingReceiver {
-    type Cmd = ();
-    type Err = ();
-    const PROTOCOL_ID: ProtocolId = ProtocolId::Logging;
-
-
-    fn sample(&mut self, pinval: bool, samplenum: u32) -> ReceiverState<(), ()> {
-
-        if !self.ready() {
-            return self.state;
-        }
-
-        if self.prev_pinval != pinval {
-            // Change detected
-            return self.sample_edge(pinval, samplenum);
-        }
-
-        if self.state == ReceiverState::Receiving && self.delta(samplenum) > self.timeout {
-            self.state = ReceiverState::Done(());
-        }
-
-        self.state
+impl Command for DummyCommand {
+    fn construct(_addr: u16, _cmd: u8) -> Self {
+        DummyCommand
     }
 
-    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err> {
+    fn address(&self) -> u16 {
+        0
+    }
+
+    fn command(&self) -> u8 {
+        0
+    }
+}
+
+impl ReceiverStateMachine for LoggingReceiver {
+    const ID: ProtocolId = ProtocolId::Logging;
+    type Cmd = DummyCommand;
+
+    fn for_samplerate(samplerate: u32) -> Self {
+        Self::new(samplerate, (samplerate / 1000) as u16)
+    }
+
+    fn event(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd> {
 
         if !self.ready() {
             return self.state;
@@ -55,7 +56,7 @@ impl Receiver for LoggingReceiver {
         let delta = self.delta(sampletime);
 
         if delta > self.timeout {
-            self.state = ReceiverState::Done(());
+            self.state = ReceiverState::Done(DummyCommand);
             return self.state;
         }
 
@@ -67,7 +68,7 @@ impl Receiver for LoggingReceiver {
         self.n_edges += 1;
 
         if self.n_edges == BUF_LEN {
-            self.state = ReceiverState::Done(());
+            self.state = ReceiverState::Done(DummyCommand);
         }
 
         self.state
@@ -82,10 +83,6 @@ impl Receiver for LoggingReceiver {
         for i in 0..self.edges.len() {
             self.edges[i] = 0;
         }
-    }
-
-    fn disable(&mut self) {
-        self.state = ReceiverState::Disabled;
     }
 }
 
@@ -103,7 +100,7 @@ impl LoggingReceiver {
     }
 
     fn ready(&self) -> bool {
-        !(self.state == ReceiverState::Done(()) || self.state == ReceiverState::Disabled)
+        !(self.state == ReceiverState::Done(DummyCommand) || self.state == ReceiverState::Disabled)
     }
 
     pub fn delta(&self, ts: u32) -> u16 {

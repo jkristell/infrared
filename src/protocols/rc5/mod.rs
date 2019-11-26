@@ -1,7 +1,8 @@
 pub mod receiver;
 pub mod transmitter;
-pub use receiver::{Rc5Receiver};
+pub use receiver::Rc5;
 pub use transmitter::Rc5Transmitter;
+use crate::Command;
 
 const ADDR_MASK: u16   = 0b_0000_0111_1100_0000;
 const CMD_MASK: u16    = 0b_0000_0000_0011_1111;
@@ -47,10 +48,25 @@ impl Rc5Command {
     }
 }
 
+impl Command for Rc5Command {
+    fn construct(addr: u16, cmd: u8) -> Self {
+        Rc5Command::new(addr as u8, cmd, false)
+    }
+
+    fn address(&self) -> u16 {
+        self.addr as u16
+    }
+
+    fn command(&self) -> u8 {
+        self.cmd
+    }
+}
+
+
 
 #[cfg(test)]
 mod tests {
-    use crate::rc5::Rc5Receiver;
+    use crate::rc5::Rc5;
     use crate::prelude::*;
     use crate::protocols::rc5::{Rc5Command, Rc5Transmitter};
 
@@ -71,7 +87,7 @@ mod tests {
             35, 37,
             70, 37];
 
-        let mut recv = Rc5Receiver::new(40_000);
+        let mut recv = Rc5::new(40_000);
         let mut edge = false;
         let mut tot = 0;
         let mut state = ReceiverState::Idle;
@@ -79,7 +95,7 @@ mod tests {
         for dist in dists.iter() {
             edge = !edge;
             tot += *dist;
-            state = recv.sample_edge(edge, tot);
+            state = recv.event(edge, tot);
         }
 
         if let ReceiverState::Done(cmd) = state {

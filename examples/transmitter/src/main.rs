@@ -107,14 +107,10 @@ fn TIM2() {
 
     if *COUNT % FREQ == 0 {
 
-        // The device we want to send the command to
-        let cdplayer = Rc5CdPlayer;
-
-        // The button
         let button = StandardButton::Next;
 
         // The encoded result
-        let cmd = cdplayer.encode(button).unwrap();
+        let cmd = Rc5CdPlayer::encode(button).unwrap();
 
         // You could also construct the command manually
         // let cmd = Rc5Command::new(20, 15, false);

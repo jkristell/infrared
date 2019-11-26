@@ -1,7 +1,9 @@
 use core::ops::Range;
-use crate::{Receiver, ReceiverState, ProtocolId};
+
+use crate::prelude::*;
 #[cfg(feature = "protocol-dev")]
 use crate::ReceiverDebug;
+use crate::receiver::ReceiverError;
 
 #[derive(Debug)]
 pub struct Rc6Command {
@@ -25,14 +27,22 @@ impl Rc6Command {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum Rc6Error {
-    Header(u16),
-    Data(u16),
-    Rc6Version(u16),
+impl Command for Rc6Command {
+    fn construct(addr: u16, cmd: u8) -> Self {
+        Rc6Command::new(addr as u8, cmd)
+    }
+
+    fn address(&self) -> u16 {
+        self.addr as u16
+    }
+
+    fn command(&self) -> u8 {
+        self.cmd
+    }
 }
 
-pub struct Rc6Receiver {
+
+pub struct Rc6 {
     samplerate: u32,
     state: Rc6State,
     pub pinval: bool,
@@ -46,7 +56,7 @@ pub struct Rc6Receiver {
     pub debug: ReceiverDebug<Rc6State, Option<u32>>,
 }
 
-impl Rc6Receiver {
+impl Rc6 {
     pub fn new(samplerate: u32) -> Self {
         Self {
             samplerate,
@@ -87,19 +97,9 @@ impl Rc6Receiver {
         }
         delta as u16
     }
-
-    fn receiver_state(&self) -> Rc6Result {
-        use ReceiverState::*;
-        match self.state {
-            Rc6State::Idle => Idle,
-            Rc6State::Done => Done(Rc6Command::from_bits(self.data, self.toggle)),
-            Rc6State::Error(err) => Error(err),
-            _ => Receiving
-        }
-    }
 }
 
-type Rc6Result = ReceiverState<Rc6Command, Rc6Error>;
+type Rc6Result = ReceiverState<Rc6Command>;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Rc6State {
@@ -110,27 +110,23 @@ pub enum Rc6State {
     Trailing,
     Data(u32),
     Done,
-    Error(Rc6Error),
+    Error(ReceiverError),
 }
+
+
 
 const RISING: bool = true;
 const FALLING: bool = false;
 
-impl Receiver for Rc6Receiver {
+impl ReceiverStateMachine for Rc6 {
+    const ID: ProtocolId = ProtocolId::Rc6;
     type Cmd = Rc6Command;
-    type Err = Rc6Error;
-    const PROTOCOL_ID: ProtocolId = ProtocolId::Rc6;
 
-    fn sample(&mut self, pinval: bool, timestamp: u32) -> Rc6Result {
-
-        if self.pinval != pinval {
-            return self.sample_edge(pinval, timestamp);
-        }
-
-        self.receiver_state()
+    fn for_samplerate(samplerate: u32) -> Self {
+        Self::new(samplerate)
     }
 
-    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> Rc6Result {
+    fn event(&mut self, rising: bool, sampletime: u32) -> Rc6Result {
         use Rc6State::*;
 
         let delta = self.delta(sampletime);
@@ -178,7 +174,7 @@ impl Receiver for Rc6Receiver {
             (Data(n), RISING,   Some(_)) if odd    => Data(n-1),
             (Data(n), FALLING,  Some(_)) if odd    => { self.data |= 1 << n; Data(n-1) },
             (Data(n), _,        Some(_))           => Data(n),
-            (Data(_), _,        None)              => Error(Rc6Error::Data(delta)),
+            (Data(_), _,        None)              => Error(ReceiverError::Data(delta as u32)),
 
             (Done, _, _)        => Done,
             (Error(err), _, _)  => Error(err),
@@ -193,7 +189,13 @@ impl Receiver for Rc6Receiver {
         }
 
         self.state = newstate;
-        self.receiver_state()
+
+        match self.state {
+            Idle        => ReceiverState::Idle,
+            Done        => ReceiverState::Done(Rc6Command::from_bits(self.data, self.toggle)),
+            Error(err)  => ReceiverState::Error(err),
+            _           => ReceiverState::Receiving
+        }
     }
 
     fn reset(&mut self) {
@@ -203,10 +205,6 @@ impl Receiver for Rc6Receiver {
         self.last = 0;
         self.headerdata = 0;
         self.rc6_counter = 0;
-    }
-
-    fn disable(&mut self) {
-        unimplemented!()
     }
 }
 
@@ -226,7 +224,7 @@ const fn range(len: u32, percent: u32) -> Range<u32> {
 
 #[cfg(test)]
 mod tests {
-    use crate::rc6::Rc6Receiver;
+    use crate::rc6::Rc6;
     use crate::prelude::*;
 
     #[test]
@@ -236,7 +234,7 @@ mod tests {
                      16, 37, 17, 19, 34, 19, 17, 19, 16, 19, 17, 19, 16, 20, 16, 19,
                      16, 37, 34, 20];
 
-        let mut recv = Rc6Receiver::new(40_000);
+        let mut recv = Rc6::new(40_000);
         let mut edge = false;
         let mut tot = 0;
         let mut state = ReceiverState::Idle;
@@ -244,7 +242,7 @@ mod tests {
         for dist in dists.iter() {
             edge = !edge;
             tot += dist;
-            state = recv.sample_edge(edge, tot);
+            state = recv.event(edge, tot);
         }
 
         if let ReceiverState::Done(cmd) = state {

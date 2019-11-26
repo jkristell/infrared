@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![allow(deprecated)]
 
 use cortex_m_rt::entry;
 use cortex_m_semihosting::hprintln;
@@ -16,9 +15,16 @@ use stm32f1xx_hal::{
     timer::{Event, Timer},
 };
 
+#[allow(unused_imports)]
 use infrared::{
     hal::HalReceiver,
     nec::*,
+    rc5::*,
+    remotes::{
+        rc5::*,
+        nec::*,
+        StandardButton,
+    },
 };
 
 const TIMER_FREQ: u32 = 40_000;
@@ -34,7 +40,7 @@ static mut RECEIVER: Option<HalReceiver<
 
 #[entry]
 fn main() -> ! {
-    let mut core = cortex_m::Peripherals::take().unwrap();
+    let _core = cortex_m::Peripherals::take().unwrap();
     let device = pac::Peripherals::take().unwrap();
 
     let mut flash = device.FLASH.constrain();
@@ -53,8 +59,9 @@ fn main() -> ! {
     let mut timer = Timer::tim2(device.TIM2, TIMER_FREQ.hz(), clocks, &mut rcc.apb1);
     timer.listen(Event::Update);
 
-    let nec = NecReceiver::new(TIMER_FREQ);
-    let receiver = HalReceiver::new(irinpin, nec);
+    //let nec = NecReceiver::new(TIMER_FREQ);
+    //let receiver = GenericHalReceiver::new(irinpin, nec);
+    let receiver = HalReceiver::new(irinpin, TIMER_FREQ);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
@@ -63,7 +70,9 @@ fn main() -> ! {
     }
 
     // Enable the timer interrupt
-    core.NVIC.enable(pac::Interrupt::TIM2);
+    unsafe {
+        pac::NVIC::unmask(pac::Interrupt::TIM2);
+    }
 
     hprintln!("Ready!").unwrap();
 
@@ -74,18 +83,23 @@ fn main() -> ! {
 
 #[interrupt]
 fn TIM2() {
-    static mut COUNT: u32 = 0;
+    static mut SAMPLECOUNTER: u32 = 0;
 
     let receiver = unsafe { RECEIVER.as_mut().unwrap() };
 
-    if let Some(cmd) = receiver.step(*COUNT).unwrap() {
-        hprintln!("nec: {} {}", cmd.addr, cmd.cmd).unwrap();
+    if let Some(button) = receiver.sample_remote::<SpecialForMp3>(*SAMPLECOUNTER).unwrap() {
+        use StandardButton::*;
+
+        match button {
+            Play => hprintln!("Play was pressed!").unwrap(),
+            _ => hprintln!("Button: {:?}", button).unwrap(),
+        }
     }
 
     // Clear the interrupt
     let timer = unsafe { TIMER.as_mut().unwrap() };
     timer.clear_update_interrupt_flag();
 
-    *COUNT = COUNT.wrapping_add(1);
+    *SAMPLECOUNTER = SAMPLECOUNTER.wrapping_add(1);
 }
 

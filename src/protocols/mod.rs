@@ -7,4 +7,6 @@ pub mod rc6;
 #[cfg(feature = "sbp")]
 pub mod sbp;
 
+pub mod utils;
+
 pub mod logging;
