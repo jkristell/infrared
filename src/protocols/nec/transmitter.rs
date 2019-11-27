@@ -21,11 +21,11 @@ pub struct NecTypeTransmitter<NECTYPE> {
 }
 
 struct NSamples {
-    header_high: u32,
-    header_low: u32,
-    data_high: u32,
-    zero_low: u32,
-    one_low: u32,
+    hh: u32,
+    hl: u32,
+    data: u32,
+    zero: u32,
+    one: u32,
 }
 
 impl<NECTYPE: NecVariant> NecTypeTransmitter<NECTYPE> {
@@ -63,7 +63,7 @@ where
                 HeaderHigh
             }
             HeaderHigh => {
-                if interval >= self.samples.header_high {
+                if interval >= self.samples.hh {
                     self.last_ts = ts;
                     HeaderLow
                 } else {
@@ -71,7 +71,7 @@ where
                 }
             }
             HeaderLow => {
-                if interval >= self.samples.header_low {
+                if interval >= self.samples.hl {
                     self.last_ts = ts;
                     DataHigh(0)
                 } else {
@@ -80,7 +80,7 @@ where
             }
 
             DataHigh(bidx) => {
-                if interval >= self.samples.data_high {
+                if interval >= self.samples.data {
                     self.last_ts = ts;
                     DataLow(bidx)
                 } else {
@@ -90,9 +90,9 @@ where
             DataLow(32) => Done,
             DataLow(bidx) => {
                 let samples = if (self.cmd & (1 << bidx)) != 0 {
-                    self.samples.one_low
+                    self.samples.one
                 } else {
-                    self.samples.zero_low
+                    self.samples.zero
                 };
 
                 if interval >= samples {
@@ -121,16 +121,16 @@ where
 }
 
 #[cfg(feature = "embedded-hal")]
-impl<NECTYPE: NecVariant> hal::PwmTransmitter<NecCommand> for NecTypeTransmitter<NECTYPE> {}
+impl<NECTYPE: NecVariant> crate::hal::PwmTransmitter<NecCommand> for NecTypeTransmitter<NECTYPE> {}
 
 impl NSamples {
     pub const fn new(period: u32, pulsedistance: &NecTiming) -> Self {
         Self {
-            header_high: pulsedistance.hh / period,
-            header_low: pulsedistance.hl / period,
-            zero_low: pulsedistance.zl / period,
-            data_high: pulsedistance.dh / period,
-            one_low: pulsedistance.ol / period,
+            hh: pulsedistance.hh / period,
+            hl: pulsedistance.hl / period,
+            zero: pulsedistance.zl / period,
+            data: pulsedistance.dh / period,
+            one: pulsedistance.ol / period,
         }
     }
 }

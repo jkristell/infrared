@@ -23,6 +23,7 @@ pub enum ProtocolId {
     Logging = 31,
 }
 
+/// Remote control command trait
 pub trait Command {
     fn construct(addr: u16, cmd: u8) -> Self;
     fn address(&self) -> u16;
@@ -45,9 +46,9 @@ pub mod remotes;
 pub use receiver::ReceiverDebug;
 
 pub mod prelude {
-    #[cfg(feature = "embedded-hal")]
-    pub use crate::hal;
     pub use crate::receiver::{ReceiverState, ReceiverStateMachine};
     pub use crate::transmitter::{Transmitter, TransmitterState};
     pub use crate::{Command, ProtocolId};
+    #[cfg(feature = "embedded-hal")]
+    pub use crate::transmitter::PwmTransmitter;
 }

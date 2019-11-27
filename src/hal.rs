@@ -1,7 +1,6 @@
 use crate::receiver::{ReceiverState, ReceiverStateMachine};
 use embedded_hal::digital::v2::InputPin;
 
-use crate::remotes::RemoteControl;
 pub use crate::transmitter::PwmTransmitter;
 use core::marker::PhantomData;
 
@@ -25,7 +24,7 @@ where
     CMD: crate::Command,
     SM: ReceiverStateMachine<Cmd = CMD>,
     PIN: InputPin<Error = PINERR>,
-    REMOTE: RemoteControl<Command = CMD>,
+    REMOTE: crate::remotes::RemoteControl<Command = CMD>,
 {
     pub fn new_from_sm(pin: PIN, sm: SM) -> Self {
         Self {
@@ -196,10 +195,10 @@ macro_rules! create_receiver {
     };
 }
 
-create_receiver!(HalReceiver2, [(recv1, RECV1, CMD1), (recv2, RECV2, CMD2)]);
+create_receiver!(InfraredReceiver2, [(recv1, RECV1, CMD1), (recv2, RECV2, CMD2)]);
 
 create_receiver!(
-    HalReceiver3,
+    InfraredReceiver3,
     [
         (recv1, RECV1, CMD1),
         (recv2, RECV2, CMD2),
@@ -208,7 +207,7 @@ create_receiver!(
 );
 
 create_receiver!(
-    HalReceiver4,
+    InfraredReceiver4,
     [
         (recv1, RECV1, CMD1),
         (recv2, RECV2, CMD2),
@@ -217,7 +216,7 @@ create_receiver!(
     ]
 );
 create_receiver!(
-    HalReceiver5,
+    InfraredReceiver5,
     [
         (recv1, RECV1, CMD1),
         (recv2, RECV2, CMD2),

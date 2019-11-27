@@ -17,7 +17,7 @@ use stm32f1xx_hal::{
 };
 
 use infrared::{
-    hal::HalReceiver5,
+    hal::InfraredReceiver5,
     nec::*,
     rc5::*,
     rc6::*,
@@ -34,7 +34,7 @@ const TIMER_FREQ: u32 = 40_000;
 static mut TIMER: Option<Timer<TIM2>> = None;
 
 // Receiver for multiple protocols
-static mut RECEIVER: Option<HalReceiver5<PB8<Input<Floating>>,
+static mut RECEIVER: Option<InfraredReceiver5<PB8<Input<Floating>>,
     Nec,
     NecSamsung,
     Rc5,
@@ -65,7 +65,7 @@ fn main() -> ! {
     timer.listen(Event::Update);
 
     // Create a receiver that reacts on 3 different kinds of remote controls
-    let receiver = HalReceiver5::new(inpin, TIMER_FREQ);
+    let receiver = InfraredReceiver5::new(inpin, TIMER_FREQ);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {

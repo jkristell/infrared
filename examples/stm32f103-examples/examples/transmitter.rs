@@ -16,7 +16,6 @@ use stm32f1xx_hal::{
 
 use infrared::{
     prelude::*,
-    prelude::hal::*,
     rc5::*,
 };
 
