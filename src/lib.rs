@@ -51,4 +51,6 @@ pub mod prelude {
     pub use crate::{Command, ProtocolId};
     #[cfg(feature = "embedded-hal")]
     pub use crate::transmitter::PwmTransmitter;
+    #[cfg(feature = "embedded-hal")]
+    pub use crate::hal as hal;
 }
