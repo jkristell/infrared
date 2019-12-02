@@ -2,7 +2,7 @@ use core::ops::Range;
 
 use crate::prelude::*;
 use crate::receiver::ReceiverError;
-#[cfg(feature = "protocol-dev")]
+#[cfg(feature = "protocol-debug")]
 use crate::ReceiverDebug;
 
 #[derive(Debug)]
@@ -52,7 +52,7 @@ pub struct Rc6 {
     pub last: u32,
     pub rc6_counter: u32,
 
-    #[cfg(feature = "protocol-dev")]
+    #[cfg(feature = "protocol-debug")]
     pub debug: ReceiverDebug<Rc6State, Option<u32>>,
 }
 
@@ -67,7 +67,7 @@ impl Rc6 {
             rc6_counter: 0,
             headerdata: 0,
             toggle: false,
-            #[cfg(feature = "protocol-dev")]
+            #[cfg(feature = "protocol-debug")]
             debug: ReceiverDebug {
                 state: Rc6State::Idle,
                 state_new: Rc6State::Idle,
@@ -188,7 +188,7 @@ impl ReceiverStateMachine for Rc6 {
             (Error(err), _, _) => Error(err),
         };
 
-        #[cfg(feature = "protocol-dev")]
+        #[cfg(feature = "protocol-debug")]
         {
             self.debug.state = self.state;
             self.debug.state_new = newstate;

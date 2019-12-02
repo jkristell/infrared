@@ -42,7 +42,7 @@ pub mod hal;
 #[cfg(feature = "remotes")]
 pub mod remotes;
 
-#[cfg(feature = "protocol-dev")]
+#[cfg(feature = "protocol-debug")]
 pub use receiver::ReceiverDebug;
 
 pub mod prelude {

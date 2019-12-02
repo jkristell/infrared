@@ -3,7 +3,7 @@ use crate::prelude::*;
 use crate::protocols::nec::{NecCommand, NecVariant};
 use crate::protocols::utils::Ranges;
 use crate::receiver::ReceiverError;
-#[cfg(feature = "protocol-dev")]
+#[cfg(feature = "protocol-debug")]
 use crate::ReceiverDebug;
 
 pub struct NecType<NECTYPE> {
@@ -20,7 +20,7 @@ pub struct NecType<NECTYPE> {
     // The type of Nec
     nectype: core::marker::PhantomData<NECTYPE>,
 
-    #[cfg(feature = "protocol-dev")]
+    #[cfg(feature = "protocol-debug")]
     pub debug: ReceiverDebug<NecState, Ranges<PulseWidth>>,
 }
 
@@ -57,7 +57,7 @@ impl<NECTYPE: NecVariant> NecType<NECTYPE> {
             bitbuf: 0,
             lastcommand: 0,
             nectype: core::marker::PhantomData,
-            #[cfg(feature = "protocol-dev")]
+            #[cfg(feature = "protocol-debug")]
             debug: ReceiverDebug {
                 state: NecState::Init,
                 state_new: NecState::Init,
@@ -68,7 +68,7 @@ impl<NECTYPE: NecVariant> NecType<NECTYPE> {
         }
     }
 
-    #[cfg(feature = "protocol-dev")]
+    #[cfg(feature = "protocol-debug")]
     fn update_debug(&mut self, newstate: NecState, nsamples: u32) {
         self.debug.state = self.state;
         self.debug.state_new = newstate;
@@ -124,7 +124,7 @@ where
                 (Disabled, _) => Disabled,
             };
 
-            #[cfg(feature = "protocol-dev")]
+            #[cfg(feature = "protocol-debug")]
             self.update_debug(newstate, nsamples);
 
             self.last_event = time;

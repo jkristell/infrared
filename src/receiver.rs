@@ -32,7 +32,7 @@ pub enum ReceiverError {
     Other(u32),
 }
 
-#[cfg(feature = "protocol-dev")]
+#[cfg(feature = "protocol-debug")]
 pub struct ReceiverDebug<STATE, EXTRA> {
     pub state: STATE,
     pub state_new: STATE,

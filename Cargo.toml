@@ -10,9 +10,6 @@ keywords = ["infrared", "remote", "rc5", "rc6", "nec"]
 categories = ["no-std", "embedded"]
 license = "MIT OR Apache-2.0"
 
-[workspace]
-members = ["examples/stm32f103-examples"]
-
 [features]
 default = ["nec", "rc5", "rc6", "sbp", "embedded-hal", "remotes"]
 nec = []
@@ -21,7 +18,7 @@ rc6 = []
 sbp = []
 remotes = []
 std = []
-protocol-dev = []
+protocol-debug = []
 
 [dependencies]
 embedded-hal = {version = "0.2.3", features = ["unproven"], optional = true}
