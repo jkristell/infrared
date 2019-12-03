@@ -54,12 +54,12 @@ fn main() -> ! {
         .freeze(&mut flash.acr);
 
     let mut gpiob = device.GPIOB.split(&mut rcc.apb2);
-    let irinpin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
+    let pin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
 
     let mut timer = Timer::tim2(device.TIM2, TIMER_FREQ.hz(), clocks, &mut rcc.apb1);
     timer.listen(Event::Update);
 
-    let receiver = InfraredReceiver::new(irinpin, TIMER_FREQ);
+    let receiver = InfraredReceiver::new(_pin, TIMER_FREQ);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
