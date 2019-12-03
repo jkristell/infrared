@@ -1,3 +1,5 @@
+//! Infrared
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(test)]
@@ -5,6 +7,7 @@
 extern crate std;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
+/// Remote Control Protocol Id
 pub enum ProtocolId {
     /// Nec
     Nec = 1,
@@ -26,31 +29,43 @@ pub enum ProtocolId {
 /// Remote control command trait
 pub trait Command {
     fn construct(addr: u16, cmd: u8) -> Self;
+    /// Get the address from the command
     fn address(&self) -> u16;
+    /// Get the command number
     fn command(&self) -> u8;
 }
+
+#[cfg(feature = "embedded-hal")]
+mod hal;
 
 mod protocols;
 pub use protocols::*;
 
-pub mod receiver;
-pub mod transmitter;
+mod receiver;
+
+pub use receiver::{
+    ReceiverError,
+    ReceiverState,
+    ReceiverStateMachine,
+};
 
 #[cfg(feature = "embedded-hal")]
-pub mod hal;
-
-#[cfg(feature = "remotes")]
-pub mod remotes;
+pub use hal::{
+    InfraredReceiver,
+    InfraredReceiver2,
+    InfraredReceiver3,
+    InfraredReceiver4,
+    InfraredReceiver5,
+};
 
 #[cfg(feature = "protocol-debug")]
 pub use receiver::ReceiverDebug;
 
-pub mod prelude {
-    pub use crate::receiver::{ReceiverState, ReceiverStateMachine};
-    pub use crate::transmitter::{Transmitter, TransmitterState};
-    pub use crate::{Command, ProtocolId};
-    #[cfg(feature = "embedded-hal")]
-    pub use crate::transmitter::PwmTransmitter;
-    #[cfg(feature = "embedded-hal")]
-    pub use crate::hal as hal;
-}
+mod transmitter;
+pub use crate::transmitter::{Transmitter, TransmitterState};
+#[cfg(feature = "embedded-hal")]
+pub use transmitter::PwmTransmitter;
+
+#[cfg(feature = "remotes")]
+pub mod remotes;
+

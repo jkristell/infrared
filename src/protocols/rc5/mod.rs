@@ -1,6 +1,8 @@
-pub mod receiver;
-pub mod transmitter;
+//! Rc5
 use crate::Command;
+
+mod receiver;
+mod transmitter;
 pub use receiver::Rc5;
 pub use transmitter::Rc5Transmitter;
 
@@ -69,7 +71,8 @@ impl Command for Rc5Command {
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::*;
+    use crate::receiver::*;
+    use crate::transmitter::*;
     use crate::protocols::rc5::{Rc5Command, Rc5Transmitter};
     use crate::rc5::Rc5;
 

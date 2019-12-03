@@ -1,13 +1,15 @@
 #[derive(Debug)]
+/// Transmitter state
 pub enum TransmitterState {
     /// Transmitter is ready for transmitting
     Idle,
     /// Transmitting
     Transmit(bool),
     /// Error state
-    Err,
+    Error,
 }
 
+/// Transmitter
 pub trait Transmitter<CMD> {
     /// Load command into transmitter
     fn load(&mut self, cmd: CMD);
@@ -18,6 +20,7 @@ pub trait Transmitter<CMD> {
 }
 
 #[cfg(feature = "embedded-hal")]
+/// Embedded hal pwm transmitter
 pub trait PwmTransmitter<CMD>: Transmitter<CMD> {
     /// Step the transmit loop and output on `pwm`
     fn pwmstep<PWMPIN, DUTY>(&mut self, ts: u32, pwm: &mut PWMPIN) -> TransmitterState

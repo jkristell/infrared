@@ -7,9 +7,11 @@
 //! After this the 8 bit command is sent twice, second time inverted.
 //!
 
-use crate::prelude::*;
-use crate::protocols::utils::Ranges;
-use crate::receiver::ReceiverError;
+use crate::{
+    Command, ProtocolId,
+    receiver::*,
+    protocols::utils::Ranges,
+};
 
 #[derive(Debug)]
 pub struct Sbp {
@@ -77,8 +79,6 @@ pub enum SbpState {
     Done,
     // In error state
     Err(ReceiverError),
-    // Disabled
-    Disabled,
 }
 
 pub type SbpResult = ReceiverState<SbpCommand>;
@@ -105,15 +105,14 @@ impl Sbp {
             Init => ReceiverState::Idle,
             Done => ReceiverState::Done(SbpCommand::from_receiver(self.address, self.command)),
             Err(e) => ReceiverState::Error(e),
-            Disabled => ReceiverState::Disabled,
             _ => ReceiverState::Receiving,
         }
     }
 }
 
 impl ReceiverStateMachine for Sbp {
-    type Cmd = SbpCommand;
     const ID: ProtocolId = ProtocolId::Sbp;
+    type Cmd = SbpCommand;
 
     fn for_samplerate(samplerate: u32) -> Self {
         Self::new(samplerate)
@@ -167,7 +166,6 @@ impl ReceiverStateMachine for Sbp {
 
                 (Done, _) => Done,
                 (Err(err), _) => Err(err),
-                (Disabled, _) => Disabled,
             };
 
             self.state = newstate;

@@ -22,10 +22,10 @@ pub enum ReceiverState<CMD> {
     Receiving,
     Done(CMD),
     Error(ReceiverError),
-    Disabled,
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
+/// Receiver errror
 pub enum ReceiverError {
     Address(u32),
     Data(u32),

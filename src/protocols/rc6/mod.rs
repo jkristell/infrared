@@ -1,7 +1,14 @@
+//! Rc6
+
 use core::ops::Range;
 
-use crate::prelude::*;
-use crate::receiver::ReceiverError;
+use crate::{
+    Command, ProtocolId,
+    ReceiverState,
+    ReceiverStateMachine,
+    ReceiverError,
+};
+
 #[cfg(feature = "protocol-debug")]
 use crate::ReceiverDebug;
 
@@ -232,7 +239,7 @@ const fn range(len: u32, percent: u32) -> Range<u32> {
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::*;
+    use crate::receiver::*;
     use crate::rc6::Rc6;
 
     #[test]

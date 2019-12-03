@@ -1,3 +1,5 @@
+//! Nec
+
 #[macro_use]
 pub mod receiver;
 pub mod transmitter;
@@ -11,18 +13,22 @@ pub use transmitter::NecTypeTransmitter;
 
 pub struct NecStandard;
 pub struct SamsungVariant;
-/// NecVariant with 16 bit adress, 8 bit command
 pub struct Nec16Variant;
 
+/// Nec
 pub type Nec = NecType<NecStandard>;
+/// Nec Samsung variant
 pub type NecSamsung = NecType<SamsungVariant>;
+/// Nec with 16 bit address, 8 bit command
 pub type Nec16 = NecType<Nec16Variant>;
 
+/// Nec - Standard transmitter
 pub type NecTransmitter = NecTypeTransmitter<NecStandard>;
+/// Nec - Samsung variant transmitter
 pub type NecSamsungTransmitter = NecTypeTransmitter<SamsungVariant>;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-/// A Nec Command
+/// Nec Command
 pub struct NecCommand {
     pub addr: u16,
     pub cmd: u8,

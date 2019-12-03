@@ -17,7 +17,7 @@ use stm32f1xx_hal::{
 
 #[allow(unused_imports)]
 use infrared::{
-    hal::InfraredReceiverRemote,
+    InfraredReceiver,
     nec::*,
     rc5::*,
     remotes::{
@@ -32,10 +32,9 @@ const TIMER_FREQ: u32 = 40_000;
 static mut TIMER: Option<Timer<TIM2>> = None;
 
 // Receiver
-static mut RECEIVER: Option<InfraredReceiverRemote<
+static mut RECEIVER: Option<InfraredReceiver<
     PB8<Input<Floating>>,
     Nec,
-    SpecialForMp3,
 >> = None;
 
 
@@ -60,7 +59,7 @@ fn main() -> ! {
     let mut timer = Timer::tim2(device.TIM2, TIMER_FREQ.hz(), clocks, &mut rcc.apb1);
     timer.listen(Event::Update);
 
-    let receiver = InfraredReceiverRemote::new(irinpin, TIMER_FREQ);
+    let receiver = InfraredReceiver::new(irinpin, TIMER_FREQ);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
@@ -86,7 +85,7 @@ fn TIM2() {
 
     let receiver = unsafe { RECEIVER.as_mut().unwrap() };
 
-    if let Ok(Some(button)) = receiver.sample(*SAMPLECOUNTER) {
+    if let Ok(Some(button)) = receiver.sample_as_button::<SpecialForMp3>(*SAMPLECOUNTER) {
         use StandardButton::*;
 
         match button {

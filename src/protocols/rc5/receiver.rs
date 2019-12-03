@@ -1,8 +1,10 @@
-use crate::prelude::*;
 use core::ops::Range;
 
 use crate::rc5::Rc5Command;
-use crate::receiver::ReceiverError;
+use crate::{
+    ProtocolId,
+    receiver::*,
+};
 #[cfg(feature = "protocol-debug")]
 use crate::ReceiverDebug;
 
@@ -62,7 +64,6 @@ pub enum Rc5State {
     Data(u8),
     Done,
     Error(ReceiverError),
-    Disabled,
 }
 
 const RISING: bool = true;
@@ -117,7 +118,6 @@ impl ReceiverStateMachine for Rc5 {
             (Data(_), _, None) => Error(ReceiverError::Data(delta as u32)),
             (Done, _, _) => Done,
             (Error(err), _, _) => Error(err),
-            (Disabled, _, _) => Disabled,
         };
 
         #[cfg(feature = "protocol-debug")]

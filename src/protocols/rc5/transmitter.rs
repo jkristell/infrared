@@ -1,5 +1,5 @@
-use crate::prelude::*;
 use crate::rc5::Rc5Command;
+use crate::transmitter::*;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum State {
@@ -87,4 +87,4 @@ impl Transmitter<Rc5Command> for Rc5Transmitter {
 }
 
 #[cfg(feature = "embedded-hal")]
-impl crate::hal::PwmTransmitter<Rc5Command> for Rc5Transmitter {}
+impl crate::PwmTransmitter<Rc5Command> for Rc5Transmitter {}

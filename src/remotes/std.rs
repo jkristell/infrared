@@ -31,7 +31,7 @@ impl RemoteControlData {
         REMOTE: RemoteControl,
     {
         RemoteControlData {
-            addr: REMOTE::ADDR,
+            addr: REMOTE::ADDRESS,
             model: REMOTE::MODEL,
             dtype: REMOTE::DEVICE,
             protocol: REMOTE::PROTOCOL_ID,

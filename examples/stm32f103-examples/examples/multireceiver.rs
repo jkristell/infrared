@@ -17,7 +17,7 @@ use stm32f1xx_hal::{
 };
 
 use infrared::{
-    hal::InfraredReceiver5,
+    InfraredReceiver5,
     nec::*,
     rc5::*,
     rc6::*,

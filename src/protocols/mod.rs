@@ -10,5 +10,5 @@ pub mod sbp;
 /// Capture
 pub mod capture;
 
-pub mod utils;
+pub(crate) mod utils;
 

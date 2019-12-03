@@ -1,6 +1,7 @@
-use crate::nec::{NecCommand, NecVariant};
-use crate::prelude::*;
-use crate::protocols::nec::{Nec, Nec16Variant, NecStandard, SamsungVariant};
+use crate::{
+    nec::{NecCommand, NecVariant, Nec, Nec16Variant, NecStandard, SamsungVariant},
+    ReceiverState, ReceiverStateMachine,
+};
 
 #[test]
 fn standard_nec() {

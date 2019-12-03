@@ -1,6 +1,9 @@
-use crate::nec::{NecCommand, NecTiming};
-use crate::prelude::*;
-use crate::protocols::nec::NecVariant;
+use crate::{
+    Transmitter, TransmitterState,
+    nec::{
+        NecCommand, NecTiming, NecVariant,
+    }
+};
 
 enum TransmitStateInternal {
     Idle,
@@ -121,7 +124,7 @@ where
 }
 
 #[cfg(feature = "embedded-hal")]
-impl<NECTYPE: NecVariant> crate::hal::PwmTransmitter<NecCommand> for NecTypeTransmitter<NECTYPE> {}
+impl<NECTYPE: NecVariant> crate::PwmTransmitter<NecCommand> for NecTypeTransmitter<NECTYPE> {}
 
 impl NSamples {
     pub const fn new(period: u32, pulsedistance: &NecTiming) -> Self {

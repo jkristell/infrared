@@ -10,14 +10,18 @@ macro_rules! remotecontrol_standardbutton {
             type Button = StandardButton;
             type Command = $rccmd;
             const PROTOCOL_ID: ProtocolId = $protocol;
-            const ADDR: u16 = $rcaddr;
+            const ADDRESS: u16 = $rcaddr;
             const DEVICE: DeviceType = $rctype;
             const MODEL: &'static str = $rcmodel;
             const MAPPING: &'static [(u8, StandardButton)] = &[ $(($cmd, StandardButton::$name),)+ ];
 
-            fn decode(cmdid: u8) -> Option<StandardButton> {
+            fn decode(cmd: Self::Command) -> Option<StandardButton> {
 
-                match cmdid {
+                if Self::ADDRESS != cmd.address() {
+                    return None;
+                }
+
+                match cmd.command() {
                     $($cmd => Some(StandardButton::$name),)+
                     _ => None,
                 }
@@ -29,7 +33,7 @@ macro_rules! remotecontrol_standardbutton {
                     _ => None,
                 };
 
-                stdcmd.map(|cmd| $rccmd::construct(Self::ADDR, cmd))
+                stdcmd.map(|cmd| $rccmd::construct(Self::ADDRESS, cmd))
             }
         }
     };

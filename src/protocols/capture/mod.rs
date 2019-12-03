@@ -1,5 +1,8 @@
-use crate::prelude::*;
-use crate::receiver::{ReceiverState, ReceiverStateMachine};
+use crate::{
+    Command,
+    ProtocolId,
+    receiver::{ReceiverState, ReceiverStateMachine}
+};
 
 const BUF_LEN: usize = 128;
 
@@ -23,7 +26,6 @@ pub struct Capture {
 
 impl Command for () {
     fn construct(_addr: u16, _cmd: u8) -> Self {
-        ()
     }
 
     fn address(&self) -> u16 {
@@ -89,7 +91,7 @@ impl Capture {
     }
 
     fn ready(&self) -> bool {
-        !(self.state == ReceiverState::Done(()) || self.state == ReceiverState::Disabled)
+        !(self.state == ReceiverState::Done(()))
     }
 
     pub fn delta(&self, ts: u32) -> u16 {
@@ -100,7 +102,7 @@ impl Capture {
         ts.wrapping_sub(self.prev_samplenum) as u16
     }
 
-    pub fn data(&self) -> &[u16] {
+    pub fn edges(&self) -> &[u16] {
         &self.edges[0..self.n_edges]
     }
 }

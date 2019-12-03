@@ -1,11 +1,14 @@
-use crate::nec::NecTiming;
-use crate::prelude::*;
-use crate::protocols::nec::{NecCommand, NecVariant};
-use crate::protocols::utils::Ranges;
-use crate::receiver::ReceiverError;
+use crate::{
+    ProtocolId,
+    nec::{NecCommand, NecVariant, NecTiming},
+    protocols::utils::Ranges,
+    receiver::{ReceiverError, ReceiverState, ReceiverStateMachine},
+};
+
 #[cfg(feature = "protocol-debug")]
 use crate::ReceiverDebug;
 
+/// Generic type for Nec Receiver
 pub struct NecType<NECTYPE> {
     // State
     state: NecState,
@@ -37,8 +40,6 @@ pub enum NecState {
     RepeatDone,
     // In error state
     Err(ReceiverError),
-    // Disabled
-    Disabled,
 }
 
 impl<NECTYPE: NecVariant> NecType<NECTYPE> {
@@ -80,8 +81,8 @@ impl<NECTYPE> ReceiverStateMachine for NecType<NECTYPE>
 where
     NECTYPE: NecVariant,
 {
-    type Cmd = NecCommand;
     const ID: ProtocolId = NECTYPE::PROTOCOL;
+    type Cmd = NecCommand;
 
     fn for_samplerate(samplerate: u32) -> Self {
         let timing = NECTYPE::TIMING;
@@ -104,16 +105,10 @@ where
                 (Init, Repeat) => RepeatDone,
                 (Init, _) => Init,
 
-                (Receiving(31), One) => {
-                    self.bitbuf |= 1 << 31;
-                    Done
-                }
+                (Receiving(31), One) => { self.bitbuf |= 1 << 31; Done }
                 (Receiving(31), Zero) => Done,
 
-                (Receiving(bit), One) => {
-                    self.bitbuf |= 1 << bit;
-                    Receiving(bit + 1)
-                }
+                (Receiving(bit), One) => { self.bitbuf |= 1 << bit; Receiving(bit + 1) }
                 (Receiving(bit), Zero) => Receiving(bit + 1),
 
                 (Receiving(_), _) => Err(ReceiverError::Data(0)),
@@ -121,7 +116,6 @@ where
                 (Done, _) => Done,
                 (RepeatDone, _) => RepeatDone,
                 (Err(err), _) => Err(err),
-                (Disabled, _) => Disabled,
             };
 
             #[cfg(feature = "protocol-debug")]
@@ -136,7 +130,6 @@ where
             Done => ReceiverState::Done(NECTYPE::decode_command(self.bitbuf)),
             RepeatDone => ReceiverState::Done(NECTYPE::decode_command(self.lastcommand)),
             Err(e) => ReceiverState::Error(e),
-            Disabled => ReceiverState::Disabled,
             _ => ReceiverState::Receiving,
         }
     }

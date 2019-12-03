@@ -1,74 +1,17 @@
-use crate::receiver::{ReceiverState, ReceiverStateMachine};
 use embedded_hal::digital::v2::InputPin;
 
-pub use crate::transmitter::PwmTransmitter;
-use core::marker::PhantomData;
+use crate::{
+    receiver::{ReceiverState, ReceiverStateMachine},
+};
 
+
+/// Embedded hal Receiever
 pub struct InfraredReceiver<PIN, SM> {
+    /// The State Machine
     sm: SM,
+    /// The pin used
     pin: PIN,
     pinval: bool,
-}
-
-#[cfg(feature = "remotes")]
-pub struct InfraredReceiverRemote<PIN, SM, REMOTE> {
-    sm: SM,
-    pin: PIN,
-    remote: PhantomData<REMOTE>,
-    pinval: bool,
-}
-
-#[cfg(feature = "remotes")]
-impl<CMD, PIN, PINERR, SM, REMOTE> InfraredReceiverRemote<PIN, SM, REMOTE>
-where
-    CMD: crate::Command,
-    SM: ReceiverStateMachine<Cmd = CMD>,
-    PIN: InputPin<Error = PINERR>,
-    REMOTE: crate::remotes::RemoteControl<Command = CMD>,
-{
-    pub fn new_from_sm(pin: PIN, sm: SM) -> Self {
-        Self {
-            sm,
-            pin,
-            remote: PhantomData,
-            pinval: false,
-        }
-    }
-
-    pub fn new(pin: PIN, samplerate: u32) -> Self {
-        Self {
-            sm: SM::for_samplerate(samplerate),
-            pin,
-            remote: PhantomData,
-            pinval: false,
-        }
-    }
-
-    pub fn destroy(self) -> PIN {
-        self.pin
-    }
-
-    pub fn sample(&mut self, sample: u32) -> Result<Option<REMOTE::Button>, PINERR> {
-        let pinval = self.pin.is_low()?;
-
-        if self.pinval != pinval {
-            let r = self.sm.event(pinval, sample);
-
-            if let ReceiverState::Done(cmd) = r {
-                self.sm.reset();
-
-                return Ok(REMOTE::decode_command(cmd));
-            }
-
-            if let ReceiverState::Error(_err) = r {
-                self.sm.reset();
-            }
-
-            self.pinval = pinval;
-        }
-
-        Ok(None)
-    }
 }
 
 impl<CMD, PIN, PINERR, SM> InfraredReceiver<PIN, SM>
@@ -119,15 +62,12 @@ where
     }
 
     #[cfg(feature = "remotes")]
-    pub fn sample_remote<REMOTE>(
-        &mut self,
-        sampletime: u32,
-    ) -> Result<Option<REMOTE::Button>, PINERR>
+    pub fn sample_as_button<RC>(&mut self, sampletime: u32) -> Result<Option<RC::Button>, PINERR>
     where
-        REMOTE: crate::remotes::RemoteControl<Command = CMD>,
+        RC: crate::remotes::RemoteControl<Command = CMD>,
     {
         self.sample(sampletime)
-            .map(|opt| opt.and_then(|cmd| REMOTE::decode_command(cmd)))
+            .map(|opt| opt.and_then(RC::decode))
     }
 }
 
