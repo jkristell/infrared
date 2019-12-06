@@ -6,17 +6,16 @@ use panic_semihosting as _;
 
 use cortex_m_rt::entry;
 use stm32f1xx_hal::{
-    gpio::{gpiob::PB9, Alternate, PushPull},
     pac,
     prelude::*,
-    pwm::{Pins, Pwm, C4},
+    pwm::{Pwm, C4},
     stm32::{interrupt, TIM2, TIM4},
-    timer::{Event, Timer},
+    timer::{Event, Timer, CountDownTimer},
 };
 
 use infrared::{
-    prelude::*,
-    prelude::hal::*,
+    Transmitter,
+    PwmTransmitter,
     rc5::*,
 };
 
@@ -25,25 +24,15 @@ use infrared::remotes::{
     rc5::Rc5CdPlayer,
 };
 
-const FREQ: u32 = 20_000;
+const TIMER_FREQ: u32 = 20_000;
 
 // Global timer
-static mut TIMER: Option<Timer<TIM2>> = None;
+static mut TIMER: Option<CountDownTimer<TIM2>> = None;
 // transmitter
 static mut TRANSMITTER: Option<Rc5Transmitter> = None;
 // Pwm channel
 static mut PWM: Option<Pwm<TIM4, C4>> = None;
-// Our remote control we want to act like
 
-struct PwmChannels(PB9<Alternate<PushPull>>);
-impl Pins<TIM4> for PwmChannels {
-    const REMAP: u8 = 0b00;
-    const C1: bool = false;
-    const C2: bool = false;
-    const C3: bool = false;
-    const C4: bool = true; // PB9
-    type Channels = Pwm<TIM4, C4>;
-}
 
 #[entry]
 fn main() -> ! {
@@ -60,7 +49,9 @@ fn main() -> ! {
         .pclk1(24.mhz())
         .freeze(&mut flash.acr);
 
-    let mut timer = Timer::tim2(device.TIM2, FREQ.hz(), clocks, &mut rcc.apb1);
+    let mut timer = Timer::tim2(device.TIM2, &clocks, &mut rcc.apb1)
+        .start_count_down(TIMER_FREQ.hz());
+
     timer.listen(Event::Update);
 
     // PWM
@@ -68,22 +59,17 @@ fn main() -> ! {
     let mut gpiob = device.GPIOB.split(&mut rcc.apb2);
     let irled = gpiob.pb9.into_alternate_push_pull(&mut gpiob.crh);
 
-    let mut c4: Pwm<TIM4, C4> = device.TIM4.pwm(
-        PwmChannels(irled),
-        &mut afio.mapr,
-        38.khz(),
-        clocks,
-        &mut rcc.apb1,
-    );
-    // Set the duty cycle of channel 0 to 50%
-    c4.set_duty(c4.get_max_duty() / 2);
-    c4.disable();
+    let mut pwm = Timer::tim4(device.TIM4, &clocks, &mut rcc.apb1)
+        .pwm(irled, &mut afio.mapr, 38.khz());
+
+    pwm.set_duty(pwm.get_max_duty() / 2);
+    pwm.disable();
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
         TIMER.replace(timer);
-        TRANSMITTER.replace(Rc5Transmitter::new(FREQ));
-        PWM.replace(c4);
+        TRANSMITTER.replace(Rc5Transmitter::new(TIMER_FREQ));
+        PWM.replace(pwm);
     }
 
     core.NVIC.enable(pac::Interrupt::TIM2);
@@ -105,16 +91,12 @@ fn TIM2() {
     let transmitter = unsafe { TRANSMITTER.as_mut().unwrap() };
     let pwm = unsafe { PWM.as_mut().unwrap() };
 
-    if *COUNT % FREQ == 0 {
+    if *COUNT % TIMER_FREQ == 0 {
 
-        // The device we want to send the command to
-        let cdplayer = Rc5CdPlayer;
-
-        // The button
         let button = StandardButton::Next;
 
         // The encoded result
-        let cmd = cdplayer.encode(button).unwrap();
+        let cmd = Rc5CdPlayer::encode(button).unwrap();
 
         // You could also construct the command manually
         // let cmd = Rc5Command::new(20, 15, false);

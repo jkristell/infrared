@@ -1,17 +1,8 @@
 use crate::remotes::{
-    DeviceType,
-    RemoteControl,
-    StandardButton,
-    nec::{
-        SamsungTv,
-        SpecialForMp3
-    },
-    rc5::{
-        Rc5CdPlayer
-    },
-    sbp::{
-        SamsungBluRayPlayer,
-    }
+    nec::{SamsungTv, SpecialForMp3},
+    rc5::Rc5CdPlayer,
+    sbp::SamsungBluRayPlayer,
+    DeviceType, RemoteControl, StandardButton,
 };
 use crate::ProtocolId;
 
@@ -37,10 +28,10 @@ pub struct RemoteControlData {
 impl RemoteControlData {
     pub fn construct<REMOTE>() -> RemoteControlData
     where
-        REMOTE: RemoteControl
+        REMOTE: RemoteControl,
     {
         RemoteControlData {
-            addr: REMOTE::ADDR,
+            addr: REMOTE::ADDRESS,
             model: REMOTE::MODEL,
             dtype: REMOTE::DEVICE,
             protocol: REMOTE::PROTOCOL_ID,

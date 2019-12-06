@@ -1,14 +1,16 @@
-use crate::{Receiver, ReceiverState, ProtocolId};
+use crate::{
+    Command,
+    ProtocolId,
+    receiver::{ReceiverState, ReceiverStateMachine}
+};
 
 const BUF_LEN: usize = 128;
 
 /// Receiver that doesn't do any decoding of the incoming signal
 /// Instead it saves the distance between the edges for later processing
-pub struct LoggingReceiver {
+pub struct Capture {
     /// Samplerate
     pub samplerate: u32,
-    /// Timemout
-    pub timeout: u16,
     /// Saved edges
     pub edges: [u16; BUF_LEN],
     /// Number of edges in edges
@@ -18,52 +20,43 @@ pub struct LoggingReceiver {
     /// Samplenum with pin change
     pub prev_samplenum: u32,
     /// Our state
-    pub state: ReceiverState<(), ()>,
+    pub state: ReceiverState<()>,
 }
 
 
-impl Receiver for LoggingReceiver {
-    type Cmd = ();
-    type Err = ();
-    const PROTOCOL_ID: ProtocolId = ProtocolId::Logging;
-
-
-    fn sample(&mut self, pinval: bool, samplenum: u32) -> ReceiverState<(), ()> {
-
-        if !self.ready() {
-            return self.state;
-        }
-
-        if self.prev_pinval != pinval {
-            // Change detected
-            return self.sample_edge(pinval, samplenum);
-        }
-
-        if self.state == ReceiverState::Receiving && self.delta(samplenum) > self.timeout {
-            self.state = ReceiverState::Done(());
-        }
-
-        self.state
+impl Command for () {
+    fn construct(_addr: u16, _cmd: u8) -> Self {
     }
 
-    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err> {
+    fn address(&self) -> u16 {
+        0
+    }
 
+    fn command(&self) -> u8 {
+        0
+    }
+}
+
+impl ReceiverStateMachine for Capture {
+    const ID: ProtocolId = ProtocolId::Logging;
+    type Cmd = ();
+
+    fn for_samplerate(samplerate: u32) -> Self {
+        Self::new(samplerate)
+    }
+
+    fn event(&mut self, rising: bool, t: u32) -> ReceiverState<Self::Cmd> {
         if !self.ready() {
             return self.state;
         }
 
-        let delta = self.delta(sampletime);
-
-        if delta > self.timeout {
-            self.state = ReceiverState::Done(());
-            return self.state;
-        }
+        let t_delta = self.delta(t);
 
         self.state = ReceiverState::Receiving;
-        self.prev_samplenum = sampletime;
+        self.prev_samplenum = t;
         self.prev_pinval = rising;
 
-        self.edges[self.n_edges] = delta;
+        self.edges[self.n_edges] = t_delta;
         self.n_edges += 1;
 
         if self.n_edges == BUF_LEN {
@@ -83,18 +76,13 @@ impl Receiver for LoggingReceiver {
             self.edges[i] = 0;
         }
     }
-
-    fn disable(&mut self) {
-        self.state = ReceiverState::Disabled;
-    }
 }
 
-impl LoggingReceiver {
-    pub const fn new(samplerate: u32, timeout: u16) -> Self {
+impl Capture {
+    pub const fn new(samplerate: u32) -> Self {
         Self {
             edges: [0; BUF_LEN],
             samplerate,
-            timeout,
             prev_pinval: false,
             prev_samplenum: 0,
             n_edges: 0,
@@ -103,7 +91,7 @@ impl LoggingReceiver {
     }
 
     fn ready(&self) -> bool {
-        !(self.state == ReceiverState::Done(()) || self.state == ReceiverState::Disabled)
+        !(self.state == ReceiverState::Done(()))
     }
 
     pub fn delta(&self, ts: u32) -> u16 {
@@ -114,7 +102,7 @@ impl LoggingReceiver {
         ts.wrapping_sub(self.prev_samplenum) as u16
     }
 
-    pub fn data(&self) -> &[u16] {
+    pub fn edges(&self) -> &[u16] {
         &self.edges[0..self.n_edges]
     }
 }

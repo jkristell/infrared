@@ -7,18 +7,20 @@
 //! After this the 8 bit command is sent twice, second time inverted.
 //!
 
-use core::ops::Range;
-use crate::{Receiver, ProtocolId, ReceiverState};
-
+use crate::{
+    Command, ProtocolId,
+    receiver::*,
+    protocols::utils::Ranges,
+};
 
 #[derive(Debug)]
-pub struct SbpReceiver {
+pub struct Sbp {
     state: SbpState,
     address: u16,
     command: u32,
     prev_sampletime: u32,
     prev_pinval: bool,
-    tolerances: Tolerances,
+    ranges: Ranges<SbpPulse>,
 }
 
 #[derive(Debug)]
@@ -29,9 +31,7 @@ pub struct SbpCommand {
 }
 
 impl SbpCommand {
-
     pub fn from_receiver(address: u16, mut command: u32) -> Self {
-
         // Discard the 4 unknown bits
         command >>= 4;
 
@@ -40,9 +40,27 @@ impl SbpCommand {
 
         Self {
             address,
-            command: (command ) as u8,
-            valid
+            command: (command) as u8,
+            valid,
         }
+    }
+}
+
+impl Command for SbpCommand {
+    fn construct(address: u16, command: u8) -> Self {
+        SbpCommand {
+            address,
+            command,
+            valid: true,
+        }
+    }
+
+    fn address(&self) -> u16 {
+        self.address
+    }
+
+    fn command(&self) -> u8 {
+        self.command
     }
 }
 
@@ -53,66 +71,56 @@ pub enum SbpState {
     Init,
     // Receiving address
     Address(u16),
+    /// Paus
     Divider,
     // Receiving data
     Command(u16),
     // Command received
     Done,
     // In error state
-    Err(()),
-    // Disabled
-    Disabled,
+    Err(ReceiverError),
 }
 
-pub type SbpResult = ReceiverState<SbpCommand, ()>;
+pub type SbpResult = ReceiverState<SbpCommand>;
 
-impl SbpReceiver {
-
+impl Sbp {
     pub fn new(samplerate: u32) -> Self {
+        let nsamples = nsamples_from_timing(&TIMING, samplerate);
+        let ranges = Ranges::new(&nsamples);
+
         Self {
             state: SbpState::Init,
             address: 0,
             command: 0,
             prev_sampletime: 0,
             prev_pinval: false,
-            tolerances: Tolerances::from_timing(&DISTS, samplerate)
+            ranges,
         }
     }
 
     fn receiver_state(&self) -> SbpResult {
-        use ReceiverState::*;
+        use SbpState::*;
         // Internalstate to ReceiverState
         match self.state {
-            SbpState::Init => Idle,
-            SbpState::Done => Done(SbpCommand::from_receiver(self.address, self.command)),
-            SbpState::Err(e) => Error(e),
-            SbpState::Disabled => Disabled,
-            _ => Receiving,
+            Init => ReceiverState::Idle,
+            Done => ReceiverState::Done(SbpCommand::from_receiver(self.address, self.command)),
+            Err(e) => ReceiverState::Error(e),
+            _ => ReceiverState::Receiving,
         }
     }
 }
 
-
-impl Receiver for SbpReceiver {
+impl ReceiverStateMachine for Sbp {
+    const ID: ProtocolId = ProtocolId::Sbp;
     type Cmd = SbpCommand;
-    type Err = ();
-    const PROTOCOL_ID: ProtocolId = ProtocolId::Sbp;
 
-    fn sample(&mut self, pinval: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err> {
-
-        let rising_edge = pinval && !self.prev_pinval;
-        self.prev_pinval = pinval;
-
-        if rising_edge {
-            return self.sample_edge(true, sampletime);
-        }
-
-        self.receiver_state()
+    fn for_samplerate(samplerate: u32) -> Self {
+        Self::new(samplerate)
     }
 
-    fn sample_edge(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd, Self::Err> {
+    fn event(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd> {
+        use SbpPulse::*;
         use SbpState::*;
-        use PulseWidth::*;
 
         if rising {
             let mut delta = sampletime.wrapping_sub(self.prev_sampletime);
@@ -123,30 +131,41 @@ impl Receiver for SbpReceiver {
 
             self.prev_sampletime = sampletime;
 
-            let pulsewidth = self.tolerances.pulsewidth(delta);
+            let pulsewidth = self.ranges.pulsewidth(delta);
 
             let newstate = match (self.state, pulsewidth) {
-                (Init,          Sync)       => Address(0),
-                (Init,          _)          => Init,
+                (Init, Sync) => Address(0),
+                (Init, _) => Init,
 
-                (Address(15),   One)        => {self.address |= 1 << 15; Divider},
-                (Address(15),   Zero)       => Divider,
-                (Address(bit),  One)        => {self.address |= 1 << bit; Address(bit + 1)},
-                (Address(bit),  Zero)       => Address(bit + 1),
-                (Address(_),    _)          => Err(()),
+                (Address(15), One) => {
+                    self.address |= 1 << 15;
+                    Divider
+                }
+                (Address(15), Zero) => Divider,
+                (Address(bit), One) => {
+                    self.address |= 1 << bit;
+                    Address(bit + 1)
+                }
+                (Address(bit), Zero) => Address(bit + 1),
+                (Address(_), _) => Err(ReceiverError::Address(0)),
 
-                (Divider,       Paus)       => Command(0),
-                (Divider,       _)          => Err(()),
+                (Divider, Paus) => Command(0),
+                (Divider, _) => Err(ReceiverError::Data(0)),
 
-                (Command(19),   One)        => {self.command |= 1 << 19; Done},
-                (Command(19),   Zero)       => Done,
-                (Command(bit),  One)        => {self.command |= 1 << bit; Command(bit + 1)},
-                (Command(bit),  Zero)       => Command(bit + 1),
-                (Command(_),    _)          => Err(()),
+                (Command(19), One) => {
+                    self.command |= 1 << 19;
+                    Done
+                }
+                (Command(19), Zero) => Done,
+                (Command(bit), One) => {
+                    self.command |= 1 << bit;
+                    Command(bit + 1)
+                }
+                (Command(bit), Zero) => Command(bit + 1),
+                (Command(_), _) => Err(ReceiverError::Data(0)),
 
-                (Done,          _)          => Done,
-                (Err(err),      _)          => Err(err),
-                (Disabled,      _)          => Disabled,
+                (Done, _) => Done,
+                (Err(err), _) => Err(err),
             };
 
             self.state = newstate;
@@ -162,79 +181,65 @@ impl Receiver for SbpReceiver {
         self.prev_sampletime = 0;
         self.prev_pinval = false;
     }
-
-    fn disable(&mut self) {
-        self.state = SbpState::Disabled;
-    }
 }
 
-#[derive(Debug, Clone)]
-pub struct Tolerances {
-    pub sync: Range<u32>,
-    pub paus: Range<u32>,
-    pub zero: Range<u32>,
-    pub one: Range<u32>,
+const fn nsamples_from_timing(t: &SbpTiming, samplerate: u32) -> [(u32, u32); 4] {
+    let per: u32 = 1000 / (samplerate / 1000);
+    [
+        ((t.hh + t.hl) / per, 5),
+        ((t.data + t.paus) / per, 5),
+        ((t.data + t.zero) / per, 10),
+        ((t.data + t.one) / per, 10),
+    ]
 }
 
-pub enum PulseWidth {
-    Sync,
-    Paus,
-    Zero,
-    One,
-    NotAPulseWidth,
-}
-
-impl Tolerances {
-    pub const fn from_timing(timing: &Pulsedistance, samplerate: u32) -> Self {
-        let per: u32 = 1000 / (samplerate / 1000);
-        Tolerances {
-            sync: sample_range((timing.header_high + timing.header_low) / per, 5),
-            paus: sample_range((timing.data_high + timing.paus) / per, 5),
-            zero: sample_range((timing.data_high + timing.zero_low) / per, 10),
-            one: sample_range((timing.data_high + timing.one_low) / per, 10),
-        }
-    }
-
-    pub fn pulsewidth(&self, samples: u32) -> PulseWidth {
-        if self.sync.contains(&samples) {
-            return PulseWidth::Sync;
-        }
-        if self.paus.contains(&samples) {
-            return PulseWidth::Paus;
-        }
-        if self.one.contains(&samples) {
-            return PulseWidth::One;
-        }
-        if self.zero.contains(&samples) {
-            return PulseWidth::Zero;
-        }
-        PulseWidth::NotAPulseWidth
-    }
-}
-
-const fn sample_range(units: u32, percent: u32) -> Range<u32> {
-    let tol = (units * percent) / 100;
-    (units - tol..units + tol)
-}
-pub struct Pulsedistance {
-    header_high: u32,
-    header_low: u32,
-
+struct SbpTiming {
+    /// Header high
+    hh: u32,
+    /// Header low
+    hl: u32,
+    /// Repeat low
     paus: u32,
-
-    data_high: u32,
-    zero_low: u32,
-    one_low: u32,
+    /// Data high
+    data: u32,
+    /// Zero low
+    zero: u32,
+    /// One low
+    one: u32,
 }
 
-const DISTS: Pulsedistance = Pulsedistance {
-    header_high: 4500,
-    header_low: 4500,
+const TIMING: SbpTiming = SbpTiming {
+    hh: 4500,
+    hl: 4500,
     paus: 4500,
-    zero_low: 500,
-    data_high: 500,
-    one_low: 1500,
+    data: 500,
+    zero: 500,
+    one: 1500,
 };
 
+#[derive(Debug)]
+pub enum SbpPulse {
+    Sync = 0,
+    Paus = 1,
+    Zero = 2,
+    One = 3,
+    NotAPulseWidth = 4,
+}
 
+impl Default for SbpPulse {
+    fn default() -> Self {
+        SbpPulse::NotAPulseWidth
+    }
+}
 
+impl From<usize> for SbpPulse {
+    fn from(v: usize) -> Self {
+        match v {
+            0 => SbpPulse::Sync,
+            1 => SbpPulse::Paus,
+            2 => SbpPulse::Zero,
+            3 => SbpPulse::One,
+            _ => SbpPulse::NotAPulseWidth,
+        }
+    }
+}

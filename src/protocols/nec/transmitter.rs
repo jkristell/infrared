@@ -1,6 +1,9 @@
-use crate::nec::{Pulsedistance, NecCommand};
-use crate::prelude::*;
-use crate::protocols::nec::NecTypeTrait;
+use crate::{
+    Transmitter, TransmitterState,
+    nec::{
+        NecCommand, NecTiming, NecVariant,
+    }
+};
 
 enum TransmitStateInternal {
     Idle,
@@ -21,19 +24,18 @@ pub struct NecTypeTransmitter<NECTYPE> {
 }
 
 struct NSamples {
-    header_high: u32,
-    header_low: u32,
-    data_high: u32,
-    zero_low: u32,
-    one_low: u32,
+    hh: u32,
+    hl: u32,
+    data: u32,
+    zero: u32,
+    one: u32,
 }
 
-impl<NECTYPE: NecTypeTrait> NecTypeTransmitter<NECTYPE> {
-
+impl<NECTYPE: NecVariant> NecTypeTransmitter<NECTYPE> {
     pub fn new(samplerate: u32) -> Self {
         let period: u32 = (1 * 1000) / (samplerate / 1000);
 
-        let samples = NSamples::new(period, &NECTYPE::PULSEDISTANCE);
+        let samples = NSamples::new(period, &NECTYPE::TIMING);
         Self {
             state: TransmitStateInternal::Idle,
             samples,
@@ -45,7 +47,8 @@ impl<NECTYPE: NecTypeTrait> NecTypeTransmitter<NECTYPE> {
 }
 
 impl<NECTYPE> Transmitter<NecCommand> for NecTypeTransmitter<NECTYPE>
-    where NECTYPE: NecTypeTrait,
+where
+    NECTYPE: NecVariant,
 {
     fn load(&mut self, cmd: NecCommand) {
         self.cmd = NECTYPE::encode_command(cmd);
@@ -63,7 +66,7 @@ impl<NECTYPE> Transmitter<NecCommand> for NecTypeTransmitter<NECTYPE>
                 HeaderHigh
             }
             HeaderHigh => {
-                if interval >= self.samples.header_high {
+                if interval >= self.samples.hh {
                     self.last_ts = ts;
                     HeaderLow
                 } else {
@@ -71,7 +74,7 @@ impl<NECTYPE> Transmitter<NecCommand> for NecTypeTransmitter<NECTYPE>
                 }
             }
             HeaderLow => {
-                if interval >= self.samples.header_low {
+                if interval >= self.samples.hl {
                     self.last_ts = ts;
                     DataHigh(0)
                 } else {
@@ -80,7 +83,7 @@ impl<NECTYPE> Transmitter<NecCommand> for NecTypeTransmitter<NECTYPE>
             }
 
             DataHigh(bidx) => {
-                if interval >= self.samples.data_high {
+                if interval >= self.samples.data {
                     self.last_ts = ts;
                     DataLow(bidx)
                 } else {
@@ -90,9 +93,9 @@ impl<NECTYPE> Transmitter<NecCommand> for NecTypeTransmitter<NECTYPE>
             DataLow(32) => Done,
             DataLow(bidx) => {
                 let samples = if (self.cmd & (1 << bidx)) != 0 {
-                    self.samples.one_low
+                    self.samples.one
                 } else {
-                    self.samples.zero_low
+                    self.samples.zero
                 };
 
                 if interval >= samples {
@@ -121,16 +124,16 @@ impl<NECTYPE> Transmitter<NecCommand> for NecTypeTransmitter<NECTYPE>
 }
 
 #[cfg(feature = "embedded-hal")]
-impl<NECTYPE: NecTypeTrait> hal::PwmTransmitter<NecCommand> for NecTypeTransmitter<NECTYPE> {}
+impl<NECTYPE: NecVariant> crate::PwmTransmitter<NecCommand> for NecTypeTransmitter<NECTYPE> {}
 
 impl NSamples {
-    pub const fn new(period: u32, pulsedistance: &Pulsedistance) -> Self {
+    pub const fn new(period: u32, pulsedistance: &NecTiming) -> Self {
         Self {
-            header_high: pulsedistance.header_high / period,
-            header_low: pulsedistance.header_low / period,
-            zero_low: pulsedistance.zero_low / period,
-            data_high: pulsedistance.data_high / period,
-            one_low: pulsedistance.one_low / period,
+            hh: pulsedistance.hh / period,
+            hl: pulsedistance.hl / period,
+            zero: pulsedistance.zl / period,
+            data: pulsedistance.dh / period,
+            one: pulsedistance.ol / period,
         }
     }
 }
