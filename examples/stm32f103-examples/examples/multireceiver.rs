@@ -13,7 +13,7 @@ use stm32f1xx_hal::{
     pac,
     prelude::*,
     stm32::{interrupt, TIM2},
-    timer::{Event, Timer},
+    timer::{Event, Timer, CountDownTimer},
 };
 
 use infrared::{
@@ -31,7 +31,7 @@ use infrared::{
 
 const TIMER_FREQ: u32 = 40_000;
 
-static mut TIMER: Option<Timer<TIM2>> = None;
+static mut TIMER: Option<CountDownTimer<TIM2>> = None;
 
 // Receiver for multiple protocols
 static mut RECEIVER: Option<InfraredReceiver5<PB8<Input<Floating>>,
@@ -61,7 +61,9 @@ fn main() -> ! {
     let mut gpiob = device.GPIOB.split(&mut rcc.apb2);
     let inpin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
 
-    let mut timer = Timer::tim2(device.TIM2, TIMER_FREQ.hz(), clocks, &mut rcc.apb1);
+    let mut timer = Timer::tim2(device.TIM2, &clocks, &mut rcc.apb1)
+        .start_count_down(TIMER_FREQ.hz());
+
     timer.listen(Event::Update);
 
     // Create a receiver that reacts on 3 different kinds of remote controls
@@ -104,7 +106,7 @@ fn TIM2() {
         // We have a Rc5 Command
         if let Some(cmd) = rc5cmd {
             // Print the command if recognized as a Rc5 CD-player command
-            if let Some(decoded) = Rc5CdPlayer::decode_command(cmd) {
+            if let Some(decoded) = Rc5CdPlayer::decode(cmd) {
                 hprintln!("rc5(CD): {:?}", decoded).unwrap();
             } else {
                 hprintln!("rc5: {} {}", cmd.addr, cmd.cmd).unwrap();

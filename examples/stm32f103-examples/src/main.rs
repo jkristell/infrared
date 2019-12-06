@@ -12,7 +12,7 @@ use stm32f1xx_hal::{
     pac,
     prelude::*,
     stm32::{interrupt, TIM2},
-    timer::{Event, Timer},
+    timer::{Event, Timer, CountDownTimer},
 };
 
 #[allow(unused_imports)]
@@ -29,7 +29,7 @@ use infrared::{
 
 const TIMER_FREQ: u32 = 40_000;
 
-static mut TIMER: Option<Timer<TIM2>> = None;
+static mut TIMER: Option<CountDownTimer<TIM2>> = None;
 
 // Receiver
 static mut RECEIVER: Option<InfraredReceiver<
@@ -56,12 +56,14 @@ fn main() -> ! {
     let mut gpiob = device.GPIOB.split(&mut rcc.apb2);
     let pin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
 
-    let mut timer = Timer::tim2(device.TIM2, TIMER_FREQ.hz(), clocks, &mut rcc.apb1);
+    let mut timer = Timer::tim2(device.TIM2, &clocks, &mut rcc.apb1)
+        .start_count_down(TIMER_FREQ.hz());
+
     timer.listen(Event::Update);
 
-    let receiver = InfraredReceiver::new(_pin, TIMER_FREQ);
+    let receiver = InfraredReceiver::new(pin, TIMER_FREQ);
 
-    // Safe because the devices are only used in the interrupt handler
+    // Safe because the devices are only used from in the interrupt handler
     unsafe {
         TIMER.replace(timer);
         RECEIVER.replace(receiver);
