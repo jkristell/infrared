@@ -7,14 +7,14 @@ A library for using infrared remote controls with Rust.
  - The NEC Protocol and the Samsung variant of it
  - Philips Rc5
  - Philips Rc6
- - "Samsung BluRay Player protocol" (Please let know if it has a real name :))
+ - "Samsung BluRay Player protocol". Please let know if you know what it really is called :)
 
 ### Examples
- - Simple receiver for NEC ``examples/receiver``
- - Multi receiver for NEC, NecSamsung and Rc5 ``examples/multireceiver``
- - Transmitting NEC, Rc5 ``examples/transmitter``
+ - The ``examples/stm32f103-examples`` contains various examples for receiving and transmitting infrared with the
+  blue pill board
  - [Blipper](https://github.com/jkristell/blipper) - An application for working
  with transmitters and receivers from a host computer
+ - [Tutorial 1](https://jott.se/blog/infrared)
   
 ## Tested with
  - Tested with bluepill board
@@ -25,7 +25,7 @@ A library for using infrared remote controls with Rust.
  - Rc5 tested with a Marantz CD player remote
 
 
-![Boards](http://jott.se/wp-content/uploads/2019/09/txrx_setup.jpg)
+![Boards](https://jott.se/wp-content/uploads/2019/09/txrx_setup.jpg)
 
 ## How to use it
 See the examples.
@@ -44,7 +44,7 @@ Work started in [Blipper](https://github.com/jkristell/blipper) repository.
  * https://www.sbprojects.net/knowledge/ir/nec.php
  * https://www.vishay.com/docs/82491/tsop382.pdf
 
-![Remote](http://jott.se/wp-content/uploads/2019/09/remote_small.jpg)
+![Remote](https://jott.se/wp-content/uploads/2019/09/remote_small.jpg)
     
 ## License
 
