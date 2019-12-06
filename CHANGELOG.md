@@ -1,8 +1,8 @@
 # Changelog
-## [Unreleased] - 2019-11-XX
+## [0.6.0] - 2019-12-06
  - Split decode state machine and hal
  - New InfaredReceiver type
- - Lots of other API updates
+ - Lots of API breakage
 
 ## [0.5.0] - 2019-11-07
  - Added (optional) embedded-hal support
