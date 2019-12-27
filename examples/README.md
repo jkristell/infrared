@@ -1,7 +1,7 @@
 # Examples
 
 ## stm32f103-examples
- - src/bin/main.rs - Receiver
- - examples/multireceiver.rs - Receiver for multiple remotes
- - examples/transmitter.rs - Rc5 CD-player transmitter example
+ - receiver.rs - Receiver
+ - multireceiver.rs - Receiver for multiple remotes
+ - transmitter.rs - Rc5 CD-player transmitter example
    
