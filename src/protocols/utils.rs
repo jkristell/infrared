@@ -11,7 +11,7 @@ impl<T> Ranges<T>
 where
     T: Default + From<usize>,
 {
-    pub fn new(vals: &([(u32, u32); 4])) -> Self {
+    pub fn new(vals: &[(u32, u32); 4]) -> Self {
         Ranges {
             r: [
                 make_range(vals[0].0, vals[0].1),
