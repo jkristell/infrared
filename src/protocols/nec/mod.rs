@@ -1,37 +1,37 @@
 //! Nec
 
-#[macro_use]
 pub mod receiver;
-pub mod transmitter;
+pub mod send;
 
 #[cfg(test)]
 mod tests;
 
-use crate::{Command, ProtocolId};
-pub use receiver::NecType;
-pub use transmitter::NecTypeTransmitter;
+use crate::Command;
+use core::convert::TryInto;
+pub use receiver::Nec;
+pub use send::NecTypeSender;
+use crate::cmd::Protocol;
 
 pub struct NecStandard;
 pub struct SamsungVariant;
 pub struct Nec16Variant;
 
-/// Nec
-pub type Nec = NecType<NecStandard>;
 /// Nec Samsung variant
-pub type NecSamsung = NecType<SamsungVariant>;
+pub type NecSamsung = Nec<SamsungVariant>;
 /// Nec with 16 bit address, 8 bit command
-pub type Nec16 = NecType<Nec16Variant>;
+pub type Nec16 = Nec<Nec16Variant>;
 
 /// Nec - Standard transmitter
-pub type NecTransmitter = NecTypeTransmitter<NecStandard>;
+pub type NecTransmitter = NecTypeSender<NecStandard>;
 /// Nec - Samsung variant transmitter
-pub type NecSamsungTransmitter = NecTypeTransmitter<SamsungVariant>;
+pub type NecSamsungTransmitter = NecTypeSender<SamsungVariant>;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 /// Nec Command
 pub struct NecCommand {
     pub addr: u16,
     pub cmd: u8,
+    //pub repeat: bool,
 }
 
 impl NecCommand {
@@ -41,22 +41,25 @@ impl NecCommand {
 }
 
 impl Command for NecCommand {
-    fn construct(addr: u16, cmd: u8) -> Self {
-        NecCommand::new(addr, cmd)
+    fn construct(addr: u32, cmd: u32) -> Option<Self> {
+        Some(NecCommand::new(addr.try_into().ok()?, cmd.try_into().ok()?))
     }
 
-    fn address(&self) -> u16 {
-        self.addr as u16
+    fn address(&self) -> u32 {
+        self.addr.into()
     }
 
-    fn command(&self) -> u8 {
-        self.cmd
+    fn data(&self) -> u32 {
+        self.cmd.into()
+    }
+
+    fn protocol(&self) -> Protocol {
+        Protocol::Nec
     }
 }
 
 pub trait NecVariant {
     const TIMING: &'static NecTiming;
-    const PROTOCOL: ProtocolId;
 
     fn encode_command(cmd: NecCommand) -> u32;
     fn decode_command(bits: u32) -> NecCommand;
@@ -65,7 +68,6 @@ pub trait NecVariant {
 
 impl NecVariant for NecStandard {
     const TIMING: &'static NecTiming = &STANDARD_DIST;
-    const PROTOCOL: ProtocolId = ProtocolId::Nec;
 
     fn encode_command(NecCommand { addr, cmd }: NecCommand) -> u32 {
         let addr = u32::from(addr) | (u32::from(!addr) & 0xFF) << 8;
@@ -86,7 +88,6 @@ impl NecVariant for NecStandard {
 
 impl NecVariant for Nec16Variant {
     const TIMING: &'static NecTiming = &STANDARD_DIST;
-    const PROTOCOL: ProtocolId = ProtocolId::Nec16;
 
     fn encode_command(NecCommand { addr, cmd }: NecCommand) -> u32 {
         let addr = u32::from(addr);
@@ -114,7 +115,6 @@ impl NecVariant for SamsungVariant {
         dh: 560,
         ol: 1690,
     };
-    const PROTOCOL: ProtocolId = ProtocolId::NecSamsung;
 
     fn encode_command(NecCommand { addr, cmd }: NecCommand) -> u32 {
         // Address is inverted and command is repeated
@@ -134,6 +134,7 @@ impl NecVariant for SamsungVariant {
     }
 }
 
+/// High and low times for Nec-like protocols. In us.
 pub struct NecTiming {
     /// Header high
     hh: u32,

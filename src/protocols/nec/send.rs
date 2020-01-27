@@ -1,11 +1,10 @@
 use crate::{
-    Transmitter, TransmitterState,
-    nec::{
-        NecCommand, NecTiming, NecVariant,
-    }
+    protocols::nec::{NecCommand, NecTiming, NecVariant},
+    sender::{Sender, State},
 };
+use core::marker::PhantomData;
 
-enum TransmitStateInternal {
+enum InternalState {
     Idle,
     Start,
     HeaderHigh,
@@ -15,12 +14,12 @@ enum TransmitStateInternal {
     Done,
 }
 
-pub struct NecTypeTransmitter<NECTYPE> {
-    state: TransmitStateInternal,
+pub struct NecTypeSender<N> {
+    state: InternalState,
     samples: NSamples,
     last_ts: u32,
     cmd: u32,
-    nectype: core::marker::PhantomData<NECTYPE>,
+    nectype: PhantomData<N>,
 }
 
 struct NSamples {
@@ -31,32 +30,29 @@ struct NSamples {
     one: u32,
 }
 
-impl<NECTYPE: NecVariant> NecTypeTransmitter<NECTYPE> {
+impl<N: NecVariant> NecTypeSender<N> {
     pub fn new(samplerate: u32) -> Self {
         let period: u32 = (1 * 1000) / (samplerate / 1000);
 
-        let samples = NSamples::new(period, &NECTYPE::TIMING);
+        let samples = NSamples::new(period, &N::TIMING);
         Self {
-            state: TransmitStateInternal::Idle,
+            state: InternalState::Idle,
             samples,
             last_ts: 0,
             cmd: 0,
-            nectype: core::marker::PhantomData,
+            nectype: PhantomData,
         }
     }
 }
 
-impl<NECTYPE> Transmitter<NecCommand> for NecTypeTransmitter<NECTYPE>
-where
-    NECTYPE: NecVariant,
-{
+impl<N: NecVariant> Sender<NecCommand> for NecTypeSender<N> {
     fn load(&mut self, cmd: NecCommand) {
-        self.cmd = NECTYPE::encode_command(cmd);
-        self.state = TransmitStateInternal::Start;
+        self.cmd = N::encode_command(cmd);
+        self.state = InternalState::Start;
     }
 
-    fn step(&mut self, ts: u32) -> TransmitterState {
-        use TransmitStateInternal::*;
+    fn step(&mut self, ts: u32) -> State {
+        use InternalState::*;
 
         let interval = ts.wrapping_sub(self.last_ts);
 
@@ -110,21 +106,21 @@ where
         };
 
         match self.state {
-            HeaderHigh | DataHigh(_) => TransmitterState::Transmit(true),
-            HeaderLow | DataLow(_) => TransmitterState::Transmit(false),
-            Done | Idle | Start => TransmitterState::Idle,
+            HeaderHigh | DataHigh(_) => State::Transmit(true),
+            HeaderLow | DataLow(_) => State::Transmit(false),
+            Done | Idle | Start => State::Idle,
         }
     }
 
     fn reset(&mut self) {
         self.cmd = 0;
-        self.state = TransmitStateInternal::Idle;
+        self.state = InternalState::Idle;
         self.last_ts = 0;
     }
 }
 
 #[cfg(feature = "embedded-hal")]
-impl<NECTYPE: NecVariant> crate::PwmTransmitter<NecCommand> for NecTypeTransmitter<NECTYPE> {}
+impl<N: NecVariant> crate::sender::PwmPinSender<NecCommand> for NecTypeSender<N> {}
 
 impl NSamples {
     pub const fn new(period: u32, pulsedistance: &NecTiming) -> Self {

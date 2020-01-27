@@ -1,17 +1,18 @@
-use crate::remotecontrol_standardbutton;
-use crate::remotes::remotecontrol::{DeviceType, RemoteControl, StandardButton};
+use crate::{
+    protocols::nec::NecCommand,
+    remotecontrol::{Button, DeviceType, RemoteControl},
+};
 
-use crate::nec::NecCommand;
-use crate::ProtocolId;
+use Button::*;
 
-remotecontrol_standardbutton!(
-    SamsungTv,
-    ProtocolId::NecSamsung,
-    "Samsung TV",
-    DeviceType::TV,
-    7,
-    NecCommand,
-    [
+pub struct SamsungTv;
+
+impl RemoteControl for SamsungTv {
+    const MODEL: &'static str = "Samsung TV";
+    const DEVTYPE: DeviceType = DeviceType::TV;
+    const ADDRESS: u32 = 7;
+    type Cmd = NecCommand;
+    const BUTTONS: &'static [(u8, Button)] = &[
         (2, Power),
         (1, Source),
         (4, One),
@@ -53,5 +54,5 @@ remotecontrol_standardbutton!(
         (71, Play),
         (74, Paus),
         (72, Forward),
-    ]
-);
+    ];
+}

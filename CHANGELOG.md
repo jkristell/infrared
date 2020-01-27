@@ -1,4 +1,9 @@
 # Changelog
+## [0.7.0] - 2020-09-XX
+ - Lots of breaking API changes and internal cleanups
+ - New Receiver types
+ - Bugfixes for Rc5 and Rc6 receivers. Should work much better now.
+
 ## [0.6.0] - 2019-12-06
  - Split decode state machine and hal
  - New InfaredReceiver type

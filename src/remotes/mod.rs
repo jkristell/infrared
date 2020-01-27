@@ -1,6 +1,4 @@
-mod macros;
-mod remotecontrol;
-pub use remotecontrol::*;
+//! Library with some example remote controls
 
 #[cfg(feature = "nec")]
 pub mod nec;

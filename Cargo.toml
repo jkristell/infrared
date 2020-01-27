@@ -18,7 +18,6 @@ rc6 = []
 sbp = []
 remotes = []
 std = []
-protocol-debug = []
 
 [dependencies]
 embedded-hal = {version = "0.2.3", features = ["unproven"], optional = true}

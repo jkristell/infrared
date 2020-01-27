@@ -1,60 +1,25 @@
 use core::ops::Range;
 
-use crate::rc5::Rc5Command;
 use crate::{
-    ProtocolId,
-    receiver::*,
+    protocols::rc5::Rc5Command,
+    recv::{Error, ReceiverSM, State},
 };
-#[cfg(feature = "protocol-debug")]
-use crate::ReceiverDebug;
 
+#[derive(Default)]
 pub struct Rc5 {
-    samplerate: u32,
-    state: Rc5State,
-    pinval: bool,
+    pub(crate) state: Rc5State,
     bitbuf: u16,
-    last: u32,
-    pub rc5cntr: u32,
-
-    #[cfg(feature = "protocol-debug")]
-    pub debug: ReceiverDebug<Rc5State, Option<u32>>,
+    pub(crate) rc5cntr: u32,
 }
 
 impl Rc5 {
-    pub fn new(samplerate: u32) -> Self {
-        Self {
-            samplerate,
-            last: 0,
-            state: Rc5State::Idle,
-            pinval: false,
-            bitbuf: 0,
-            rc5cntr: 0,
-            #[cfg(feature = "protocol-debug")]
-            debug: ReceiverDebug {
-                state: Rc5State::Idle,
-                state_new: Rc5State::Idle,
-                delta: 0,
-                extra: None,
-            },
-        }
-    }
-
-    pub fn interval_to_units(&self, interval: u16) -> Option<u32> {
+    pub fn interval_to_units(&self, interval: u32) -> Option<u32> {
         for i in 1..=2 {
-            if rc5_multiplier(self.samplerate, i).contains(&(u32::from(interval))) {
+            if rc5_multiplier(i).contains(&interval) {
                 return Some(i);
             }
         }
         None
-    }
-
-    // Time since last edge
-    fn delta(&self, sampletime: u32) -> u16 {
-        let delta = sampletime.wrapping_sub(self.last);
-        if delta >= core::u16::MAX.into() {
-            return 0;
-        }
-        delta as u16
     }
 }
 
@@ -63,91 +28,86 @@ pub enum Rc5State {
     Idle,
     Data(u8),
     Done,
-    Error(ReceiverError),
+    Err(Error),
 }
 
-const RISING: bool = true;
-const FALLING: bool = false;
+impl Default for Rc5State {
+    fn default() -> Self {
+        Rc5State::Idle
+    }
+}
 
-type Rc5Res = ReceiverState<Rc5Command>;
+impl From<Rc5State> for State {
+    fn from(rs: Rc5State) -> Self {
+        use Rc5State::*;
+        match rs {
+            Idle => State::Idle,
+            Data(_) => State::Receiving,
+            Done => State::Done,
+            Err(e) => State::Error(e),
+        }
+    }
+}
 
-impl ReceiverStateMachine for Rc5 {
-    const ID: ProtocolId = ProtocolId::Rc5;
+impl ReceiverSM for Rc5 {
     type Cmd = Rc5Command;
+    type InternalState = Rc5State;
 
-    fn for_samplerate(samplerate: u32) -> Self {
-        Self::new(samplerate)
+    fn create() -> Self {
+        Rc5::default()
     }
 
-    fn event(&mut self, rising: bool, sampletime: u32) -> Rc5Res {
+    #[rustfmt::skip]
+    fn event(&mut self, rising: bool, dt: u32) -> Self::InternalState {
         use Rc5State::*;
 
-        let delta = self.delta(sampletime);
-        self.last = sampletime;
-        self.pinval = rising;
-
         // Number of rc5 units since last pin edge
-        let rc5units = self.interval_to_units(delta);
+        let rc5units = self.interval_to_units(dt);
 
         if let Some(units) = rc5units {
             self.rc5cntr += units;
+        } else {
+            self.reset();
         }
 
-        let odd = self.rc5cntr & 1 == 0;
+        let is_odd = self.rc5cntr & 1 == 0;
 
-        let newstate = match (self.state, rising, rc5units) {
-            (Idle, FALLING, _) => Idle,
-            (Idle, RISING, _) => {
-                self.bitbuf |= 1 << 13;
-                Data(12)
+        self.state = match (self.state, rising, rc5units) {
+
+            (Idle,      false,    _) => Idle,
+            (Idle,      true,     _) => {
+                self.rc5cntr = 0;
+                self.bitbuf |= 1 << 13; Data(12)
             }
 
-            (Data(0), RISING, Some(_)) if odd => {
-                self.bitbuf |= 1;
-                Done
-            }
-            (Data(0), FALLING, Some(_)) if odd => Done,
+            (Data(0),   true,     Some(_)) if is_odd => { self.bitbuf |= 1; Done }
+            (Data(0),   false,    Some(_)) if is_odd => Done,
 
-            (Data(bit), RISING, Some(_)) if odd => {
-                self.bitbuf |= 1 << bit;
-                Data(bit - 1)
-            }
-            (Data(bit), FALLING, Some(_)) if odd => Data(bit - 1),
+            (Data(bit), true,     Some(_)) if is_odd => { self.bitbuf |= 1 << bit; Data(bit - 1) }
+            (Data(bit), false,    Some(_)) if is_odd => Data(bit - 1),
 
-            (Data(bit), _, Some(_)) => Data(bit),
-            (Data(_), _, None) => Error(ReceiverError::Data(delta as u32)),
-            (Done, _, _) => Done,
-            (Error(err), _, _) => Error(err),
+            (Data(bit), _,          Some(_)) => Data(bit),
+            (Data(_),   _,          None) => Err(Error::Data),
+            (Done,      _,          _) => Done,
+            (Err(err),  _,          _) => Err(err),
         };
 
-        #[cfg(feature = "protocol-debug")]
-        {
-            self.debug.state = self.state;
-            self.debug.state_new = newstate;
-            self.debug.delta = delta;
-            self.debug.extra = rc5units;
-        }
+        self.state
+    }
 
-        self.state = newstate;
-
-        match self.state {
-            Idle => ReceiverState::Idle,
-            Done => ReceiverState::Done(Rc5Command::from_bits(self.bitbuf)),
-            Error(err) => ReceiverState::Error(err),
-            _ => ReceiverState::Receiving,
-        }
+    fn command(&self) -> Option<Self::Cmd> {
+        Some(Rc5Command::from_bits(self.bitbuf))
     }
 
     fn reset(&mut self) {
         self.state = Rc5State::Idle;
-        self.pinval = false;
         self.bitbuf = 0;
         self.rc5cntr = 0;
     }
 }
 
-const fn rc5_multiplier(samplerate: u32, multiplier: u32) -> Range<u32> {
-    let base = (samplerate * 889 * multiplier) / 1_000_000;
+const fn rc5_multiplier(multiplier: u32) -> Range<u32> {
+    let base = 889 * multiplier;
     range(base, 10)
 }
 

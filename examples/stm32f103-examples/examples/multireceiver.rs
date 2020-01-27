@@ -2,49 +2,46 @@
 #![no_main]
 #![allow(deprecated)]
 
+use cortex_m::asm;
 use cortex_m_rt::entry;
-use cortex_m_semihosting::hprintln;
-use panic_semihosting as _;
+use rtt_target::{rprintln, rtt_init_print};
 use stm32f1xx_hal::{
-    gpio::{
-        gpiob::PB8,
-        Floating, Input
-    },
+    gpio::{gpiob::PB8, Floating, Input},
     pac,
     prelude::*,
     stm32::{interrupt, TIM2},
-    timer::{Event, Timer, CountDownTimer},
+    timer::{CountDownTimer, Event, Timer},
 };
 
 use infrared::{
-    InfraredReceiver5,
-    nec::*,
-    rc5::*,
-    rc6::*,
-    sbp::*,
-    remotes::{
-        RemoteControl,
-        rc5::Rc5CdPlayer
-    },
+    hal::PeriodicReceiver5,
+    protocols::{Nec, NecSamsung, Rc5, Rc6, Sbp},
+    remotes::rc5::Rc5CdPlayer,
+    RemoteControl,
 };
 
+type RecvPin = PB8<Input<Floating>>;
 
-const TIMER_FREQ: u32 = 40_000;
-
+const SAMPLERATE: u32 = 20_000;
 static mut TIMER: Option<CountDownTimer<TIM2>> = None;
+static mut RECEIVER: Option<PeriodicReceiver5<Nec, NecSamsung, Rc5, Rc6, Sbp, RecvPin>> = None;
 
-// Receiver for multiple protocols
-static mut RECEIVER: Option<InfraredReceiver5<PB8<Input<Floating>>,
-    Nec,
-    NecSamsung,
-    Rc5,
-    Rc6,
-    Sbp,
->> = None;
+#[panic_handler]
+fn panic(info: &core::panic::PanicInfo) -> ! {
+    rprintln!("{}", info);
+    exit()
+}
 
+fn exit() -> ! {
+    loop {
+        asm::bkpt() // halt = exit probe-run
+    }
+}
 
 #[entry]
 fn main() -> ! {
+    rtt_init_print!();
+
     let mut core = cortex_m::Peripherals::take().unwrap();
     let device = pac::Peripherals::take().unwrap();
 
@@ -61,13 +58,13 @@ fn main() -> ! {
     let mut gpiob = device.GPIOB.split(&mut rcc.apb2);
     let inpin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
 
-    let mut timer = Timer::tim2(device.TIM2, &clocks, &mut rcc.apb1)
-        .start_count_down(TIMER_FREQ.hz());
+    let mut timer =
+        Timer::tim2(device.TIM2, &clocks, &mut rcc.apb1).start_count_down(SAMPLERATE.hz());
 
     timer.listen(Event::Update);
 
     // Create a receiver that reacts on 3 different kinds of remote controls
-    let receiver = InfraredReceiver5::new(inpin, TIMER_FREQ);
+    let receiver = PeriodicReceiver5::new(inpin, SAMPLERATE);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
@@ -78,7 +75,7 @@ fn main() -> ! {
     // Enable the timer interrupt
     core.NVIC.enable(pac::Interrupt::TIM2);
 
-    hprintln!("Ready!").unwrap();
+    rprintln!("Ready!");
 
     loop {
         continue;
@@ -87,46 +84,39 @@ fn main() -> ! {
 
 #[interrupt]
 fn TIM2() {
-    static mut SAMPLECOUNTER: u32 = 0;
-
     let receiver = unsafe { RECEIVER.as_mut().unwrap() };
 
-    if let Ok((neccmd, nescmd, rc5cmd, rc6cmd, sbpcmd)) = receiver.step(*SAMPLECOUNTER) {
-
+    if let Ok((neccmd, nescmd, rc5cmd, rc6cmd, sbpcmd)) = receiver.poll() {
         // We have a NEC Command
         if let Some(cmd) = neccmd {
-            hprintln!("nec: {} {}", cmd.addr, cmd.cmd).unwrap();
+            rprintln!("nec: {} {}", cmd.addr, cmd.cmd);
         }
 
         // We have Samsung-flavoured NEC Command
         if let Some(cmd) = nescmd {
-            hprintln!("nec: {} {}", cmd.addr, cmd.cmd).unwrap();
+            rprintln!("nec: {} {}", cmd.addr, cmd.cmd);
         }
 
         // We have a Rc5 Command
         if let Some(cmd) = rc5cmd {
             // Print the command if recognized as a Rc5 CD-player command
             if let Some(decoded) = Rc5CdPlayer::decode(cmd) {
-                hprintln!("rc5(CD): {:?}", decoded).unwrap();
+                rprintln!("rc5(CD): {:?}", decoded);
             } else {
-                hprintln!("rc5: {} {}", cmd.addr, cmd.cmd).unwrap();
+                rprintln!("rc5: {} {}", cmd.addr, cmd.cmd);
             }
         }
 
         if let Some(cmd) = rc6cmd {
-            hprintln!("rc6: {} {}", cmd.addr, cmd.cmd).ok();
+            rprintln!("rc6: {} {}", cmd.addr, cmd.cmd);
         }
 
         if let Some(cmd) = sbpcmd {
-            hprintln!("sbp: {} {}", cmd.address, cmd.command).ok();
+            rprintln!("sbp: {} {}", cmd.address, cmd.command);
         }
-
     }
 
     // Clear the interrupt
     let timer = unsafe { TIMER.as_mut().unwrap() };
     timer.clear_update_interrupt_flag();
-
-    *SAMPLECOUNTER = SAMPLECOUNTER.wrapping_add(1);
 }
-

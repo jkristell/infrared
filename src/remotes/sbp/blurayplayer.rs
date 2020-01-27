@@ -1,21 +1,17 @@
 use crate::protocols::sbp::SbpCommand;
-use crate::ProtocolId;
 
-use crate::remotecontrol_standardbutton;
+use crate::remotecontrol::{Button, DeviceType, RemoteControl};
 
-use crate::remotes::{
-    remotecontrol::{DeviceType, StandardButton},
-    RemoteControl,
-};
+use Button::*;
 
-remotecontrol_standardbutton!(
-    SamsungBluRayPlayer,
-    ProtocolId::Sbp,
-    "Samsung Bluray Player",
-    DeviceType::BluRayPlayer,
-    32,
-    SbpCommand,
-    [
+pub struct SamsungBluRayPlayer;
+
+impl RemoteControl for SamsungBluRayPlayer {
+    const MODEL: &'static str = "Samsung BluRay Player";
+    const DEVTYPE: DeviceType = DeviceType::BluRayPlayer;
+    const ADDRESS: u32 = 32;
+    type Cmd = SbpCommand;
+    const BUTTONS: &'static [(u8, Button)] = &[
         (2, One),
         (3, Two),
         (4, Three),
@@ -25,5 +21,5 @@ remotecontrol_standardbutton!(
         (8, Seven),
         (9, Eight),
         (10, Nine),
-    ]
-);
+    ];
+}

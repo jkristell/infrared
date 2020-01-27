@@ -1,20 +1,15 @@
-use crate::{rc5::Rc5Command, ProtocolId};
+use crate::protocols::rc5::Rc5Command;
+use crate::remotecontrol::{Button, DeviceType, RemoteControl};
+use Button::*;
 
-use crate::remotecontrol_standardbutton;
+pub struct Rc5CdPlayer;
 
-use crate::remotes::{
-    remotecontrol::{DeviceType, StandardButton},
-    RemoteControl,
-};
-
-remotecontrol_standardbutton!(
-    Rc5CdPlayer,
-    ProtocolId::Rc5,
-    "Marantz CD-Player",
-    DeviceType::CDPlayer,
-    20,
-    Rc5Command,
-    [
+impl RemoteControl for Rc5CdPlayer {
+    const MODEL: &'static str = "CD Player (Rc5)";
+    const DEVTYPE: DeviceType = DeviceType::CDPlayer;
+    const ADDRESS: u32 = 20;
+    type Cmd = Rc5Command;
+    const BUTTONS: &'static [(u8, Button)] = &[
         (1, One),
         (2, Two),
         (3, Three),
@@ -43,5 +38,5 @@ remotecontrol_standardbutton!(
         (48, Paus),
         (53, Play),
         (54, Stop),
-    ]
-);
+    ];
+}

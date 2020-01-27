@@ -1,25 +1,22 @@
 //! Rc6
 
+use core::convert::TryInto;
 use core::ops::Range;
 
 use crate::{
-    Command, ProtocolId,
-    ReceiverState,
-    ReceiverStateMachine,
-    ReceiverError,
+    recv::{Error, ReceiverSM, State},
+    Command,
+    cmd::Protocol,
 };
 
-#[cfg(feature = "protocol-debug")]
-use crate::ReceiverDebug;
-
 #[derive(Debug)]
-pub struct Rc6Command {
+pub struct Rc6Cmd {
     pub addr: u8,
     pub cmd: u8,
     pub toggle: bool,
 }
 
-impl Rc6Command {
+impl Rc6Cmd {
     pub fn new(addr: u8, cmd: u8) -> Self {
         Self {
             addr,
@@ -35,77 +32,46 @@ impl Rc6Command {
     }
 }
 
-impl Command for Rc6Command {
-    fn construct(addr: u16, cmd: u8) -> Self {
-        Rc6Command::new(addr as u8, cmd)
+impl Command for Rc6Cmd {
+    fn construct(addr: u32, cmd: u32) -> Option<Self> {
+        Some(Rc6Cmd::new(addr.try_into().ok()?, cmd.try_into().ok()?))
     }
 
-    fn address(&self) -> u16 {
-        self.addr as u16
+    fn address(&self) -> u32 {
+        self.addr.into()
     }
 
-    fn command(&self) -> u8 {
-        self.cmd
+    fn data(&self) -> u32 {
+        self.cmd.into()
     }
+
+    fn protocol(&self) -> Protocol {
+        Protocol::Rc6
+    }
+
 }
 
+#[derive(Default)]
 pub struct Rc6 {
-    samplerate: u32,
     state: Rc6State,
-    pub pinval: bool,
     data: u32,
     headerdata: u32,
     toggle: bool,
-    pub last: u32,
-    pub rc6_counter: u32,
-
-    #[cfg(feature = "protocol-debug")]
-    pub debug: ReceiverDebug<Rc6State, Option<u32>>,
+    rc6_counter: u32,
 }
 
 impl Rc6 {
-    pub fn new(samplerate: u32) -> Self {
-        Self {
-            samplerate,
-            last: 0,
-            state: Rc6State::Idle,
-            pinval: false,
-            data: 0,
-            rc6_counter: 0,
-            headerdata: 0,
-            toggle: false,
-            #[cfg(feature = "protocol-debug")]
-            debug: ReceiverDebug {
-                state: Rc6State::Idle,
-                state_new: Rc6State::Idle,
-                delta: 0,
-                extra: None,
-            },
-        }
-    }
-
     fn interval_to_units(&self, interval: u16) -> Option<u32> {
         let interval = u32::from(interval);
 
         for i in 1..=6 {
-            if rc6_multiplier(self.samplerate, i).contains(&interval) {
+            if rc6_multiplier(i).contains(&interval) {
                 return Some(i);
             }
         }
         None
     }
-
-    // Time since last edge
-    fn delta(&self, sampletime: u32) -> u16 {
-        let delta = sampletime.wrapping_sub(self.last);
-        if delta >= core::u16::MAX.into() {
-            return 0;
-        }
-        delta as u16
-    }
 }
-
-type Rc6Result = ReceiverState<Rc6Command>;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Rc6State {
@@ -116,45 +82,62 @@ pub enum Rc6State {
     Trailing,
     Data(u32),
     Done,
-    Error(ReceiverError),
+    Rc6Err(Error),
+}
+
+impl Default for Rc6State {
+    fn default() -> Self {
+        Rc6State::Idle
+    }
+}
+
+impl From<Rc6State> for State {
+    fn from(state: Rc6State) -> Self {
+        use Rc6State::*;
+        match state {
+            Idle => State::Idle,
+            Done => State::Done,
+            Rc6Err(err) => State::Error(err),
+            Leading | LeadingPaus | HeaderData(_) | Trailing | Data(_) => State::Receiving,
+        }
+    }
 }
 
 const RISING: bool = true;
 const FALLING: bool = false;
 
-impl ReceiverStateMachine for Rc6 {
-    const ID: ProtocolId = ProtocolId::Rc6;
-    type Cmd = Rc6Command;
+impl ReceiverSM for Rc6 {
+    type Cmd = Rc6Cmd;
+    type InternalState = Rc6State;
 
-    fn for_samplerate(samplerate: u32) -> Self {
-        Self::new(samplerate)
+    fn create() -> Self {
+        Self::default()
     }
 
-    fn event(&mut self, rising: bool, sampletime: u32) -> Rc6Result {
+    #[rustfmt::skip]
+    fn event(&mut self, rising: bool, dt: u32) -> Rc6State {
         use Rc6State::*;
 
-        let delta = self.delta(sampletime);
-        self.last = sampletime;
-        self.pinval = rising;
-
         // Number of rc6 units since last pin edge
-        let n_units = self.interval_to_units(delta);
+        let n_units = self.interval_to_units(dt as u16);
 
         if let Some(units) = n_units {
             self.rc6_counter += units;
+        } else {
+            self.reset();
         }
 
         let odd = self.rc6_counter & 1 == 1;
 
-        let newstate = match (self.state, rising, n_units) {
-            (Idle, FALLING, _) => Idle,
-            (Idle, RISING, _) => Leading,
-            (Leading, FALLING, Some(6)) => LeadingPaus,
-            (Leading, _, _) => Idle,
-            (LeadingPaus, RISING, Some(2)) => HeaderData(3),
-            (LeadingPaus, _, _) => Idle,
+        self.state = match (self.state, rising, n_units) {
+            (Idle,          FALLING,    _)          => Idle,
+            (Idle,          RISING,     _)          => { self.rc6_counter = 0; Leading },
+            (Leading,       FALLING,    Some(6))    => LeadingPaus,
+            (Leading,       _,          _)          => Idle,
+            (LeadingPaus,   RISING,     Some(2))    => HeaderData(3),
+            (LeadingPaus,   _,          _)          => Idle,
 
-            (HeaderData(n), _, Some(_)) if odd => {
+            (HeaderData(n), _,          Some(_)) if odd => {
                 self.headerdata |= if rising { 0 } else { 1 } << n;
                 if n == 0 {
                     Trailing
@@ -163,69 +146,44 @@ impl ReceiverStateMachine for Rc6 {
                 }
             }
 
-            (HeaderData(n), _, Some(_)) => HeaderData(n),
-            (HeaderData(_), _, None) => Idle,
+            (HeaderData(n), _,          Some(_))    => HeaderData(n),
+            (HeaderData(_), _,          None)       => Idle,
 
-            (Trailing, FALLING, Some(3)) => {
-                self.toggle = false;
-                Data(15)
-            }
-            (Trailing, RISING, Some(2)) => {
-                self.toggle = true;
-                Data(15)
-            }
-            (Trailing, FALLING, Some(1)) => Trailing,
-            (Trailing, _, _) => Idle,
+            (Trailing,      FALLING,    Some(3))    => { self.toggle = false; Data(15) }
+            (Trailing,      RISING,     Some(2))    => { self.toggle = true; Data(15) }
+            (Trailing,      FALLING,    Some(1))    => Trailing,
+            (Trailing,      _,          _)          => Idle,
 
-            (Data(0), RISING, Some(_)) if odd => Done,
-            (Data(0), FALLING, Some(_)) if odd => {
-                self.data |= 1;
-                Done
-            }
-            (Data(0), _, Some(_)) => Data(0),
-            (Data(n), RISING, Some(_)) if odd => Data(n - 1),
-            (Data(n), FALLING, Some(_)) if odd => {
-                self.data |= 1 << n;
-                Data(n - 1)
-            }
-            (Data(n), _, Some(_)) => Data(n),
-            (Data(_), _, None) => Error(ReceiverError::Data(delta as u32)),
+            (Data(0),       RISING,     Some(_)) if odd => Done,
+            (Data(0),       FALLING,    Some(_)) if odd => { self.data |= 1; Done }
+            (Data(0),       _,          Some(_))    => Data(0),
+            (Data(n),       RISING,     Some(_)) if odd => Data(n - 1),
+            (Data(n),       FALLING,    Some(_)) if odd => { self.data |= 1 << n; Data(n - 1) }
+            (Data(n),       _,          Some(_))    => Data(n),
+            (Data(_),       _,          None)       => Rc6Err(Error::Data),
 
-            (Done, _, _) => Done,
-            (Error(err), _, _) => Error(err),
+            (Done,          _,          _)          => Done,
+            (Rc6Err(err),    _,          _)         => Rc6Err(err),
         };
 
-        #[cfg(feature = "protocol-debug")]
-        {
-            self.debug.state = self.state;
-            self.debug.state_new = newstate;
-            self.debug.delta = delta;
-            self.debug.extra = n_units;
-        }
+        self.state
+    }
 
-        self.state = newstate;
-
-        match self.state {
-            Idle => ReceiverState::Idle,
-            Done => ReceiverState::Done(Rc6Command::from_bits(self.data, self.toggle)),
-            Error(err) => ReceiverState::Error(err),
-            _ => ReceiverState::Receiving,
-        }
+    fn command(&self) -> Option<Self::Cmd> {
+        Some(Rc6Cmd::from_bits(self.data, self.toggle))
     }
 
     fn reset(&mut self) {
         self.state = Rc6State::Idle;
-        self.pinval = false;
         self.data = 0;
-        self.last = 0;
         self.headerdata = 0;
         self.rc6_counter = 0;
     }
 }
 
-const fn rc6_multiplier(samplerate: u32, multiplier: u32) -> Range<u32> {
-    let base = (samplerate * 444 * multiplier) / 1_000_000;
-    range(base, 10)
+const fn rc6_multiplier(multiplier: u32) -> Range<u32> {
+    let base = 444 * multiplier;
+    range(base, 12)
 }
 
 const fn range(len: u32, percent: u32) -> Range<u32> {
@@ -239,32 +197,46 @@ const fn range(len: u32, percent: u32) -> Range<u32> {
 
 #[cfg(test)]
 mod tests {
-    use crate::receiver::*;
-    use crate::rc6::Rc6;
+    use crate::protocols::rc6::Rc6;
+    use crate::recv::*;
 
     #[test]
     fn basic() {
         let dists = [
             0, 108, 34, 19, 34, 19, 16, 20, 16, 19, 34, 36, 16, 37, 34, 20, 16, 19, 16, 37, 17, 19,
             34, 19, 17, 19, 16, 19, 17, 19, 16, 20, 16, 19, 16, 37, 34, 20,
+
+            0, 108, 34, 19, 34, 19, 16, 20, 16, 19, 34, 36, 16, 37, 34, 20, 16, 19, 16, 37, 17, 19,
+            34, 19, 17, 19, 16, 19, 17, 19, 16, 20, 16, 19, 16, 37, 34, 20,
+
         ];
 
-        let mut recv = Rc6::new(40_000);
+        let mut recv = EventReceiver::<Rc6>::new(40_000);
         let mut edge = false;
         let mut tot = 0;
-        let mut state = ReceiverState::Idle;
 
         for dist in dists.iter() {
             edge = !edge;
             tot += dist;
-            state = recv.event(edge, tot);
-        }
 
-        if let ReceiverState::Done(cmd) = state {
-            assert_eq!(cmd.addr, 70);
-            assert_eq!(cmd.cmd, 2);
-        } else {
-            assert!(false);
+            let s0 = recv.sm.state;
+
+            let cmd = recv.edge_event(edge, tot);
+
+            println!(
+                "{} ({}): {:?} -> {:?}",
+                edge as u32,
+                dist,
+                s0,
+                recv.sm.state
+            );
+
+
+            if let Ok(Some(cmd)) = cmd {
+                println!("cmd: {:?}", cmd);
+                assert_eq!(cmd.addr, 70);
+                assert_eq!(cmd.cmd, 2);
+            }
         }
     }
 }
