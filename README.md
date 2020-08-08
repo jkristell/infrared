@@ -1,3 +1,6 @@
+[![crates.io version](https://meritbadge.herokuapp.com/infrared)](https://crates.io/crates/infrared)
+[![docs.rs](https://docs.rs/infrared/badge.svg)](https://docs.rs/infrared)
+
 # Infrared
 A library for using infrared remote controls with Rust.
 
