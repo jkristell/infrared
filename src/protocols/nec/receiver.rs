@@ -1,35 +1,30 @@
+use crate::protocols::nec::NecStandard;
 use crate::{
-    ProtocolId,
-    nec::{NecCommand, NecVariant, NecTiming},
-    protocols::utils::Ranges,
-    receiver::{ReceiverError, ReceiverState, ReceiverStateMachine},
+    protocols::nec::{NecCommand, NecTiming, NecVariant},
+    protocols::utils::PulseWidthRange,
+    recv::{Error, ReceiverSM, State},
 };
-
-#[cfg(feature = "protocol-debug")]
-use crate::ReceiverDebug;
+use core::marker::PhantomData;
 
 /// Generic type for Nec Receiver
-pub struct NecType<NECTYPE> {
+pub struct Nec<N = NecStandard> {
     // State
-    state: NecState,
-    // Time of last event
-    last_event: u32,
+    state: InternalState,
     // Data buffer
     pub bitbuf: u32,
     // Timing and tolerances
-    ranges: Ranges<PulseWidth>,
+    ranges: PulseWidthRange<PulseWidth>,
     // Last command (used by repeat)
     lastcommand: u32,
     // The type of Nec
-    nectype: core::marker::PhantomData<NECTYPE>,
+    nectype: PhantomData<N>,
 
-    #[cfg(feature = "protocol-debug")]
-    pub debug: ReceiverDebug<NecState, Ranges<PulseWidth>>,
+    last_rising: u32,
 }
 
 #[derive(Debug, Copy, Clone)]
 // Internal receiver state
-pub enum NecState {
+pub enum InternalState {
     // Waiting for first pulse
     Init,
     // Receiving data
@@ -39,110 +34,102 @@ pub enum NecState {
     // Repeat command received
     RepeatDone,
     // In error state
-    Err(ReceiverError),
+    Err(Error),
 }
 
-impl<NECTYPE: NecVariant> NecType<NECTYPE> {
-    pub fn new(samplerate: u32) -> Self {
-        let timing = NECTYPE::TIMING;
-        Self::new_from_timing(samplerate, timing)
-    }
-
-    fn new_from_timing(samplerate: u32, timing: &NecTiming) -> Self {
-        let nsamples = nsamples_from_timing(timing, samplerate);
-        let ranges = Ranges::new(&nsamples);
-
-        Self {
-            state: NecState::Init,
-            last_event: 0,
-            bitbuf: 0,
-            lastcommand: 0,
-            nectype: core::marker::PhantomData,
-            #[cfg(feature = "protocol-debug")]
-            debug: ReceiverDebug {
-                state: NecState::Init,
-                state_new: NecState::Init,
-                delta: 0,
-                extra: ranges.clone(),
-            },
-            ranges,
+impl From<InternalState> for State {
+    fn from(ns: InternalState) -> Self {
+        use InternalState::*;
+        match ns {
+            Init => State::Idle,
+            Done | RepeatDone => State::Done,
+            Err(e) => State::Error(e),
+            _ => State::Receiving,
         }
     }
+}
 
-    #[cfg(feature = "protocol-debug")]
-    fn update_debug(&mut self, newstate: NecState, nsamples: u32) {
-        self.debug.state = self.state;
-        self.debug.state_new = newstate;
-        self.debug.delta = nsamples as u16;
+impl<N: NecVariant> Default for Nec<N> {
+    fn default() -> Self {
+        Self::with_timing(N::TIMING)
     }
 }
 
-impl<NECTYPE> ReceiverStateMachine for NecType<NECTYPE>
-where
-    NECTYPE: NecVariant,
-{
-    const ID: ProtocolId = NECTYPE::PROTOCOL;
-    type Cmd = NecCommand;
-
-    fn for_samplerate(samplerate: u32) -> Self {
-        let timing = NECTYPE::TIMING;
-        Self::new_from_timing(samplerate, timing)
+impl<N: NecVariant> Nec<N> {
+    pub fn new() -> Self {
+        let timing = N::TIMING;
+        Self::with_timing(timing)
     }
 
-    fn event(&mut self, rising: bool, time: u32) -> ReceiverState<Self::Cmd> {
-        use NecState::*;
+    fn with_timing(timing: &NecTiming) -> Self {
+        let nsamples = nsamples_from_timing(timing);
+        let ranges = PulseWidthRange::new(&nsamples);
+
+        Self {
+            state: InternalState::Init,
+            bitbuf: 0,
+            lastcommand: 0,
+            nectype: PhantomData,
+            ranges,
+            last_rising: 0,
+        }
+    }
+}
+
+impl<N: NecVariant> ReceiverSM for Nec<N> {
+    type Cmd = NecCommand;
+    type InternalState = InternalState;
+
+    fn create() -> Self {
+        Self::default()
+    }
+
+    #[rustfmt::skip]
+    fn event(&mut self, rising: bool, dt: u32) -> Self::InternalState {
+        use InternalState::*;
         use PulseWidth::*;
 
         if rising {
-            // Calculate the nbr of samples since last rising edge
-            let nsamples = time.wrapping_sub(self.last_event);
+            let pulsewidth = self.ranges.pulsewidth(self.last_rising + dt);
 
-            // Map the nbr of samples to a pulsewidth
-            let pulsewidth = self.ranges.pulsewidth(nsamples);
+            self.state = match (self.state, pulsewidth) {
+                (Init,  Sync)   => Receiving(0),
+                (Init,  Repeat) => RepeatDone,
+                (Init,  _)      => Init,
 
-            let newstate = match (self.state, pulsewidth) {
-                (Init, Sync) => Receiving(0),
-                (Init, Repeat) => RepeatDone,
-                (Init, _) => Init,
+                (Receiving(31),     One)    => { self.bitbuf |= 1 << 31; Done }
+                (Receiving(31),     Zero)   => Done,
+                (Receiving(bit),    One)    => { self.bitbuf |= 1 << bit; Receiving(bit + 1) }
+                (Receiving(bit),    Zero)   => Receiving(bit + 1),
+                (Receiving(_),      _)      => Err(Error::Data),
 
-                (Receiving(31), One) => { self.bitbuf |= 1 << 31; Done }
-                (Receiving(31), Zero) => Done,
-
-                (Receiving(bit), One) => { self.bitbuf |= 1 << bit; Receiving(bit + 1) }
-                (Receiving(bit), Zero) => Receiving(bit + 1),
-
-                (Receiving(_), _) => Err(ReceiverError::Data(0)),
-
-                (Done, _) => Done,
-                (RepeatDone, _) => RepeatDone,
-                (Err(err), _) => Err(err),
+                (Done,          _)  => Done,
+                (RepeatDone,    _)  => RepeatDone,
+                (Err(err),      _)  => Err(err),
             };
 
-            #[cfg(feature = "protocol-debug")]
-            self.update_debug(newstate, nsamples);
-
-            self.last_event = time;
-            self.state = newstate;
+            self.last_rising = 0;
+        } else {
+            // Save dist
+            self.last_rising = dt;
         }
 
-        match self.state {
-            Init => ReceiverState::Idle,
-            Done => ReceiverState::Done(NECTYPE::decode_command(self.bitbuf)),
-            RepeatDone => ReceiverState::Done(NECTYPE::decode_command(self.lastcommand)),
-            Err(e) => ReceiverState::Error(e),
-            _ => ReceiverState::Receiving,
-        }
+        self.state
+    }
+
+    fn command(&self) -> Option<Self::Cmd> {
+        Some(N::decode_command(self.bitbuf))
     }
 
     fn reset(&mut self) {
-        self.state = NecState::Init;
-        self.last_event = 0;
+        self.state = InternalState::Init;
         self.lastcommand = if self.bitbuf == 0 {
             self.lastcommand
         } else {
             self.bitbuf
         };
         self.bitbuf = 0;
+        self.last_rising = 0;
     }
 }
 
@@ -173,12 +160,11 @@ impl From<usize> for PulseWidth {
     }
 }
 
-const fn nsamples_from_timing(t: &NecTiming, samplerate: u32) -> [(u32, u32); 4] {
-    let per: u32 = 1000 / (samplerate / 1000);
+const fn nsamples_from_timing(t: &NecTiming) -> [(u32, u32); 4] {
     [
-        ((t.hh + t.hl) / per, 5),
-        ((t.hh + t.rl) / per, 5),
-        ((t.dh + t.zl) / per, 10),
-        ((t.dh + t.ol) / per, 10),
+        ((t.hh + t.hl), 5),
+        ((t.hh + t.rl), 5),
+        ((t.dh + t.zl), 10),
+        ((t.dh + t.ol), 10),
     ]
 }

@@ -1,6 +1,7 @@
-use crate::{Command, ProtocolId};
+use crate::Command;
 
 #[derive(Debug)]
+/// Device type that the remote control controls
 pub enum DeviceType {
     Generic,
     TV,
@@ -11,32 +12,41 @@ pub enum DeviceType {
 
 /// A trait describing a Remote Control
 pub trait RemoteControl {
-    /// The type of the buttons
-    type Button;
-    /// The type of command
-    type Command: Command;
-    /// The IR protocol
-    const PROTOCOL_ID: ProtocolId;
-    /// Device adress
-    const ADDRESS: u16;
-    /// Type of device that this remote controls
-    const DEVICE: DeviceType = DeviceType::Generic;
     /// Remote control model
     const MODEL: &'static str = "<NONAME>";
+    /// Type of device that this remote controls
+    const DEVTYPE: DeviceType = DeviceType::Generic;
+    /// Device address
+    const ADDRESS: u32;
+    /// The type of command
+    type Cmd: Command;
     /// command byte to standardbutton mapping
-    const MAPPING: &'static [(u8, StandardButton)] = &[];
-
+    const BUTTONS: &'static [(u8, Button)] = &[];
     /// Try to map a command into an Button for this remote
-    fn decode(cmd: Self::Command) -> Option<Self::Button>;
-
+    fn decode(cmd: Self::Cmd) -> Option<Button> {
+        // Check address
+        if Self::ADDRESS != cmd.address().into() {
+            return None;
+        }
+        Self::BUTTONS
+            .iter()
+            .find(|(c, _)| u32::from(*c) == cmd.data())
+            .map(|(_, b)| *b)
+    }
     /// Encode a button into a command
-    fn encode(button: Self::Button) -> Option<Self::Command>;
+    fn encode(button: Button) -> Option<Self::Cmd> {
+        Self::BUTTONS
+            .iter()
+            .find(|(_, b)| *b == button)
+            .and_then(|(c, _)| Self::Cmd::construct(Self::ADDRESS, *c as u32))
+    }
 }
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-/// Extensive list of all buttons ever found on a remote control
-pub enum StandardButton {
+#[non_exhaustive]
+/// Extensive list of all buttons ever found on a remote control ;-)
+pub enum Button {
     Power,
     Source,
     One,

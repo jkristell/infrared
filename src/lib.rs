@@ -1,4 +1,87 @@
-//! Infrared
+//! # Infrared
+//!
+//! Rust library enabling remote control support for embedded project.
+//!
+//! This library aims for to be useful with the any MCU hal that implements the embedded-hal traits,
+//! and at the same time provide functionality for using it with more efficient implementation
+//! such as input capture, and be useful in host applications (such as Blipper).
+//!
+//! ## Design
+//!
+//! ### Receivers
+//!
+//! ```text
+//! +------------------------+---------------------+
+//! | hal::PeriodicReceiver  | hal::EventReceiver  |  Embedded hal based receivers
+//! |------------------------+---------------------|
+//! |    PeriodicReceiver    |    EventReceiver    |  Generic Receivers
+//! |------+--------+--------+---+-----+-----+-----|
+//! | Nec  | Nec16  | NecSamsung | Rc5 | Rc6 | Sbp |  Protocol state machines
+//! +------+--------+------------+-----+-----+-----+
+//! ```
+//!
+//! ## Using Infrared with embedded-hal
+//!
+//! ### Polled
+//!
+//! Right now, this is the easiest way to setup Infrared to work with any embedded-hal based board.
+//! 1. Setup a CountDown-timer at a frequency of something like 20 kHz. How to setup the timer
+//! and enable interrupts is HAL-specific but most HALs have examples showing you how to do it.
+//! 2. Create a `hal::PeriodicReceiver` with the desired Decoder state machine.
+//!
+//! Example:
+//! ```ignore
+//! use infrared::{hal::PeriodicReceiver, protocols::Rc5}
+//! use embedded_hal::digital::v2::InputPin;
+//!
+//! const SAMPLERATE: u32 = 20_000;
+//! let pin = ... // Setup the input pin connected to the infrared receiver
+//! let mut recv: PeriodicReceiver<Rc5, PINTYPE> = PeriodicReceiver::new(pin, SAMPLERATE);
+//! ```
+//!
+//! 3. In the timer interrupt handler for the timer `poll` the receiver and wait for it to
+//! successfully detect a command
+//!
+//! ```ignore
+//! if let Ok(Some(cmd)) = recv.poll() {
+//!     rprintln!("{} {}", cmd.address(), cmd.data());
+//! }
+//! ```
+//!
+//! There is also support for receiving and decoding the pulse train to a known remote control
+//!
+//! ```ignore
+//! use infrared::{remotecontrol::Button, remotes::rc5::Rc5CdPlayer};
+//!
+//! if let Ok(Some(button)) = recv.poll_button::<Rc5CdPlayer>() {
+//!     match button {
+//!         Button::Play => ... // Handle play,
+//!         Button::Stop => ... // Handle stop
+//!         ...
+//!     }
+//! }
+//! ```
+//!
+//! #### Evented
+//!
+//! The library could also be used with external interrupt if you have a way of keeping track
+//! time between the interrupts.
+//!
+//! The `receiver_exti` example, shows a way of doing it using a timer method found in
+//! the stm32f1xx-hal (non embedded-hal). Another way would be to have a
+//! monotonic timer running and using that for keeping track of the time between the edges.
+//!
+//! ## Examples
+//!
+//! In the examples directory in the github repo, there are fully working examples
+//! of different kind of receivers
+//!
+//! * `receiver`: HAL Periodic receiver example
+//! * `receiver_exti`: HAL EventReceiver using external interrupts
+//! * `multireceiver`: receiver for multiple protocols
+//! * `mediakeyboard`: USB hid media keyboard, RTIC based Media keyboard controlled by remote control.
+//! * `sender`: Send example
+//!
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -6,66 +89,22 @@
 #[macro_use]
 extern crate std;
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
-/// Remote Control Protocol Id
-pub enum ProtocolId {
-    /// Nec
-    Nec = 1,
-    /// Nec with 16 bit address
-    Nec16 = 2,
-    /// Nec - Samsung variant
-    NecSamsung = 3,
-    /// Philips Rc5
-    Rc5 = 4,
-    /// Philips Rc6
-    Rc6 = 5,
-    /// Samsung 36 bit protocol
-    Sbp = 6,
+pub mod protocols;
 
-    /// Logging
-    Logging = 31,
-}
+mod recv;
+pub use recv::{BufferedReceiver, PeriodicReceiver, EventReceiver, ReceiverSM};
 
-/// Remote control command trait
-pub trait Command {
-    fn construct(addr: u16, cmd: u8) -> Self;
-    /// Get the address from the command
-    fn address(&self) -> u16;
-    /// Get the command number
-    fn command(&self) -> u8;
-}
+pub mod sender;
 
-#[cfg(feature = "embedded-hal")]
-mod hal;
+mod remotecontrol;
+pub use remotecontrol::{Button, RemoteControl, DeviceType};
 
-mod protocols;
-pub use protocols::*;
-
-mod receiver;
-
-pub use receiver::{
-    ReceiverError,
-    ReceiverState,
-    ReceiverStateMachine,
-};
-
-#[cfg(feature = "embedded-hal")]
-pub use hal::{
-    InfraredReceiver,
-    InfraredReceiver2,
-    InfraredReceiver3,
-    InfraredReceiver4,
-    InfraredReceiver5,
-};
-
-#[cfg(feature = "protocol-debug")]
-pub use receiver::ReceiverDebug;
-
-mod transmitter;
-pub use crate::transmitter::{Transmitter, TransmitterState};
-#[cfg(feature = "embedded-hal")]
-pub use transmitter::PwmTransmitter;
+mod cmd;
+#[doc(inline)]
+pub use cmd::{Command, Protocol};
 
 #[cfg(feature = "remotes")]
 pub mod remotes;
 
+#[cfg(feature = "embedded-hal")]
+pub mod hal;

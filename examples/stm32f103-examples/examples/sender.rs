@@ -2,26 +2,22 @@
 #![no_main]
 #![allow(deprecated)]
 
-use panic_semihosting as _;
-
+use cortex_m::asm;
 use cortex_m_rt::entry;
+use rtt_target::{rprintln, rtt_init_print};
 use stm32f1xx_hal::{
     pac,
+    pac::{interrupt, TIM2, TIM4},
     prelude::*,
-    pwm::{Pwm, C4},
-    stm32::{interrupt, TIM2, TIM4},
-    timer::{Event, Timer, CountDownTimer},
+    pwm::{PwmChannel, C4},
+    timer::{CountDownTimer, Event, Tim4NoRemap, Timer},
 };
 
 use infrared::{
-    Transmitter,
-    PwmTransmitter,
-    rc5::*,
-};
-
-use infrared::remotes::{
-    *,
-    rc5::Rc5CdPlayer,
+    protocols::rc5::*,
+    remotes::rc5::Rc5CdPlayer,
+    sender::{PwmPinSender, Sender},
+    Button, RemoteControl,
 };
 
 const TIMER_FREQ: u32 = 20_000;
@@ -29,13 +25,26 @@ const TIMER_FREQ: u32 = 20_000;
 // Global timer
 static mut TIMER: Option<CountDownTimer<TIM2>> = None;
 // transmitter
-static mut TRANSMITTER: Option<Rc5Transmitter> = None;
+static mut TRANSMITTER: Option<Rc5Sender> = None;
 // Pwm channel
-static mut PWM: Option<Pwm<TIM4, C4>> = None;
+static mut PWMCHANNEL: Option<PwmChannel<TIM4, C4>> = None;
 
+#[panic_handler]
+fn panic(info: &core::panic::PanicInfo) -> ! {
+    rprintln!("{}", info);
+    exit()
+}
+
+fn exit() -> ! {
+    loop {
+        asm::bkpt() // halt = exit probe-run
+    }
+}
 
 #[entry]
 fn main() -> ! {
+    rtt_init_print!();
+
     let mut core = cortex_m::Peripherals::take().unwrap();
     let device = pac::Peripherals::take().unwrap();
 
@@ -49,8 +58,8 @@ fn main() -> ! {
         .pclk1(24.mhz())
         .freeze(&mut flash.acr);
 
-    let mut timer = Timer::tim2(device.TIM2, &clocks, &mut rcc.apb1)
-        .start_count_down(TIMER_FREQ.hz());
+    let mut timer =
+        Timer::tim2(device.TIM2, &clocks, &mut rcc.apb1).start_count_down(TIMER_FREQ.hz());
 
     timer.listen(Event::Update);
 
@@ -59,17 +68,22 @@ fn main() -> ! {
     let mut gpiob = device.GPIOB.split(&mut rcc.apb2);
     let irled = gpiob.pb9.into_alternate_push_pull(&mut gpiob.crh);
 
-    let mut pwm = Timer::tim4(device.TIM4, &clocks, &mut rcc.apb1)
-        .pwm(irled, &mut afio.mapr, 38.khz());
+    let pwm = Timer::tim4(device.TIM4, &clocks, &mut rcc.apb1).pwm::<Tim4NoRemap, _, _, _>(
+        irled,
+        &mut afio.mapr,
+        38.khz(),
+    );
 
-    pwm.set_duty(pwm.get_max_duty() / 2);
-    pwm.disable();
+    let mut irpin = pwm.split();
+
+    irpin.set_duty(irpin.get_max_duty() / 2);
+    irpin.disable();
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
         TIMER.replace(timer);
-        TRANSMITTER.replace(Rc5Transmitter::new(TIMER_FREQ));
-        PWM.replace(pwm);
+        TRANSMITTER.replace(Rc5Sender::new(TIMER_FREQ));
+        PWMCHANNEL.replace(irpin);
     }
 
     core.NVIC.enable(pac::Interrupt::TIM2);
@@ -89,11 +103,10 @@ fn TIM2() {
 
     // Get handles to the transmitter and the pwm
     let transmitter = unsafe { TRANSMITTER.as_mut().unwrap() };
-    let pwm = unsafe { PWM.as_mut().unwrap() };
+    let channel = unsafe { PWMCHANNEL.as_mut().unwrap() };
 
     if *COUNT % TIMER_FREQ == 0 {
-
-        let button = StandardButton::Next;
+        let button = Button::Next;
 
         // The encoded result
         let cmd = Rc5CdPlayer::encode(button).unwrap();
@@ -104,7 +117,7 @@ fn TIM2() {
         transmitter.load(cmd);
     }
 
-    transmitter.pwmstep(*COUNT, pwm);
+    transmitter.step_pwm(*COUNT, channel);
 
     *COUNT = COUNT.wrapping_add(1);
 }

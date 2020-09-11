@@ -1,41 +1,41 @@
-use crate::remotes::{
-    nec::{SamsungTv, SpecialForMp3},
-    rc5::Rc5CdPlayer,
-    sbp::SamsungBluRayPlayer,
-    DeviceType, RemoteControl, StandardButton,
+use crate::{
+    remotecontrol::{Button, DeviceType, RemoteControl},
+    remotes::{
+        nec::{SamsungTv, SpecialForMp3},
+        rc5::Rc5CdPlayer,
+        sbp::SamsungBluRayPlayer,
+    }
 };
-use crate::ProtocolId;
 
 pub fn remotes() -> Vec<RemoteControlData> {
     // Pretty much every remote ever manufactured :-)
     vec![
-        RemoteControlData::construct::<Rc5CdPlayer>(),
-        RemoteControlData::construct::<SamsungTv>(),
-        RemoteControlData::construct::<SpecialForMp3>(),
-        RemoteControlData::construct::<SamsungBluRayPlayer>(),
+        RemoteControlData::new::<Rc5CdPlayer>(),
+        RemoteControlData::new::<SamsungTv>(),
+        RemoteControlData::new::<SpecialForMp3>(),
+        RemoteControlData::new::<SamsungBluRayPlayer>(),
     ]
 }
 
 #[derive(Debug)]
 pub struct RemoteControlData {
     pub model: &'static str,
-    pub addr: u16,
-    pub protocol: ProtocolId,
+    pub addr: u32,
+    //pub protocol: ProtocolId,
     pub dtype: DeviceType,
-    pub mapping: &'static [(u8, StandardButton)],
+    pub mapping: &'static [(u8, Button)],
 }
 
 impl RemoteControlData {
-    pub fn construct<REMOTE>() -> RemoteControlData
+    pub fn new<R>() -> RemoteControlData
     where
-        REMOTE: RemoteControl,
+        R: RemoteControl,
     {
         RemoteControlData {
-            addr: REMOTE::ADDRESS,
-            model: REMOTE::MODEL,
-            dtype: REMOTE::DEVICE,
-            protocol: REMOTE::PROTOCOL_ID,
-            mapping: REMOTE::MAPPING,
+            addr: R::ADDRESS,
+            model: R::MODEL,
+            dtype: R::DEVTYPE,
+            mapping: R::BUTTONS,
         }
     }
 }

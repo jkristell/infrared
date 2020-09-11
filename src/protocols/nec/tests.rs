@@ -1,33 +1,49 @@
-use crate::{
-    nec::{NecCommand, NecVariant, Nec, Nec16Variant, NecStandard, SamsungVariant},
-    ReceiverState, ReceiverStateMachine,
-};
+use crate::{protocols::nec::{Nec, Nec16Variant, NecCommand, NecStandard, NecVariant, SamsungVariant}, recv::EventReceiver, BufferedReceiver};
 
 #[test]
 fn standard_nec() {
+    use std::vec::Vec;
+
     let dists = [
+        0, 363, 177, 24, 21, 24, 21, 24, 21, 24, 21, 24, 21, 24, 20, 24, 21, 24, 21, 24, 66, 24,
+        66, 24, 65, 25, 65, 24, 66, 24, 66, 24, 65, 25, 65, 24, 21, 24, 21, 24, 66, 24, 65, 24, 21,
+        24, 21, 24, 21, 24, 21, 24, 65, 25, 65, 24, 21, 24, 21, 24, 66, 24, 65, 25, 65, 24, 66, 24,
+
         0, 363, 177, 24, 21, 24, 21, 24, 21, 24, 21, 24, 21, 24, 20, 24, 21, 24, 21, 24, 66, 24,
         66, 24, 65, 25, 65, 24, 66, 24, 66, 24, 65, 25, 65, 24, 21, 24, 21, 24, 66, 24, 65, 24, 21,
         24, 21, 24, 21, 24, 21, 24, 65, 25, 65, 24, 21, 24, 21, 24, 66, 24, 65, 25, 65, 24, 66, 24,
     ];
 
-    let mut recv = Nec::new(40_000);
+    let mut recv: EventReceiver<Nec> = EventReceiver::new(40_000);
+
     let mut edge = false;
     let mut tot = 0;
-    let mut state = ReceiverState::Idle;
+    //let mut state = State::Idle;
+
+    {
+        let brecv: BufferedReceiver<Nec> = BufferedReceiver::new(&dists, 40_000);
+        let cmds = brecv.collect::<Vec<_>>();
+
+        assert_eq!(cmds.len(), 2);
+
+        for cmd in &cmds {
+            assert_eq!(cmd.addr, 0);
+            assert_eq!(cmd.cmd, 12);
+        }
+    }
+
 
     for dist in dists.iter() {
         edge = !edge;
         tot += *dist;
-        state = recv.event(edge, tot);
+        let cmd = recv.edge_event(edge, tot);
+
+        if let Ok(Some(cmd)) = cmd {
+            assert_eq!(cmd.addr, 0);
+            assert_eq!(cmd.cmd, 12);
+        }
     }
 
-    if let ReceiverState::Done(cmd) = state {
-        assert_eq!(cmd.addr, 0);
-        assert_eq!(cmd.cmd, 12);
-    } else {
-        assert!(false);
-    }
 }
 
 #[test]

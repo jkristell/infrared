@@ -1,10 +1,14 @@
 //! Rc5
 use crate::Command;
 
-mod receiver;
-mod transmitter;
+use core::convert::TryInto;
 pub use receiver::Rc5;
-pub use transmitter::Rc5Transmitter;
+pub use send::Rc5Sender;
+use crate::cmd::Protocol;
+
+pub mod receiver;
+mod send;
+mod tests;
 
 const ADDR_MASK: u16 = 0b_0000_0111_1100_0000;
 const CMD_MASK: u16 = 0b_0000_0000_0011_1111;
@@ -56,79 +60,23 @@ impl Rc5Command {
 }
 
 impl Command for Rc5Command {
-    fn construct(addr: u16, cmd: u8) -> Self {
-        Rc5Command::new(addr as u8, cmd, false)
+    fn construct(addr: u32, cmd: u32) -> Option<Rc5Command> {
+        let addr: u8 = addr.try_into().ok()?;
+        let cmd = cmd.try_into().ok()?;
+
+        Some(Rc5Command::new(addr, cmd, false))
     }
 
-    fn address(&self) -> u16 {
-        self.addr as u16
+    fn address(&self) -> u32 {
+        self.addr.into()
     }
 
-    fn command(&self) -> u8 {
-        self.cmd
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::receiver::*;
-    use crate::transmitter::*;
-    use crate::protocols::rc5::{Rc5Command, Rc5Transmitter};
-    use crate::rc5::Rc5;
-
-    #[test]
-    fn rc5_command() {
-        let cmd = Rc5Command::new(20, 15, false);
-        assert_eq!(cmd, Rc5Command::from_bits(cmd.to_bits()))
+    fn data(&self) -> u32 {
+        self.cmd.into()
     }
 
-    #[test]
-    fn command() {
-        let dists = [
-            0, 37, 34, 72, 72, 73, 70, 72, 36, 37, 34, 36, 36, 36, 71, 73, 35, 37, 70, 37,
-        ];
-
-        let mut recv = Rc5::new(40_000);
-        let mut edge = false;
-        let mut tot = 0;
-        let mut state = ReceiverState::Idle;
-
-        for dist in dists.iter() {
-            edge = !edge;
-            tot += *dist;
-            state = recv.event(edge, tot);
-        }
-
-        if let ReceiverState::Done(cmd) = state {
-            assert_eq!(cmd.addr, 20);
-            assert_eq!(cmd.cmd, 9);
-        } else {
-            assert!(false);
-        }
-    }
-
-    #[test]
-    fn rc5_transmit() {
-        let mut tx = Rc5Transmitter::new(40_000);
-
-        tx.load(Rc5Command::new(20, 9, false));
-
-        println!("bits: {:X?}", tx.bits);
-
-        let mut last_enable = false;
-        let mut last_ts = 0;
-
-        for ts in 0..2000 {
-            let state = tx.step(ts);
-
-            if let TransmitterState::Transmit(v) = state {
-                if v != last_enable {
-                    last_enable = v;
-                    let delta = ts - last_ts;
-                    println!("state: {}: {:?}", delta, state);
-                    last_ts = ts;
-                }
-            }
-        }
+    fn protocol(&self) -> Protocol {
+        Protocol::Rc5
     }
 }
+
