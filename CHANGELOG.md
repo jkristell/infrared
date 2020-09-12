@@ -3,6 +3,7 @@
  - Lots of breaking API changes and internal cleanups
  - New Receiver types
  - Bugfixes for Rc5 and Rc6 receivers. Should work much better now.
+ - Added Usb media keyboard example.
 
 ## [0.6.0] - 2019-12-06
  - Split decode state machine and hal
