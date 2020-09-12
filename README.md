@@ -2,7 +2,14 @@
 [![docs.rs](https://docs.rs/infrared/badge.svg)](https://docs.rs/infrared)
 
 # Infrared
-A library for using infrared remote controls with Rust.
+
+Rust library for using Infrared hardware decoders (For example a Vishay TSOP* decoder),
+enabling remote control support for embedded project.
+
+This library aims for to be useful with the any MCU hal that implements the embedded-hal traits,
+and at the same time provide functionality for using it with more efficient implementation
+such as input capture, and be useful in host applications (such as Blipper).
+
 
 ### Supported protocols
  - The NEC Protocol and the Samsung variant of it
@@ -26,14 +33,14 @@ A library for using infrared remote controls with Rust.
  - Rc5 tested with a Marantz CD player remote
 
 
-![Boards](https://jott.se/wp-content/uploads/2019/09/txrx_setup.jpg)
+![Boards](https://jott.se/txrx_setup.jpg)
 
 ## References
 
  * https://www.sbprojects.net/knowledge/ir/nec.php
  * https://www.vishay.com/docs/82491/tsop382.pdf
 
-![Remote](https://jott.se/wp-content/uploads/2019/09/remote_small.jpg)
+![Remote](https://jott.se/remote_small.jpg)
     
 ## License
 

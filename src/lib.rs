@@ -1,6 +1,7 @@
 //! # Infrared
 //!
-//! Rust library enabling remote control support for embedded project.
+//! Rust library for using Infrared hardware decoders (For example a Vishay TSOP* decoder),
+//! enabling remote control support for embedded project.
 //!
 //! This library aims for to be useful with the any MCU hal that implements the embedded-hal traits,
 //! and at the same time provide functionality for using it with more efficient implementation
@@ -27,6 +28,7 @@
 //! Right now, this is the easiest way to setup Infrared to work with any embedded-hal based board.
 //! 1. Setup a CountDown-timer at a frequency of something like 20 kHz. How to setup the timer
 //! and enable interrupts is HAL-specific but most HALs have examples showing you how to do it.
+//!
 //! 2. Create a `hal::PeriodicReceiver` with the desired Decoder state machine.
 //!
 //! Example:
