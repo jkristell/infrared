@@ -106,7 +106,6 @@ impl<'a, SM: ReceiverSM> Iterator for BufferedReceiver<'a, SM> {
 
     /// Get the next Command
     fn next(&mut self) -> Option<Self::Item> {
-
         loop {
             if self.i == self.buf.len() {
                 break None;
@@ -119,7 +118,9 @@ impl<'a, SM: ReceiverSM> Iterator for BufferedReceiver<'a, SM> {
             let state: State = self.sm.event(pos_edge, dt_us).into();
 
             match state {
-                State::Idle | State::Receiving => {continue;}
+                State::Idle | State::Receiving => {
+                    continue;
+                }
                 State::Done => {
                     let cmd = self.sm.command();
                     self.sm.reset();

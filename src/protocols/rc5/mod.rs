@@ -1,10 +1,10 @@
 //! Rc5
 use crate::Command;
 
+use crate::cmd::Protocol;
 use core::convert::TryInto;
 pub use receiver::Rc5;
 pub use send::Rc5Sender;
-use crate::cmd::Protocol;
 
 pub mod receiver;
 mod send;
@@ -79,4 +79,3 @@ impl Command for Rc5Command {
         Protocol::Rc5
     }
 }
-

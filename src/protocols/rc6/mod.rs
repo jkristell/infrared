@@ -4,9 +4,9 @@ use core::convert::TryInto;
 use core::ops::Range;
 
 use crate::{
+    cmd::Protocol,
     recv::{Error, ReceiverSM, State},
     Command,
-    cmd::Protocol,
 };
 
 #[derive(Debug)]
@@ -48,7 +48,6 @@ impl Command for Rc6Cmd {
     fn protocol(&self) -> Protocol {
         Protocol::Rc6
     }
-
 }
 
 #[derive(Default)]
@@ -204,11 +203,9 @@ mod tests {
     fn basic() {
         let dists = [
             0, 108, 34, 19, 34, 19, 16, 20, 16, 19, 34, 36, 16, 37, 34, 20, 16, 19, 16, 37, 17, 19,
-            34, 19, 17, 19, 16, 19, 17, 19, 16, 20, 16, 19, 16, 37, 34, 20,
-
-            0, 108, 34, 19, 34, 19, 16, 20, 16, 19, 34, 36, 16, 37, 34, 20, 16, 19, 16, 37, 17, 19,
-            34, 19, 17, 19, 16, 19, 17, 19, 16, 20, 16, 19, 16, 37, 34, 20,
-
+            34, 19, 17, 19, 16, 19, 17, 19, 16, 20, 16, 19, 16, 37, 34, 20, 0, 108, 34, 19, 34, 19,
+            16, 20, 16, 19, 34, 36, 16, 37, 34, 20, 16, 19, 16, 37, 17, 19, 34, 19, 17, 19, 16, 19,
+            17, 19, 16, 20, 16, 19, 16, 37, 34, 20,
         ];
 
         let mut recv = EventReceiver::<Rc6>::new(40_000);
@@ -225,12 +222,8 @@ mod tests {
 
             println!(
                 "{} ({}): {:?} -> {:?}",
-                edge as u32,
-                dist,
-                s0,
-                recv.sm.state
+                edge as u32, dist, s0, recv.sm.state
             );
-
 
             if let Ok(Some(cmd)) = cmd {
                 println!("cmd: {:?}", cmd);

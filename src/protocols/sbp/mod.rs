@@ -10,10 +10,10 @@
 use core::convert::TryInto;
 
 use crate::{
+    cmd::Protocol,
     protocols::utils::PulseWidthRange,
     recv::{Error, ReceiverSM, State},
     Command,
-    cmd::Protocol,
 };
 
 #[derive(Debug)]

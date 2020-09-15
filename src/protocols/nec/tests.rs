@@ -1,4 +1,8 @@
-use crate::{protocols::nec::{Nec, Nec16Variant, NecCommand, NecStandard, NecVariant, SamsungVariant}, recv::EventReceiver, BufferedReceiver};
+use crate::{
+    protocols::nec::{Nec, Nec16, NecCommand, NecSamsung, NecStandard, NecVariant},
+    recv::EventReceiver,
+    BufferedReceiver,
+};
 
 #[test]
 fn standard_nec() {
@@ -8,7 +12,6 @@ fn standard_nec() {
         0, 363, 177, 24, 21, 24, 21, 24, 21, 24, 21, 24, 21, 24, 20, 24, 21, 24, 21, 24, 66, 24,
         66, 24, 65, 25, 65, 24, 66, 24, 66, 24, 65, 25, 65, 24, 21, 24, 21, 24, 66, 24, 65, 24, 21,
         24, 21, 24, 21, 24, 21, 24, 65, 25, 65, 24, 21, 24, 21, 24, 66, 24, 65, 25, 65, 24, 66, 24,
-
         0, 363, 177, 24, 21, 24, 21, 24, 21, 24, 21, 24, 21, 24, 20, 24, 21, 24, 21, 24, 66, 24,
         66, 24, 65, 25, 65, 24, 66, 24, 66, 24, 65, 25, 65, 24, 21, 24, 21, 24, 66, 24, 65, 24, 21,
         24, 21, 24, 21, 24, 21, 24, 65, 25, 65, 24, 21, 24, 21, 24, 66, 24, 65, 25, 65, 24, 66, 24,
@@ -32,7 +35,6 @@ fn standard_nec() {
         }
     }
 
-
     for dist in dists.iter() {
         edge = !edge;
         tot += *dist;
@@ -43,49 +45,48 @@ fn standard_nec() {
             assert_eq!(cmd.cmd, 12);
         }
     }
-
 }
 
 #[test]
 fn cmd_standard() {
     let cmd = NecCommand::new(7, 44);
-    let bits = NecStandard::encode_command(cmd);
+    let bits = NecStandard::cmd_to_bits(cmd);
 
-    assert!(NecStandard::verify_command(bits));
+    assert!(NecStandard::cmd_is_valid(bits));
 
     assert_eq!(bits, 0xD32CF807);
     assert_eq!((bits >> 24) & 0xFF, (!(bits >> 16) & 0xFF));
     assert_eq!((bits >> 8) & 0xFF, (!bits & 0xFF));
 
-    let cmd2 = NecStandard::decode_command(bits);
+    let cmd2 = NecStandard::cmd_from_bits(bits);
     assert_eq!(cmd, cmd2);
 }
 
 #[test]
 fn cmd_samsumg() {
     let cmd = NecCommand::new(7, 44);
-    let bits = SamsungVariant::encode_command(cmd);
+    let bits = NecSamsung::cmd_to_bits(cmd);
 
-    assert!(SamsungVariant::verify_command(bits));
+    assert!(NecSamsung::cmd_is_valid(bits));
 
     assert_eq!(bits, 0xD32C0707);
     assert_eq!((bits >> 24) & 0xFF, (!(bits >> 16) & 0xFF));
     assert_eq!((bits >> 8) & 0xFF, (bits & 0xFF));
 
-    let cmd2 = SamsungVariant::decode_command(bits);
+    let cmd2 = NecSamsung::cmd_from_bits(bits);
     assert_eq!(cmd, cmd2);
 }
 
 #[test]
 fn cmd_nec16() {
     let cmd = NecCommand::new(28114, 220);
-    let bits = Nec16Variant::encode_command(cmd);
+    let bits = Nec16::cmd_to_bits(cmd);
 
-    assert!(Nec16Variant::verify_command(bits));
+    assert!(Nec16::cmd_is_valid(bits));
 
     assert_eq!(bits, 0x23DC6DD2);
     assert_eq!((bits >> 24) & 0xFF, (!(bits >> 16) & 0xFF));
 
-    let cmd2 = Nec16Variant::decode_command(bits);
+    let cmd2 = Nec16::cmd_from_bits(bits);
     assert_eq!(cmd, cmd2);
 }

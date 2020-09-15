@@ -45,9 +45,9 @@ impl<N: NecVariant> NecTypeSender<N> {
     }
 }
 
-impl<N: NecVariant> Sender<NecCommand> for NecTypeSender<N> {
-    fn load(&mut self, cmd: NecCommand) {
-        self.cmd = N::encode_command(cmd);
+impl<N: NecVariant> Sender<NecCommand<N>> for NecTypeSender<N> {
+    fn load(&mut self, cmd: NecCommand<N>) {
+        self.cmd = N::cmd_to_bits(cmd);
         self.state = InternalState::Start;
     }
 
@@ -120,7 +120,7 @@ impl<N: NecVariant> Sender<NecCommand> for NecTypeSender<N> {
 }
 
 #[cfg(feature = "embedded-hal")]
-impl<N: NecVariant> crate::sender::PwmPinSender<NecCommand> for NecTypeSender<N> {}
+impl<N: NecVariant> crate::sender::PwmPinSender<NecCommand<N>> for NecTypeSender<N> {}
 
 impl NSamples {
     pub const fn new(period: u32, pulsedistance: &NecTiming) -> Self {

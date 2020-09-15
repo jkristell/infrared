@@ -55,15 +55,16 @@ impl<N: NecVariant> Default for Nec<N> {
     }
 }
 
-impl<N: NecVariant> Nec<N> {
+/// Nec decoder statemachine
+impl<VARIANT: NecVariant> Nec<VARIANT> {
     pub fn new() -> Self {
-        let timing = N::TIMING;
+        let timing = VARIANT::TIMING;
         Self::with_timing(timing)
     }
 
     fn with_timing(timing: &NecTiming) -> Self {
-        let nsamples = nsamples_from_timing(timing);
-        let ranges = PulseWidthRange::new(&nsamples);
+        let tols = tolerances(timing);
+        let ranges = PulseWidthRange::new(&tols);
 
         Self {
             state: InternalState::Init,
@@ -77,7 +78,7 @@ impl<N: NecVariant> Nec<N> {
 }
 
 impl<N: NecVariant> ReceiverSM for Nec<N> {
-    type Cmd = NecCommand;
+    type Cmd = NecCommand<N>;
     type InternalState = InternalState;
 
     fn create() -> Self {
@@ -118,7 +119,7 @@ impl<N: NecVariant> ReceiverSM for Nec<N> {
     }
 
     fn command(&self) -> Option<Self::Cmd> {
-        Some(N::decode_command(self.bitbuf))
+        Some(N::cmd_from_bits(self.bitbuf))
     }
 
     fn reset(&mut self) {
@@ -160,7 +161,7 @@ impl From<usize> for PulseWidth {
     }
 }
 
-const fn nsamples_from_timing(t: &NecTiming) -> [(u32, u32); 4] {
+const fn tolerances(t: &NecTiming) -> [(u32, u32); 4] {
     [
         ((t.hh + t.hl), 5),
         ((t.hh + t.rl), 5),

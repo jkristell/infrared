@@ -94,12 +94,12 @@ extern crate std;
 pub mod protocols;
 
 mod recv;
-pub use recv::{BufferedReceiver, PeriodicReceiver, EventReceiver, ReceiverSM};
+pub use recv::{BufferedReceiver, EventReceiver, PeriodicReceiver, ReceiverSM};
 
 pub mod sender;
 
 mod remotecontrol;
-pub use remotecontrol::{Button, RemoteControl, DeviceType};
+pub use remotecontrol::{Button, DeviceType, RemoteControl};
 
 mod cmd;
 #[doc(inline)]
