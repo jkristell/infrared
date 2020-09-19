@@ -47,7 +47,7 @@ impl<N: NecVariant> NecTypeSender<N> {
 
 impl<N: NecVariant> Sender<NecCommand<N>> for NecTypeSender<N> {
     fn load(&mut self, cmd: NecCommand<N>) {
-        self.cmd = N::cmd_to_bits(cmd);
+        self.cmd = N::cmd_to_bits(&cmd);
         self.state = InternalState::Start;
     }
 

@@ -25,13 +25,13 @@ pub struct Nec16;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 /// Nec Command
-pub struct NecCommand<VARIANT: ?Sized = NecStandard> {
+pub struct NecCommand<VARIANT: NecVariant + ?Sized = NecStandard> {
     pub addr: u16,
     pub cmd: u8,
     var: PhantomData<VARIANT>, //pub repeat: bool,
 }
 
-impl<V> NecCommand<V> {
+impl<V: NecVariant> NecCommand<V> {
     pub fn new(addr: u16, cmd: u8) -> Self {
         NecCommand {
             addr,
@@ -62,7 +62,7 @@ impl<VARIANT: NecVariant> Command for NecCommand<VARIANT> {
 pub trait NecVariant {
     const TIMING: &'static NecTiming;
 
-    fn cmd_to_bits(cmd: NecCommand<Self>) -> u32;
+    fn cmd_to_bits(cmd: &NecCommand<Self>) -> u32;
     fn cmd_from_bits(bits: u32) -> NecCommand<Self>;
     fn cmd_is_valid(bits: u32) -> bool;
 }
@@ -71,7 +71,7 @@ impl NecVariant for NecStandard {
     const TIMING: &'static NecTiming = &STANDARD_TIMING;
 
     // Encode to bit
-    fn cmd_to_bits(cmd: NecCommand) -> u32 {
+    fn cmd_to_bits(cmd: &NecCommand) -> u32 {
         let addr = cmd.addr;
         let cmd = cmd.cmd;
 
@@ -98,7 +98,7 @@ impl NecVariant for NecStandard {
 impl NecVariant for Nec16 {
     const TIMING: &'static NecTiming = &STANDARD_TIMING;
 
-    fn cmd_to_bits(cmd: NecCommand<Self>) -> u32 {
+    fn cmd_to_bits(cmd: &NecCommand<Self>) -> u32 {
         let addr = u32::from(cmd.addr);
         let cmd = u32::from(cmd.cmd) << 16 | u32::from(!cmd.cmd) << 24;
         addr | cmd
@@ -129,7 +129,7 @@ impl NecVariant for NecSamsung {
         ol: 1690,
     };
 
-    fn cmd_to_bits(cmd: NecCommand<Self>) -> u32 {
+    fn cmd_to_bits(cmd: &NecCommand<Self>) -> u32 {
         let addr = u32::from(cmd.addr) | u32::from(cmd.addr) << 8;
         let cmd = u32::from(cmd.cmd) << 16 | u32::from(!cmd.cmd) << 24;
         addr | cmd
