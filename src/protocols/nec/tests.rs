@@ -50,7 +50,7 @@ fn standard_nec() {
 #[test]
 fn cmd_standard() {
     let cmd = NecCommand::new(7, 44);
-    let bits = NecStandard::cmd_to_bits(cmd);
+    let bits = NecStandard::cmd_to_bits(&cmd);
 
     assert!(NecStandard::cmd_is_valid(bits));
 
@@ -65,7 +65,7 @@ fn cmd_standard() {
 #[test]
 fn cmd_samsumg() {
     let cmd = NecCommand::new(7, 44);
-    let bits = NecSamsung::cmd_to_bits(cmd);
+    let bits = NecSamsung::cmd_to_bits(&cmd);
 
     assert!(NecSamsung::cmd_is_valid(bits));
 
@@ -80,7 +80,7 @@ fn cmd_samsumg() {
 #[test]
 fn cmd_nec16() {
     let cmd = NecCommand::new(28114, 220);
-    let bits = Nec16::cmd_to_bits(cmd);
+    let bits = Nec16::cmd_to_bits(&cmd);
 
     assert!(Nec16::cmd_is_valid(bits));
 
