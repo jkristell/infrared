@@ -1,6 +1,6 @@
 use crate::{
+    protocols::nec::NecCommand,
     remotecontrol::{Button, DeviceType, RemoteControl},
-    protocols::nec::NecCommand
 };
 use Button::*;
 

@@ -4,7 +4,7 @@ use crate::{
         nec::{SamsungTv, SpecialForMp3},
         rc5::Rc5CdPlayer,
         sbp::SamsungBluRayPlayer,
-    }
+    },
 };
 
 pub fn remotes() -> Vec<RemoteControlData> {

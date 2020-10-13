@@ -11,7 +11,7 @@ pub mod sbp;
 
 #[cfg(feature = "nec")]
 #[doc(inline)]
-pub use nec::{Nec, Nec16, NecSamsung};
+pub use nec::Nec;
 #[cfg(feature = "rc5")]
 #[doc(inline)]
 pub use rc5::Rc5;

@@ -1,46 +1,47 @@
 //! Nec
 
+use core::{convert::TryInto, marker::PhantomData};
+
+use crate::{cmd::Protocol, Command};
+
 pub mod receiver;
 pub mod send;
-
 #[cfg(test)]
 mod tests;
 
-use crate::Command;
-use core::convert::TryInto;
+#[doc(inline)]
 pub use receiver::Nec;
 pub use send::NecTypeSender;
-use crate::cmd::Protocol;
 
+/// Standard Nec protocol
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct NecStandard;
-pub struct SamsungVariant;
-pub struct Nec16Variant;
-
-/// Nec Samsung variant
-pub type NecSamsung = Nec<SamsungVariant>;
+/// Nec protocol with Samsung timings
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct NecSamsung;
 /// Nec with 16 bit address, 8 bit command
-pub type Nec16 = Nec<Nec16Variant>;
-
-/// Nec - Standard transmitter
-pub type NecTransmitter = NecTypeSender<NecStandard>;
-/// Nec - Samsung variant transmitter
-pub type NecSamsungTransmitter = NecTypeSender<SamsungVariant>;
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct Nec16;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 /// Nec Command
-pub struct NecCommand {
+pub struct NecCommand<VARIANT: NecVariant + ?Sized = NecStandard> {
     pub addr: u16,
     pub cmd: u8,
-    //pub repeat: bool,
+    var: PhantomData<VARIANT>, //pub repeat: bool,
 }
 
-impl NecCommand {
+impl<V: NecVariant> NecCommand<V> {
     pub fn new(addr: u16, cmd: u8) -> Self {
-        NecCommand { addr, cmd }
+        NecCommand {
+            addr,
+            cmd,
+            var: PhantomData,
+        }
     }
 }
 
-impl Command for NecCommand {
+impl<VARIANT: NecVariant> Command for NecCommand<VARIANT> {
     fn construct(addr: u32, cmd: u32) -> Option<Self> {
         Some(NecCommand::new(addr.try_into().ok()?, cmd.try_into().ok()?))
     }
@@ -61,52 +62,64 @@ impl Command for NecCommand {
 pub trait NecVariant {
     const TIMING: &'static NecTiming;
 
-    fn encode_command(cmd: NecCommand) -> u32;
-    fn decode_command(bits: u32) -> NecCommand;
-    fn verify_command(bits: u32) -> bool;
+    fn cmd_to_bits(cmd: &NecCommand<Self>) -> u32;
+    fn cmd_from_bits(bits: u32) -> NecCommand<Self>;
+    fn cmd_is_valid(bits: u32) -> bool;
 }
 
 impl NecVariant for NecStandard {
-    const TIMING: &'static NecTiming = &STANDARD_DIST;
+    const TIMING: &'static NecTiming = &STANDARD_TIMING;
 
-    fn encode_command(NecCommand { addr, cmd }: NecCommand) -> u32 {
+    // Encode to bit
+    fn cmd_to_bits(cmd: &NecCommand) -> u32 {
+        let addr = cmd.addr;
+        let cmd = cmd.cmd;
+
         let addr = u32::from(addr) | (u32::from(!addr) & 0xFF) << 8;
         let cmd = u32::from(cmd) << 16 | u32::from(!cmd) << 24;
         addr | cmd
     }
 
-    fn decode_command(bits: u32) -> NecCommand {
+    fn cmd_from_bits(bits: u32) -> NecCommand<NecStandard> {
         let addr = ((bits) & 0xFF) as u16;
         let cmd = ((bits >> 16) & 0xFF) as u8;
-        NecCommand { addr, cmd }
+        NecCommand {
+            addr,
+            cmd,
+            var: PhantomData,
+        }
     }
 
-    fn verify_command(bits: u32) -> bool {
+    fn cmd_is_valid(bits: u32) -> bool {
         ((bits >> 24) ^ (bits >> 16)) & 0xFF == 0xFF && ((bits >> 8) ^ bits) & 0xFF == 0xFF
     }
 }
 
-impl NecVariant for Nec16Variant {
-    const TIMING: &'static NecTiming = &STANDARD_DIST;
+impl NecVariant for Nec16 {
+    const TIMING: &'static NecTiming = &STANDARD_TIMING;
 
-    fn encode_command(NecCommand { addr, cmd }: NecCommand) -> u32 {
-        let addr = u32::from(addr);
-        let cmd = u32::from(cmd) << 16 | u32::from(!cmd) << 24;
+    fn cmd_to_bits(cmd: &NecCommand<Self>) -> u32 {
+        let addr = u32::from(cmd.addr);
+        let cmd = u32::from(cmd.cmd) << 16 | u32::from(!cmd.cmd) << 24;
         addr | cmd
     }
 
-    fn decode_command(bits: u32) -> NecCommand {
+    fn cmd_from_bits(bits: u32) -> NecCommand<Nec16> {
         let addr = ((bits) & 0xFFFF) as u16;
         let cmd = ((bits >> 16) & 0xFF) as u8;
-        NecCommand { addr, cmd }
+        NecCommand {
+            addr,
+            cmd,
+            var: PhantomData,
+        }
     }
 
-    fn verify_command(bits: u32) -> bool {
+    fn cmd_is_valid(bits: u32) -> bool {
         ((bits >> 24) ^ (bits >> 16)) & 0xFF == 0xFF
     }
 }
 
-impl NecVariant for SamsungVariant {
+impl NecVariant for NecSamsung {
     const TIMING: &'static NecTiming = &NecTiming {
         hh: 4500,
         hl: 4500,
@@ -116,20 +129,23 @@ impl NecVariant for SamsungVariant {
         ol: 1690,
     };
 
-    fn encode_command(NecCommand { addr, cmd }: NecCommand) -> u32 {
-        // Address is inverted and command is repeated
-        let addr = u32::from(addr) | u32::from(addr) << 8;
-        let cmd = u32::from(cmd) << 16 | u32::from(!cmd) << 24;
+    fn cmd_to_bits(cmd: &NecCommand<Self>) -> u32 {
+        let addr = u32::from(cmd.addr) | u32::from(cmd.addr) << 8;
+        let cmd = u32::from(cmd.cmd) << 16 | u32::from(!cmd.cmd) << 24;
         addr | cmd
     }
 
-    fn decode_command(bits: u32) -> NecCommand {
+    fn cmd_from_bits(bits: u32) -> NecCommand<NecSamsung> {
         let addr = ((bits) & 0xFF) as u16;
         let cmd = ((bits >> 16) & 0xFF) as u8;
-        NecCommand { addr, cmd }
+        NecCommand {
+            addr,
+            cmd,
+            var: PhantomData,
+        }
     }
 
-    fn verify_command(bits: u32) -> bool {
+    fn cmd_is_valid(bits: u32) -> bool {
         ((bits >> 24) ^ (bits >> 16)) & 0xFF == 0xFF && ((bits >> 8) ^ bits) & 0xFF == 0
     }
 }
@@ -150,7 +166,7 @@ pub struct NecTiming {
     ol: u32,
 }
 
-const STANDARD_DIST: NecTiming = NecTiming {
+const STANDARD_TIMING: NecTiming = NecTiming {
     hh: 9000,
     hl: 4500,
     rl: 2250,
