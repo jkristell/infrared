@@ -1,4 +1,4 @@
-use crate::Command;
+use crate::{Command, Protocol};
 
 #[derive(Debug)]
 /// Device type that the remote control controls
@@ -16,6 +16,8 @@ pub trait RemoteControl {
     const MODEL: &'static str = "<NONAME>";
     /// Type of device that this remote controls
     const DEVTYPE: DeviceType = DeviceType::Generic;
+    /// Protocol
+    const PROTOCOL: Protocol = Protocol::Unknown;
     /// Device address
     const ADDRESS: u32;
     /// The type of command
@@ -25,7 +27,7 @@ pub trait RemoteControl {
     /// Try to map a command into an Button for this remote
     fn decode(cmd: Self::Cmd) -> Option<Button> {
         // Check address
-        if Self::ADDRESS != cmd.address().into() {
+        if Self::ADDRESS != cmd.address() {
             return None;
         }
         Self::BUTTONS

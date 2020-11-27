@@ -6,14 +6,14 @@ use crate::recv::{self, ReceiverSM};
 use crate::remotecontrol::{Button, RemoteControl};
 
 /// Event driven Hal receiver
-pub struct EventReceiver<SM, PIN> {
-    recv: recv::EventReceiver<SM>,
+pub struct EventReceiver<PROTOCOL, PIN> {
+    recv: recv::EventReceiver<PROTOCOL>,
     pub pin: PIN,
 }
 
-impl<PIN, PINERR, SM> EventReceiver<SM, PIN>
+impl<PIN, PINERR, PROTOCOL> EventReceiver<PROTOCOL, PIN>
 where
-    SM: ReceiverSM,
+    PROTOCOL: ReceiverSM,
     PIN: InputPin<Error = PINERR>,
 {
     /// Create a new EventReceiver
@@ -35,7 +35,7 @@ where
     ///
     /// Returns Ok(None) until a command is detected
     #[inline(always)]
-    pub fn edge_event(&mut self, dt: u32) -> Result<Option<SM::Cmd>, PINERR> {
+    pub fn edge_event(&mut self, dt: u32) -> Result<Option<PROTOCOL::Cmd>, PINERR> {
         let pinval = self.pin.is_low()?;
 
         match self.recv.edge_event(pinval, dt) {
@@ -48,18 +48,18 @@ where
 /// Periodic and polled Embedded hal Receiver
 ///
 /// The poll methods should be called periodically for this receiver to work
-pub struct PeriodicReceiver<SM, PIN> {
+pub struct PeriodicReceiver<PROTOCOL, PIN> {
     /// The receiver state machine
-    recv: recv::PeriodicReceiver<SM>,
+    recv: recv::PeriodicReceiver<PROTOCOL>,
     /// Input pin
     pin: PIN,
     /// Internal sample counter
     counter: u32,
 }
 
-impl<PIN, PINERR, SM> PeriodicReceiver<SM, PIN>
+impl<PIN, PINERR, PROTOCOL> PeriodicReceiver<PROTOCOL, PIN>
 where
-    SM: ReceiverSM,
+    PROTOCOL: ReceiverSM,
     PIN: InputPin<Error = PINERR>,
 {
     /// Create a new PeriodicReceiver
@@ -77,7 +77,7 @@ where
         self.pin
     }
 
-    pub fn poll(&mut self) -> Result<Option<SM::Cmd>, PINERR> {
+    pub fn poll(&mut self) -> Result<Option<PROTOCOL::Cmd>, PINERR> {
         let pinval = self.pin.is_low()?;
 
         self.counter = self.counter.wrapping_add(1);
@@ -89,7 +89,7 @@ where
     }
 
     #[cfg(feature = "remotes")]
-    pub fn poll_button<RC: RemoteControl<Cmd = SM::Cmd>>(
+    pub fn poll_button<RC: RemoteControl<Cmd = PROTOCOL::Cmd>>(
         &mut self,
     ) -> Result<Option<Button>, PINERR> {
         self.poll().map(|cmd| cmd.and_then(RC::decode))

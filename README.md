@@ -18,7 +18,7 @@ such as input capture, and be useful in host applications (such as Blipper).
  - "Samsung BluRay Player protocol". Please let know if you know what it really is called :)
 
 ### Examples
- - The ``examples/stm32f103-examples`` contains various examples for receiving and transmitting infrared with the
+ - The [infrared-examples](https://github.com/jkristell/infrared-examples) repo contains various examples for receiving and transmitting infrared with the
   blue pill board
  - [Blipper](https://github.com/jkristell/blipper) - An application for working
  with transmitters and receivers from a host computer

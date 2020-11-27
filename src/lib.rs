@@ -94,7 +94,9 @@ extern crate std;
 pub mod protocols;
 
 mod recv;
-pub use recv::{BufferedReceiver, EventReceiver, PeriodicReceiver, ReceiverSM};
+pub use recv::{EventReceiver, PeriodicReceiver, ReceiverSM};
+
+pub mod bufrecv;
 
 pub mod sender;
 
@@ -110,3 +112,6 @@ pub mod remotes;
 
 #[cfg(feature = "embedded-hal")]
 pub mod hal;
+
+/// Time base
+pub const TIMEBASE: u32 = 1_000_000;

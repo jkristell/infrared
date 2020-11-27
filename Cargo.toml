@@ -1,6 +1,6 @@
 [package]
 name = "infrared"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["Johan Kristell <johan@jott.se>"]
 edition = "2018"
 description = "Infrared remote control library"
@@ -20,4 +20,5 @@ remotes = []
 std = []
 
 [dependencies]
-embedded-hal = {version = "0.2.3", features = ["unproven"], optional = true}
+embedded-hal = {version = "0.2.4", features = ["unproven"], optional = true}
+nb = "1.0.0"
