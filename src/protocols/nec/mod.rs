@@ -5,13 +5,11 @@ use core::{convert::TryInto, marker::PhantomData};
 use crate::{cmd::Protocol, Command};
 
 pub mod receiver;
-pub mod send;
 #[cfg(test)]
 mod tests;
 
 #[doc(inline)]
 pub use receiver::Nec;
-pub use send::NecTypeSender;
 
 /// Standard Nec protocol
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -28,7 +26,7 @@ pub struct Nec16;
 pub struct NecCommand<VARIANT: NecVariant + ?Sized = NecStandard> {
     pub addr: u16,
     pub cmd: u8,
-    var: PhantomData<VARIANT>, //pub repeat: bool,
+    var: PhantomData<VARIANT>,
 }
 
 impl<V: NecVariant> NecCommand<V> {
@@ -56,6 +54,29 @@ impl<VARIANT: NecVariant> Command for NecCommand<VARIANT> {
 
     fn protocol(&self) -> Protocol {
         Protocol::Nec
+    }
+
+    fn pulses(&self, b: &mut [u16]) -> usize {
+        b[0] = 0;
+        b[1] = VARIANT::TIMING.hh as u16;
+        b[2] = VARIANT::TIMING.hl as u16;
+
+        let bits = VARIANT::cmd_to_bits(self);
+
+        let mut bi = 3;
+
+        for i in 0..32 {
+            let one = (bits >> i) & 1 != 0;
+            b[bi] = VARIANT::TIMING.dh as u16;
+            if one {
+                b[bi + 1] = VARIANT::TIMING.ol as u16;
+            } else {
+                b[bi + 1] = VARIANT::TIMING.zl as u16;
+            }
+            bi += 2;
+        }
+
+        bi
     }
 }
 

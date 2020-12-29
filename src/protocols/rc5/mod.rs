@@ -4,10 +4,9 @@ use crate::Command;
 use crate::cmd::Protocol;
 use core::convert::TryInto;
 pub use receiver::Rc5;
-pub use send::Rc5Sender;
 
 pub mod receiver;
-mod send;
+#[cfg(test)]
 mod tests;
 
 const ADDR_MASK: u16 = 0b_0000_0111_1100_0000;
@@ -77,5 +76,32 @@ impl Command for Rc5Command {
 
     fn protocol(&self) -> Protocol {
         Protocol::Rc5
+    }
+
+    fn pulses(&self, buf: &mut [u16]) -> usize {
+        // Command as bits
+        let bits = self.to_bits();
+
+        // First bit is always one
+        buf[0] = 0;
+        let mut prev = true;
+        let mut index = 1;
+
+        for b in 0..13 {
+            let cur = bits & (1 << (12 - b)) != 0;
+
+            if prev == cur {
+                buf[index] = 889;
+                buf[index + 1] = 889;
+                index += 2;
+            } else {
+                buf[index] = 889 * 2;
+                index += 1;
+            }
+
+            prev = cur;
+        }
+
+        index
     }
 }

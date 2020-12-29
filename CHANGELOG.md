@@ -1,5 +1,13 @@
 # Changelog
-## [0.7.0] - 2020-09-XX
+
+## [0.8.0] - 2020-12-29
+ - Added HalSender and removed the protocol specific senders
+ - Added Rc6 transmit support
+ - Updated Nec and Rc5 transit support
+ - moved examples to the infrared-examples repo
+ - Added more tests
+
+## [0.7.0] - 2020-09-12
  - Lots of breaking API changes and internal cleanups
  - New Receiver types
  - Bugfixes for Rc5 and Rc6 receivers. Should work much better now.

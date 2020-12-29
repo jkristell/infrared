@@ -68,6 +68,10 @@ impl Command for SbpCommand {
     fn protocol(&self) -> Protocol {
         Protocol::Sbp
     }
+
+    fn pulses(&self, _buf: &mut [u16]) -> usize {
+        unimplemented!()
+    }
 }
 
 #[derive(Debug, Copy, Clone)]

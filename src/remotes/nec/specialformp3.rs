@@ -1,6 +1,7 @@
 use crate::{
     protocols::nec::NecCommand,
     remotecontrol::{Button, DeviceType, RemoteControl},
+    Protocol,
 };
 use Button::*;
 
@@ -10,6 +11,7 @@ pub struct SpecialForMp3;
 impl RemoteControl for SpecialForMp3 {
     const MODEL: &'static str = "Special for Mp3";
     const DEVTYPE: DeviceType = DeviceType::Generic;
+    const PROTOCOL: Protocol = Protocol::Nec;
     const ADDRESS: u32 = 0;
     type Cmd = NecCommand;
     const BUTTONS: &'static [(u8, Button)] = &[

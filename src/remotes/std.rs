@@ -5,6 +5,7 @@ use crate::{
         rc5::Rc5CdPlayer,
         sbp::SamsungBluRayPlayer,
     },
+    Protocol,
 };
 
 pub fn remotes() -> Vec<RemoteControlData> {
@@ -21,7 +22,7 @@ pub fn remotes() -> Vec<RemoteControlData> {
 pub struct RemoteControlData {
     pub model: &'static str,
     pub addr: u32,
-    //pub protocol: ProtocolId,
+    pub protocol: Protocol,
     pub dtype: DeviceType,
     pub mapping: &'static [(u8, Button)],
 }
@@ -36,6 +37,7 @@ impl RemoteControlData {
             model: R::MODEL,
             dtype: R::DEVTYPE,
             mapping: R::BUTTONS,
+            protocol: R::PROTOCOL,
         }
     }
 }

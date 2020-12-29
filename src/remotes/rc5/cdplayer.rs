@@ -1,5 +1,6 @@
 use crate::protocols::rc5::Rc5Command;
 use crate::remotecontrol::{Button, DeviceType, RemoteControl};
+use crate::Protocol;
 use Button::*;
 
 pub struct Rc5CdPlayer;
@@ -7,6 +8,7 @@ pub struct Rc5CdPlayer;
 impl RemoteControl for Rc5CdPlayer {
     const MODEL: &'static str = "CD Player (Rc5)";
     const DEVTYPE: DeviceType = DeviceType::CDPlayer;
+    const PROTOCOL: Protocol = Protocol::Rc5;
     const ADDRESS: u32 = 20;
     type Cmd = Rc5Command;
     const BUTTONS: &'static [(u8, Button)] = &[
