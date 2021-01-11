@@ -21,9 +21,15 @@ pub struct NecSamsung;
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Nec16;
 
+/// Nec Apple
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct NecApple;
+
+
 #[derive(Debug, Copy, Clone, PartialEq)]
 /// Nec Command
 pub struct NecCommand<VARIANT: NecVariant + ?Sized = NecStandard> {
+    pub bitbuf: u32,
     pub addr: u16,
     pub cmd: u8,
     var: PhantomData<VARIANT>,
@@ -32,6 +38,7 @@ pub struct NecCommand<VARIANT: NecVariant + ?Sized = NecStandard> {
 impl<V: NecVariant> NecCommand<V> {
     pub fn new(addr: u16, cmd: u8) -> Self {
         NecCommand {
+            bitbuf: 0,
             addr,
             cmd,
             var: PhantomData,
@@ -105,6 +112,7 @@ impl NecVariant for NecStandard {
         let addr = ((bits) & 0xFF) as u16;
         let cmd = ((bits >> 16) & 0xFF) as u8;
         NecCommand {
+            bitbuf: bits,
             addr,
             cmd,
             var: PhantomData,
@@ -129,6 +137,7 @@ impl NecVariant for Nec16 {
         let addr = ((bits) & 0xFFFF) as u16;
         let cmd = ((bits >> 16) & 0xFF) as u8;
         NecCommand {
+            bitbuf: bits,
             addr,
             cmd,
             var: PhantomData,
@@ -160,6 +169,7 @@ impl NecVariant for NecSamsung {
         let addr = ((bits) & 0xFF) as u16;
         let cmd = ((bits >> 16) & 0xFF) as u8;
         NecCommand {
+            bitbuf: bits,
             addr,
             cmd,
             var: PhantomData,
@@ -168,6 +178,27 @@ impl NecVariant for NecSamsung {
 
     fn cmd_is_valid(bits: u32) -> bool {
         ((bits >> 24) ^ (bits >> 16)) & 0xFF == 0xFF && ((bits >> 8) ^ bits) & 0xFF == 0
+    }
+}
+
+impl NecVariant for NecApple {
+    const TIMING: &'static NecTiming = &STANDARD_TIMING;
+
+    fn cmd_to_bits(cmd: &NecCommand<Self>) -> u32 {
+        0
+    }
+
+    fn cmd_from_bits(bits: u32) -> NecCommand<Self> {
+        NecCommand {
+            bitbuf: bits,
+            addr: 0,
+            cmd: 0,
+            var: PhantomData
+        }
+    }
+
+    fn cmd_is_valid(bits: u32) -> bool {
+        true
     }
 }
 
