@@ -1,5 +1,6 @@
 use crate::{protocols::nec::{Nec, Nec16, NecCommand, NecSamsung, NecStandard, NecVariant}, bufrecv::BufferReceiver, Command};
 use crate::sender::PulseBuffer;
+use crate::protocols::nec::Apple;
 
 #[test]
 #[rustfmt::skip]
@@ -40,11 +41,12 @@ fn cmd_standard() {
     assert_eq!((bits >> 8) & 0xFF, (!bits & 0xFF));
 
     let cmd2 = NecStandard::cmd_from_bits(bits);
-    assert_eq!(cmd, cmd2);
+    assert_eq!(cmd.addr, cmd2.addr);
+    assert_eq!(cmd.cmd, cmd2.cmd);
 }
 
 #[test]
-fn cmd_samsumg() {
+fn cmd_samsung() {
     let cmd = NecCommand::new(7, 44);
     let bits = NecSamsung::cmd_to_bits(&cmd);
 
@@ -55,7 +57,8 @@ fn cmd_samsumg() {
     assert_eq!((bits >> 8) & 0xFF, (bits & 0xFF));
 
     let cmd2 = NecSamsung::cmd_from_bits(bits);
-    assert_eq!(cmd, cmd2);
+    assert_eq!(cmd.addr, cmd2.addr);
+    assert_eq!(cmd.cmd, cmd2.cmd);
 }
 
 #[test]
@@ -69,8 +72,46 @@ fn cmd_nec16() {
     assert_eq!((bits >> 24) & 0xFF, (!(bits >> 16) & 0xFF));
 
     let cmd2 = Nec16::cmd_from_bits(bits);
-    assert_eq!(cmd, cmd2);
+    assert_eq!(cmd.addr, cmd2.addr);
+    assert_eq!(cmd.cmd, cmd2.cmd);
 }
+
+#[test]
+fn cmd_apple2009() {
+
+    let tests: &[(u32, u16)] = &[
+        (0x9B0987EE, 0x04),     // Cmd: 4
+        (0x9B0A87EE, 0x05),     // 5
+        (0x9B0687EE, 0x03),     // 3
+        (0x9B0C87EE, 0x06),     // 6
+        (0x9B5C87EE, 0x2e),     // 0x2e select button prefix
+        (0x9B0587EE, 0x02),     // play pause?
+        (0x9B0387EE, 0x01),     // ??
+        (0x9B5F87EE, 0x2F),     // Play/Pause Prefix
+        (0x9B0587EE, 0x02),     // Play/Pause
+    ];
+
+    for (bits, cmdnum) in tests {
+
+        let cmd = Apple::cmd_from_bits(*bits);
+        let codepage = cmd.cmd >> 7;
+        let command = cmd.cmd & 0x7F;
+
+        assert_eq!(cmd.addr, 0x43f);
+
+        assert_eq!(codepage, 0xE);
+        assert_eq!(command, *cmdnum);
+
+
+        println!(
+            "Addr: {:#X}\nCodepage: {:#X}\nCommand:  {:#X}\n",
+            cmd.addr,
+            codepage,
+            command
+        );
+    }
+}
+
 
 #[test]
 fn all_commands() {

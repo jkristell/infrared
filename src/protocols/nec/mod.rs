@@ -23,15 +23,15 @@ pub struct Nec16;
 
 /// Nec Apple
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub struct NecApple;
+pub struct Apple;
 
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone)]
 /// Nec Command
 pub struct NecCommand<VARIANT: NecVariant + ?Sized = NecStandard> {
     pub bitbuf: u32,
     pub addr: u16,
-    pub cmd: u8,
+    pub cmd: u16,
     var: PhantomData<VARIANT>,
 }
 
@@ -40,7 +40,7 @@ impl<V: NecVariant> NecCommand<V> {
         NecCommand {
             bitbuf: 0,
             addr,
-            cmd,
+            cmd: cmd as u16,
             var: PhantomData,
         }
     }
@@ -110,7 +110,7 @@ impl NecVariant for NecStandard {
 
     fn cmd_from_bits(bits: u32) -> NecCommand<NecStandard> {
         let addr = ((bits) & 0xFF) as u16;
-        let cmd = ((bits >> 16) & 0xFF) as u8;
+        let cmd = ((bits >> 16) & 0xFF) as u16;
         NecCommand {
             bitbuf: bits,
             addr,
@@ -135,7 +135,7 @@ impl NecVariant for Nec16 {
 
     fn cmd_from_bits(bits: u32) -> NecCommand<Nec16> {
         let addr = ((bits) & 0xFFFF) as u16;
-        let cmd = ((bits >> 16) & 0xFF) as u8;
+        let cmd = ((bits >> 16) & 0xFF) as u16;
         NecCommand {
             bitbuf: bits,
             addr,
@@ -167,7 +167,7 @@ impl NecVariant for NecSamsung {
 
     fn cmd_from_bits(bits: u32) -> NecCommand<NecSamsung> {
         let addr = ((bits) & 0xFF) as u16;
-        let cmd = ((bits >> 16) & 0xFF) as u8;
+        let cmd = ((bits >> 16) & 0xFF) as u16;
         NecCommand {
             bitbuf: bits,
             addr,
@@ -181,18 +181,34 @@ impl NecVariant for NecSamsung {
     }
 }
 
-impl NecVariant for NecApple {
+impl NecVariant for Apple {
     const TIMING: &'static NecTiming = &STANDARD_TIMING;
 
     fn cmd_to_bits(cmd: &NecCommand<Self>) -> u32 {
-        0
+        unimplemented!();
     }
 
     fn cmd_from_bits(bits: u32) -> NecCommand<Self> {
+
+        // 5 Bits
+        let command_page = bits & 0x1F;
+        // 11 Bits
+        let vendor = ((bits >> 5) & 0x7FF) as u16 ;
+
+        // 1 Bit
+        let _parity_bit = (bits >> 16) & 0x1;
+        // 7 Bits
+        let command = (bits >> 17) & 0x7F;
+        // 8 Bits (Changable by pairing)
+        let _device_id = (bits >> 24) & 0xFF;
+
+        // Combine the command page and the command as the cmd
+        let cmd = (command_page << 7 | command) as u16;
+
         NecCommand {
             bitbuf: bits,
-            addr: 0,
-            cmd: 0,
+            addr: vendor,
+            cmd,
             var: PhantomData
         }
     }
