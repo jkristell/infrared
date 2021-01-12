@@ -29,7 +29,6 @@ pub struct Apple;
 #[derive(Debug, Copy, Clone)]
 /// Nec Command
 pub struct NecCommand<VARIANT: NecVariant + ?Sized = NecStandard> {
-    pub bitbuf: u32,
     pub addr: u16,
     pub cmd: u16,
     var: PhantomData<VARIANT>,
@@ -38,7 +37,6 @@ pub struct NecCommand<VARIANT: NecVariant + ?Sized = NecStandard> {
 impl<V: NecVariant> NecCommand<V> {
     pub fn new(addr: u16, cmd: u8) -> Self {
         NecCommand {
-            bitbuf: 0,
             addr,
             cmd: cmd as u16,
             var: PhantomData,
@@ -112,7 +110,6 @@ impl NecVariant for NecStandard {
         let addr = ((bits) & 0xFF) as u16;
         let cmd = ((bits >> 16) & 0xFF) as u16;
         NecCommand {
-            bitbuf: bits,
             addr,
             cmd,
             var: PhantomData,
@@ -137,7 +134,6 @@ impl NecVariant for Nec16 {
         let addr = ((bits) & 0xFFFF) as u16;
         let cmd = ((bits >> 16) & 0xFF) as u16;
         NecCommand {
-            bitbuf: bits,
             addr,
             cmd,
             var: PhantomData,
@@ -169,7 +165,6 @@ impl NecVariant for NecSamsung {
         let addr = ((bits) & 0xFF) as u16;
         let cmd = ((bits >> 16) & 0xFF) as u16;
         NecCommand {
-            bitbuf: bits,
             addr,
             cmd,
             var: PhantomData,
@@ -206,7 +201,6 @@ impl NecVariant for Apple {
         let cmd = (command_page << 7 | command) as u16;
 
         NecCommand {
-            bitbuf: bits,
             addr: vendor,
             cmd,
             var: PhantomData
