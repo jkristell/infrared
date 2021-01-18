@@ -11,7 +11,7 @@ impl RemoteControl for Rc5CdPlayer {
     const PROTOCOL: Protocol = Protocol::Rc5;
     const ADDRESS: u32 = 20;
     type Cmd = Rc5Command;
-    const BUTTONS: &'static [(u8, Button)] = &[
+    const BUTTONS: &'static [(u32, Button)] = &[
         (1, One),
         (2, Two),
         (3, Three),

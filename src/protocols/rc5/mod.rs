@@ -1,9 +1,9 @@
 //! Rc5
-use crate::Command;
 
-use crate::cmd::Protocol;
 use core::convert::TryInto;
 pub use receiver::Rc5;
+use crate::PulseLengths;
+use crate::remotecontrol::AsRemoteControlButton;
 
 pub mod receiver;
 #[cfg(test)]
@@ -23,7 +23,7 @@ pub struct Rc5Command {
     pub addr: u8,
     pub cmd: u8,
     pub start: u8,
-    pub toggle: u8,
+    pub toggle: bool,
 }
 
 impl Rc5Command {
@@ -32,15 +32,15 @@ impl Rc5Command {
             addr,
             cmd,
             start: 0b11,
-            toggle: toggle as u8,
+            toggle
         }
     }
 
-    pub const fn from_bits(bits: u16) -> Self {
+    pub const fn unpack(bits: u16) -> Self {
         let addr = ((bits & ADDR_MASK) >> ADDR_SHIFT) as u8;
         let cmd = (bits & CMD_MASK) as u8;
         let start = ((bits & START_MASK) >> START_SHIFT) as u8;
-        let toggle = ((bits & TOGGLE_MASK) >> TOGGLE_SHIFT) as u8;
+        let toggle = (bits & TOGGLE_MASK) != 0;
 
         Self {
             addr,
@@ -50,7 +50,7 @@ impl Rc5Command {
         }
     }
 
-    pub fn to_bits(&self) -> u16 {
+    pub fn pack(&self) -> u16 {
         u16::from(self.addr) << ADDR_SHIFT
             | u16::from(self.cmd)
             | u16::from(self.toggle) << TOGGLE_SHIFT
@@ -58,29 +58,10 @@ impl Rc5Command {
     }
 }
 
-impl Command for Rc5Command {
-    fn construct(addr: u32, cmd: u32) -> Option<Rc5Command> {
-        let addr: u8 = addr.try_into().ok()?;
-        let cmd = cmd.try_into().ok()?;
-
-        Some(Rc5Command::new(addr, cmd, false))
-    }
-
-    fn address(&self) -> u32 {
-        self.addr.into()
-    }
-
-    fn data(&self) -> u32 {
-        self.cmd.into()
-    }
-
-    fn protocol(&self) -> Protocol {
-        Protocol::Rc5
-    }
-
-    fn pulses(&self, buf: &mut [u16]) -> usize {
+impl PulseLengths for Rc5Command {
+    fn encode(&self, buf: &mut [u16]) -> usize {
         // Command as bits
-        let bits = self.to_bits();
+        let bits = self.pack();
 
         // First bit is always one
         buf[0] = 0;
@@ -103,5 +84,22 @@ impl Command for Rc5Command {
         }
 
         index
+    }
+}
+
+impl AsRemoteControlButton for Rc5Command {
+    fn address(&self) -> u32 {
+        self.addr.into()
+    }
+
+    fn command(&self) -> u32 {
+        self.cmd.into()
+    }
+
+    fn make(addr: u32, cmd: u32) -> Option<Rc5Command> {
+        let addr: u8 = addr.try_into().ok()?;
+        let cmd = cmd.try_into().ok()?;
+
+        Some(Rc5Command::new(addr, cmd, false))
     }
 }

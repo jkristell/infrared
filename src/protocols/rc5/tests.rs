@@ -5,7 +5,7 @@ use crate::sender::PulseBuffer;
 #[test]
 fn rc5_command() {
     let cmd = Rc5Command::new(20, 15, false);
-    assert_eq!(cmd, Rc5Command::from_bits(cmd.to_bits()))
+    assert_eq!(cmd, Rc5Command::unpack(cmd.pack()))
 }
 
 #[test]

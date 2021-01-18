@@ -1,6 +1,6 @@
 use crate::sender::{PulseSender, State};
-use crate::Command;
 use core::convert::Infallible;
+use crate::PulseLengths;
 
 pub struct HalSender<PWMPIN, DUTY>
 where
@@ -23,7 +23,7 @@ where
         }
     }
 
-    pub fn load<C: Command>(&mut self, cmd: &C) -> nb::Result<(), Infallible> {
+    pub fn load<C: PulseLengths>(&mut self, cmd: &C) -> nb::Result<(), Infallible> {
         if self.pts.state == State::Idle {
             self.pts.load_command(cmd);
             self.counter = 0;

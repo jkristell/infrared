@@ -24,7 +24,7 @@ pub struct RemoteControlData {
     pub addr: u32,
     pub protocol: Protocol,
     pub dtype: DeviceType,
-    pub mapping: &'static [(u8, Button)],
+    pub mapping: &'static [(u32, Button)],
 }
 
 impl RemoteControlData {

@@ -1,13 +1,14 @@
-use crate::protocols::nec::NecStandard;
+use crate::protocols::nec::{StandardTiming, NecCommandTrait};
 use crate::{
-    protocols::nec::{NecCommand, NecTiming, NecVariant},
+    protocols::nec::{NecRaw, NecPulselengths, NecTiming},
     protocols::utils::PulseWidthRange,
     recv::{Error, ReceiverSM, State},
 };
 use core::marker::PhantomData;
+use crate::protocols::nec::cmds::{NecCommand};
 
 /// Generic type for Nec Receiver
-pub struct Nec<N = NecStandard> {
+pub struct Nec<C = NecCommand, T = StandardTiming> {
     // State
     state: InternalState,
     // Data buffer
@@ -17,7 +18,10 @@ pub struct Nec<N = NecStandard> {
     // Last command (used by repeat)
     lastcommand: u32,
     // The type of Nec
-    nectype: PhantomData<N>,
+    nectype: PhantomData<T>,
+    // Nec Command type
+
+    neccmd: PhantomData<C>,
 
     last_rising: u32,
 }
@@ -49,20 +53,20 @@ impl From<InternalState> for State {
     }
 }
 
-impl<N: NecVariant> Default for Nec<N> {
+impl<Cmd, Timing: NecTiming> Default for Nec<Cmd, Timing> {
     fn default() -> Self {
-        Self::with_timing(N::TIMING)
+        Self::with_timing(Timing::PL)
     }
 }
 
 /// Nec decoder statemachine
-impl<VARIANT: NecVariant> Nec<VARIANT> {
+impl<Cmd, Timing: NecTiming> Nec<Cmd, Timing> {
     pub fn new() -> Self {
-        let timing = VARIANT::TIMING;
+        let timing = Timing::PL;
         Self::with_timing(timing)
     }
 
-    fn with_timing(timing: &NecTiming) -> Self {
+    fn with_timing(timing: &NecPulselengths) -> Self {
         let tols = tolerances(timing);
         let ranges = PulseWidthRange::new(&tols);
 
@@ -71,14 +75,21 @@ impl<VARIANT: NecVariant> Nec<VARIANT> {
             bitbuf: 0,
             lastcommand: 0,
             nectype: PhantomData,
+
             ranges,
             last_rising: 0,
+            neccmd: Default::default()
         }
     }
 }
 
-impl<N: NecVariant> ReceiverSM for Nec<N> {
-    type Cmd = NecCommand<N>;
+impl<Cmd, Timing> ReceiverSM for Nec<Cmd, Timing>
+where
+    Cmd: NecCommandTrait<Timing>,
+    Timing: NecTiming,
+{
+
+    type Cmd = Cmd;
     type InternalState = InternalState;
 
     fn create() -> Self {
@@ -119,7 +130,20 @@ impl<N: NecVariant> ReceiverSM for Nec<N> {
     }
 
     fn command(&self) -> Option<Self::Cmd> {
-        Some(N::cmd_from_bits(self.bitbuf))
+
+        match self.state {
+            InternalState::Done => {
+                let rawcmd = NecRaw { bits: self.bitbuf, };
+                let cmd = Self::Cmd::unpack(rawcmd, false)?;
+                Some(cmd)
+            }
+            InternalState::RepeatDone => {
+                let rawcmd = NecRaw { bits: self.lastcommand, };
+                let cmd = Self::Cmd::unpack(rawcmd, true)?;
+                Some(cmd)
+            }
+            _ => None,
+        }
     }
 
     fn reset(&mut self) {
@@ -161,7 +185,7 @@ impl From<usize> for PulseWidth {
     }
 }
 
-const fn tolerances(t: &NecTiming) -> [(u32, u32); 4] {
+const fn tolerances(t: &NecPulselengths) -> [(u32, u32); 4] {
     [
         ((t.hh + t.hl), 5),
         ((t.hh + t.rl), 5),

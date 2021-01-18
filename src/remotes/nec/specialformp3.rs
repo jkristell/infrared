@@ -1,9 +1,8 @@
 use crate::{
-    protocols::nec::NecCommand,
     remotecontrol::{Button, DeviceType, RemoteControl},
-    Protocol,
 };
 use Button::*;
+use crate::protocols::nec::cmds::{NecCommand};
 
 /// Generic Mp3 used by me for testing
 pub struct SpecialForMp3;
@@ -11,10 +10,11 @@ pub struct SpecialForMp3;
 impl RemoteControl for SpecialForMp3 {
     const MODEL: &'static str = "Special for Mp3";
     const DEVTYPE: DeviceType = DeviceType::Generic;
-    const PROTOCOL: Protocol = Protocol::Nec;
     const ADDRESS: u32 = 0;
     type Cmd = NecCommand;
-    const BUTTONS: &'static [(u8, Button)] = &[
+
+    //type Cmd = NecCommand;
+    const BUTTONS: &'static [(u32, Button)] = &[
         (69, Power),
         (70, Mode),
         (71, Mute),
@@ -38,3 +38,12 @@ impl RemoteControl for SpecialForMp3 {
         (74, Nine),
     ];
 }
+
+/*
+impl From<NecRaw> for SpecialForMp3Button {
+    fn from(cmd: NecRaw) -> Self {
+        SpecialForMp3Button(SpecialForMp3::decode(NecStandardCmd::from(cmd)).unwrap())
+    }
+}
+
+ */

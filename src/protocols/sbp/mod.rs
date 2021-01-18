@@ -10,11 +10,10 @@
 use core::convert::TryInto;
 
 use crate::{
-    cmd::Protocol,
     protocols::utils::PulseWidthRange,
     recv::{Error, ReceiverSM, State},
-    Command,
 };
+use crate::remotecontrol::AsRemoteControlButton;
 
 #[derive(Debug)]
 pub struct Sbp {
@@ -48,29 +47,21 @@ impl SbpCommand {
     }
 }
 
-impl Command for SbpCommand {
-    fn construct(address: u32, command: u32) -> Option<Self> {
+impl AsRemoteControlButton for SbpCommand {
+    fn address(&self) -> u32 {
+        self.address.into()
+    }
+
+    fn command(&self) -> u32 {
+        self.command.into()
+    }
+
+    fn make(address: u32, command: u32) -> Option<Self> {
         Some(SbpCommand {
             address: address.try_into().ok()?,
             command: command.try_into().ok()?,
             valid: true,
         })
-    }
-
-    fn address(&self) -> u32 {
-        self.address.into()
-    }
-
-    fn data(&self) -> u32 {
-        self.command.into()
-    }
-
-    fn protocol(&self) -> Protocol {
-        Protocol::Sbp
-    }
-
-    fn pulses(&self, _buf: &mut [u16]) -> usize {
-        unimplemented!()
     }
 }
 

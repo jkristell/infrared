@@ -96,7 +96,7 @@ impl ReceiverSM for Rc5 {
     }
 
     fn command(&self) -> Option<Self::Cmd> {
-        Some(Rc5Command::from_bits(self.bitbuf))
+        Some(Rc5Command::unpack(self.bitbuf))
     }
 
     fn reset(&mut self) {

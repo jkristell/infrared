@@ -1,4 +1,4 @@
-use crate::{recv::State, Command, ReceiverSM};
+use crate::{recv::State, ReceiverSM, PulseLengths};
 use core::marker::PhantomData;
 
 const BUFRECVBUFLEN: usize = 512;
@@ -29,8 +29,8 @@ impl<PROTOCOL: ReceiverSM> BufferReceiver<PROTOCOL> {
 
     /// Add command to buffer
     /// Panics if not enough room in Buffer
-    pub fn add_cmd(&mut self, cmd: &impl Command) {
-        let cmdlen = cmd.pulses(&mut self.buf[self.len..]);
+    pub fn add_cmd(&mut self, cmd: &impl PulseLengths) {
+        let cmdlen = cmd.encode(&mut self.buf[self.len..]);
         self.len += cmdlen
     }
 

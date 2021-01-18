@@ -1,7 +1,5 @@
 //! Receiver
 
-use crate::Command;
-
 /// Event driven receiver
 pub struct EventReceiver<PROTOCOL> {
     pub sm: PROTOCOL,
@@ -89,7 +87,7 @@ impl<PROTOCOL: ReceiverSM> PeriodicReceiver<PROTOCOL> {
 /// Receiver state machine
 pub trait ReceiverSM {
     /// The Resulting Command Type
-    type Cmd: Command;
+    type Cmd;
     /// Internal State
     type InternalState: Into<State>;
 

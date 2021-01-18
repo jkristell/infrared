@@ -3,7 +3,7 @@
 use embedded_hal::digital::v2::InputPin;
 
 use crate::recv::{self, ReceiverSM};
-use crate::remotecontrol::{Button, RemoteControl};
+use crate::{RemoteControl, Button};
 
 /// Event driven Hal receiver
 pub struct EventReceiver<PROTOCOL, PIN> {
@@ -113,7 +113,7 @@ macro_rules! multireceiver {
     where
         PIN: InputPin<Error = PINERR>,
         $( $P: ReceiverSM<Cmd = $C>),*,
-        $( $C: crate::Command ),*,
+        //$( $C: crate::Command ),*,
     {
         pub fn new(pin: PIN, samplerate: u32) -> Self {
             Self {
@@ -180,3 +180,4 @@ multireceiver!(
         (recv5, RECV5, CMD5)
     ]
 );
+

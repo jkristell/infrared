@@ -1,8 +1,8 @@
 use crate::protocols::rc6::{Rc6, Rc6Command};
 use crate::recv::*;
-use crate::{Command};
 use crate::bufrecv::BufferReceiver;
 use crate::sender::PulseBuffer;
+use crate::PulseLengths;
 
 #[test]
 fn pulses() {
@@ -26,7 +26,7 @@ fn pulses() {
 fn newpulse() {
     let cmd = Rc6Command::new(70, 20);
     let mut b = [0u16; 96];
-    let len = cmd.pulses(&mut b);
+    let len = cmd.encode(&mut b);
 
     let mut edge = false;
     let mut recv: EventReceiver<Rc6> = EventReceiver::new(1_000_000);

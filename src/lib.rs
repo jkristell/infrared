@@ -105,7 +105,7 @@ pub use remotecontrol::{Button, DeviceType, RemoteControl};
 
 mod cmd;
 #[doc(inline)]
-pub use cmd::{Command, Protocol};
+pub use cmd::{Protocol};
 
 #[cfg(feature = "remotes")]
 pub mod remotes;
@@ -115,3 +115,7 @@ pub mod hal;
 
 /// Time base
 pub const TIMEBASE: u32 = 1_000_000;
+
+pub trait PulseLengths {
+    fn encode(&self, buf: &mut [u16]) -> usize;
+}

@@ -12,7 +12,7 @@ impl RemoteControl for SamsungBluRayPlayer {
     const PROTOCOL: Protocol = Protocol::Rc6;
     const ADDRESS: u32 = 32;
     type Cmd = SbpCommand;
-    const BUTTONS: &'static [(u8, Button)] = &[
+    const BUTTONS: &'static [(u32, Button)] = &[
         (2, One),
         (3, Two),
         (4, Three),

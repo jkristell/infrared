@@ -1,8 +1,9 @@
 //! Transmitter state machine
 //!
 
-use crate::Command;
 use core::convert::TryFrom;
+use crate::PulseLengths;
+
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 /// Sender state
@@ -41,7 +42,7 @@ impl PulseSender {
     }
 
     /// Load command into internal buffer
-    pub fn load_command(&mut self, c: &impl Command) {
+    pub fn load_command(&mut self, c: &impl PulseLengths) {
         self.reset();
         self.ptb.load(c);
     }
@@ -98,8 +99,8 @@ impl PulseBuffer {
         }
     }
 
-    pub fn load(&mut self, c: &impl Command) {
-        let len = c.pulses(&mut self.buf);
+    pub fn load(&mut self, c: &impl PulseLengths) {
+        let len = c.encode(&mut self.buf);
         self.len = len;
 
         // Apply the scaling on the buf

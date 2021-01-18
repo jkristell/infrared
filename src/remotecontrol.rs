@@ -1,4 +1,4 @@
-use crate::{Command, Protocol};
+use crate::{Protocol};
 
 #[derive(Debug)]
 /// Device type that the remote control controls
@@ -20,10 +20,11 @@ pub trait RemoteControl {
     const PROTOCOL: Protocol = Protocol::Unknown;
     /// Device address
     const ADDRESS: u32;
-    /// The type of command
-    type Cmd: Command;
-    /// command byte to standardbutton mapping
-    const BUTTONS: &'static [(u8, Button)] = &[];
+    ///// The type of command
+    type Cmd: AsRemoteControlButton;
+    ///// command byte to standardbutton mapping
+    const BUTTONS: &'static [(u32, Button)] = &[];
+
     /// Try to map a command into an Button for this remote
     fn decode(cmd: Self::Cmd) -> Option<Button> {
         // Check address
@@ -32,16 +33,24 @@ pub trait RemoteControl {
         }
         Self::BUTTONS
             .iter()
-            .find(|(c, _)| u32::from(*c) == cmd.data())
+            .find(|(c, _)| u32::from(*c) == cmd.command())
             .map(|(_, b)| *b)
     }
+
     /// Encode a button into a command
     fn encode(button: Button) -> Option<Self::Cmd> {
         Self::BUTTONS
             .iter()
             .find(|(_, b)| *b == button)
-            .and_then(|(c, _)| Self::Cmd::construct(Self::ADDRESS, *c as u32))
+            .and_then(|(c, _)| Self::Cmd::make(Self::ADDRESS, *c as u32))
     }
+}
+
+pub trait AsRemoteControlButton: Sized {
+    fn address(&self) -> u32;
+    fn command(&self) -> u32;
+
+    fn make(addr: u32, cmd: u32) -> Option<Self>;
 }
 
 #[allow(non_camel_case_types)]
@@ -107,9 +116,12 @@ pub enum Button {
     Repeat,
     Time,
     Setup,
+    Menu,
 
     PitchReset,
     PitchPlus,
     PitchMinus,
     Prog,
+
+    BatteryLow,
 }
