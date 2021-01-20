@@ -119,15 +119,15 @@ impl PulseLengths for Rc6Command {
 }
 
 impl AsRemoteControlButton for Rc6Command {
-    fn make(addr: u32, cmd: u32) -> Option<Self> {
-        Some(Rc6Command::new(addr.try_into().ok()?, cmd.try_into().ok()?))
-    }
-
     fn address(&self) -> u32 {
         self.addr.into()
     }
 
     fn command(&self) -> u32 {
         self.cmd.into()
+    }
+
+    fn make(addr: u32, cmd: u32) -> Option<Self> {
+        Some(Rc6Command::new(addr.try_into().ok()?, cmd.try_into().ok()?))
     }
 }
