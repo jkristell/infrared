@@ -3,8 +3,8 @@
 use embedded_hal::digital::v2::InputPin;
 
 use crate::recv::{self, ReceiverSM};
-use crate::{RemoteControl, Button};
 use crate::remotecontrol::AsRemoteControlButton;
+use crate::{Button, RemoteControl};
 
 /// Event driven Hal receiver
 pub struct EventReceiver<PROTOCOL, PIN> {
@@ -90,10 +90,12 @@ where
     }
 
     #[cfg(feature = "remotes")]
-    pub fn poll_button<RC: RemoteControl<Cmd = PROTOCOL::Cmd>> (
+    pub fn poll_button<RC: RemoteControl<Cmd = PROTOCOL::Cmd>>(
         &mut self,
     ) -> Result<Option<Button>, PINERR>
-        where <PROTOCOL as ReceiverSM>::Cmd: AsRemoteControlButton {
+    where
+        <PROTOCOL as ReceiverSM>::Cmd: AsRemoteControlButton,
+    {
         self.poll().map(|cmd| cmd.and_then(RC::decode))
     }
 }
@@ -182,4 +184,3 @@ multireceiver!(
         (recv5, RECV5, CMD5)
     ]
 );
-

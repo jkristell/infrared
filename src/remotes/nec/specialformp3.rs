@@ -1,8 +1,6 @@
-use crate::{
-    remotecontrol::{Button, DeviceType, RemoteControl},
-};
+use crate::protocols::nec::cmds::NecCommand;
+use crate::remotecontrol::{Button, DeviceType, RemoteControl};
 use Button::*;
-use crate::protocols::nec::cmds::{NecCommand};
 
 /// Generic Mp3 used by me for testing
 pub struct SpecialForMp3;

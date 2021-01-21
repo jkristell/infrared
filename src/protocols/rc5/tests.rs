@@ -1,5 +1,5 @@
-use crate::protocols::rc5::{Rc5, Rc5Command};
 use crate::bufrecv::BufferReceiver;
+use crate::protocols::rc5::{Rc5, Rc5Command};
 use crate::sender::PulseBuffer;
 
 #[test]
@@ -61,4 +61,3 @@ fn all_commands() {
         }
     }
 }
-

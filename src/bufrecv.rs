@@ -1,4 +1,4 @@
-use crate::{recv::State, ReceiverSM, PulseLengths};
+use crate::{recv::State, PulseLengths, ReceiverSM};
 use core::marker::PhantomData;
 
 const BUFRECVBUFLEN: usize = 512;
@@ -11,7 +11,6 @@ pub struct BufferReceiver<PROTOCOL> {
 }
 
 impl<PROTOCOL: ReceiverSM> BufferReceiver<PROTOCOL> {
-
     /// Create a new BufferReceiver with initial value change buffer
     pub fn with_values(values: &[u16], samplerate: u32) -> Self {
         let mut buf = [0; 512];
@@ -99,4 +98,3 @@ impl<'a, PROTOCOL: ReceiverSM> Iterator for BufferIterator<'a, PROTOCOL> {
         }
     }
 }
-

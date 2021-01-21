@@ -1,6 +1,6 @@
-use crate::{PulseLengths};
-use core::convert::TryInto;
 use crate::remotecontrol::AsRemoteControlButton;
+use crate::PulseLengths;
+use core::convert::TryInto;
 
 #[derive(Debug, PartialEq)]
 pub struct Rc6Command {
@@ -114,7 +114,6 @@ impl PulseLengths for Rc6Command {
         }
 
         index
-
     }
 }
 

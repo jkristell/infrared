@@ -3,8 +3,8 @@ use crate::{
     Protocol,
 };
 
+use crate::protocols::nec::cmds::NecSamsungCommand;
 use Button::*;
-use crate::protocols::nec::cmds::{NecSamsungCommand};
 
 pub struct SamsungTv;
 
@@ -59,4 +59,3 @@ impl RemoteControl for SamsungTv {
         (72, Forward),
     ];
 }
-

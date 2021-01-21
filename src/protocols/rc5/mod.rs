@@ -1,9 +1,9 @@
 //! Rc5
 
+use crate::remotecontrol::AsRemoteControlButton;
+use crate::PulseLengths;
 use core::convert::TryInto;
 pub use receiver::Rc5;
-use crate::PulseLengths;
-use crate::remotecontrol::AsRemoteControlButton;
 
 pub mod receiver;
 #[cfg(test)]
@@ -32,7 +32,7 @@ impl Rc5Command {
             addr,
             cmd,
             start: 0b11,
-            toggle
+            toggle,
         }
     }
 

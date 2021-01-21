@@ -101,11 +101,11 @@ pub mod bufrecv;
 pub mod sender;
 
 mod remotecontrol;
-pub use remotecontrol::{Button, DeviceType, RemoteControl};
+pub use remotecontrol::{Button, DeviceType, RemoteControl, AsRemoteControlButton};
 
 mod cmd;
 #[doc(inline)]
-pub use cmd::{Protocol};
+pub use cmd::Protocol;
 
 #[cfg(feature = "remotes")]
 pub mod remotes;

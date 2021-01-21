@@ -1,4 +1,4 @@
-use crate::{Protocol};
+use crate::Protocol;
 
 #[derive(Debug)]
 /// Device type that the remote control controls
@@ -33,7 +33,7 @@ pub trait RemoteControl {
         }
         Self::BUTTONS
             .iter()
-            .find(|(c, _)| u32::from(*c) == cmd.command())
+            .find(|(c, _)| *c == cmd.command())
             .map(|(_, b)| *b)
     }
 

@@ -1,6 +1,6 @@
 use crate::sender::{PulseSender, State};
-use core::convert::Infallible;
 use crate::PulseLengths;
+use core::convert::Infallible;
 
 pub struct HalSender<PWMPIN, DUTY>
 where

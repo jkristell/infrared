@@ -1,4 +1,3 @@
-
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[repr(u8)]
 #[non_exhaustive]

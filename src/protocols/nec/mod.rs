@@ -5,11 +5,14 @@ pub mod receiver;
 #[cfg(test)]
 mod tests;
 
+use crate::protocols::nec::cmds::{
+    Nec16Command, NecAppleCommand, NecRawCommand, NecSamsungCommand,
+};
+
 #[doc(inline)]
 pub use receiver::Nec;
-use crate::protocols::nec::cmds::{Nec16Command, NecSamsungCommand, NecAppleCommand};
 
-/// Standard Nec protocol
+/// Standard Nec protocol timing
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct StandardTiming;
 
@@ -17,66 +20,36 @@ pub struct StandardTiming;
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct SamsungTiming;
 
+/// Nec variant with Samsung bit encoding and Samsung timing
 pub type NecSamsung = Nec<NecSamsungCommand, SamsungTiming>;
 
+/// Nec variant with 16 bit address and Nec standard timing
 pub type Nec16 = Nec<Nec16Command>;
 
-pub type NecDebug = Nec<NecRaw>;
-
+/// Nec variant with Apple specific bit encoding and Standard timing
 pub type NecApple = Nec<NecAppleCommand>;
 
+/// Nec variant without any specific bit unpacking, useful for debugging
+pub type NecDebug = Nec<NecRawCommand>;
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-/// Nec Command
-pub struct NecRaw {
-    pub bits: u32,
-}
-
-impl<T: NecTiming> NecCommandTrait<T> for NecRaw {
-    fn validate<B: Into<u32>>(_bits: B) -> bool {
-        true
-    }
-
-    fn unpack(cmd: NecRaw, _repeat: bool) -> Option<Self> {
-        Some(cmd)
-    }
-
-    fn pack(&self) -> NecRaw {
-        self.clone()
-    }
-}
-
-impl From<u32> for NecRaw {
-    fn from(bits: u32) -> Self {
-        NecRaw { bits }
-    }
-}
-
-impl From<NecRaw> for u32 {
-    fn from(nr: NecRaw) -> Self {
-        nr.bits
-    }
-}
-
-/// Nec Command Trait
-///
+/// Nec Command bit fiddling Trait
 pub trait NecCommandTrait<Timing: NecTiming>: Sized {
-    fn validate<T: Into<u32>>(bits: T) -> bool;
+    /// Validate the bits as a Command of this type
+    fn validate(bits: u32) -> bool;
 
-    fn validate_self(&self) -> bool {
-        Self::validate(self.pack())
-    }
+    /// Unpack the bits into Command
+    fn unpack(bits: u32, repeat: bool) -> Option<Self>;
 
-    fn unpack(cmd: NecRaw, repeat: bool) -> Option<Self>;
+    /// Pack command into a u32
+    fn pack(&self) -> u32;
 
-    fn pack(&self) -> NecRaw;
-
-    fn to_pulselengths(&self, b: &mut[u16]) -> usize {
+    /// Pulselengths for Command
+    fn to_pulselengths(&self, b: &mut [u16]) -> usize {
         b[0] = 0;
         b[1] = Timing::PL.hh as u16;
         b[2] = Timing::PL.hl as u16;
 
-        let bits = self.pack().bits;
+        let bits = self.pack();
 
         let mut bi = 3;
 
@@ -94,7 +67,6 @@ pub trait NecCommandTrait<Timing: NecTiming>: Sized {
         bi
     }
 }
-
 
 pub trait NecTiming {
     const PL: &'static NecPulselengths;
@@ -137,4 +109,3 @@ pub struct NecPulselengths {
     /// One low
     ol: u32,
 }
-

@@ -9,11 +9,11 @@
 
 use core::convert::TryInto;
 
+use crate::remotecontrol::AsRemoteControlButton;
 use crate::{
     protocols::utils::PulseWidthRange,
     recv::{Error, ReceiverSM, State},
 };
-use crate::remotecontrol::AsRemoteControlButton;
 
 #[derive(Debug)]
 pub struct Sbp {
@@ -37,7 +37,7 @@ impl SbpCommand {
         command >>= 4;
 
         // Check the checksum
-        let valid = (((command >> 0) ^ (command >> 8)) & 0xFF) == 0xFF;
+        let valid = ((command ^ (command >> 8)) & 0xFF) == 0xFF;
 
         Self {
             address,

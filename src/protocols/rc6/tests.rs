@@ -1,6 +1,6 @@
+use crate::bufrecv::BufferReceiver;
 use crate::protocols::rc6::{Rc6, Rc6Command};
 use crate::recv::*;
-use crate::bufrecv::BufferReceiver;
 use crate::sender::PulseBuffer;
 use crate::PulseLengths;
 
@@ -91,4 +91,3 @@ fn all_commands() {
         }
     }
 }
-

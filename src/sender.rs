@@ -1,9 +1,8 @@
 //! Transmitter state machine
 //!
 
-use core::convert::TryFrom;
 use crate::PulseLengths;
-
+use core::convert::TryFrom;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 /// Sender state
