@@ -1,14 +1,4 @@
-use crate::Protocol;
-
-#[derive(Debug)]
-/// Device type that the remote control controls
-pub enum DeviceType {
-    Generic,
-    TV,
-    DVDPlayer,
-    CDPlayer,
-    BluRayPlayer,
-}
+use crate::ProtocolId;
 
 /// A trait describing a Remote Control
 pub trait RemoteControl {
@@ -17,12 +7,12 @@ pub trait RemoteControl {
     /// Type of device that this remote controls
     const DEVTYPE: DeviceType = DeviceType::Generic;
     /// Protocol
-    const PROTOCOL: Protocol = Protocol::Unknown;
+    const PROTOCOL: ProtocolId;
     /// Device address
     const ADDRESS: u32;
-    ///// The type of command
-    type Cmd: AsRemoteControlButton;
-    ///// command byte to standardbutton mapping
+    /// The type of command
+    type Cmd: AsButton;
+    /// command byte to standardbutton mapping
     const BUTTONS: &'static [(u32, Button)] = &[];
 
     /// Try to map a command into an Button for this remote
@@ -42,15 +32,30 @@ pub trait RemoteControl {
         Self::BUTTONS
             .iter()
             .find(|(_, b)| *b == button)
-            .and_then(|(c, _)| Self::Cmd::make(Self::ADDRESS, *c as u32))
+            .and_then(|(c, _)| Self::Cmd::create(Self::ADDRESS, *c as u32))
     }
 }
 
-pub trait AsRemoteControlButton: Sized {
-    fn address(&self) -> u32;
-    fn command(&self) -> u32;
+#[derive(Debug)]
+/// Device type that the remote control controls
+pub enum DeviceType {
+    Generic,
+    TV,
+    DVDPlayer,
+    CDPlayer,
+    BluRayPlayer,
+}
 
-    fn make(addr: u32, cmd: u32) -> Option<Self>;
+/// Trait that is implemented by all Commands that fit into the basic remote control button model
+pub trait AsButton: Sized {
+    /// Address
+    fn address(&self) -> u32;
+    /// Command
+    fn command(&self) -> u32;
+    /// Protocol
+    fn protocol(&self) -> ProtocolId;
+    /// Create a Command from this Button for Self
+    fn create(addr: u32, cmd: u32) -> Option<Self>;
 }
 
 #[allow(non_camel_case_types)]

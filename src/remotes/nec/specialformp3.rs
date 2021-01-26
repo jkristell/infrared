@@ -1,5 +1,6 @@
-use crate::protocols::nec::cmds::NecCommand;
+use crate::protocols::nec::NecCommand;
 use crate::remotecontrol::{Button, DeviceType, RemoteControl};
+use crate::ProtocolId;
 use Button::*;
 
 /// Generic Mp3 used by me for testing
@@ -8,6 +9,7 @@ pub struct SpecialForMp3;
 impl RemoteControl for SpecialForMp3 {
     const MODEL: &'static str = "Special for Mp3";
     const DEVTYPE: DeviceType = DeviceType::Generic;
+    const PROTOCOL: ProtocolId = ProtocolId::Nec;
     const ADDRESS: u32 = 0;
     type Cmd = NecCommand;
 

@@ -1,6 +1,7 @@
-use crate::bufrecv::BufferReceiver;
-use crate::protocols::rc5::{Rc5, Rc5Command};
-use crate::sender::PulseBuffer;
+use crate::protocols::rc5::Rc5Command;
+use crate::recv::BufferReceiver;
+use crate::protocols::Rc5;
+use crate::send::PulsedataBuffer;
 
 #[test]
 fn rc5_command() {
@@ -48,7 +49,7 @@ fn command_mixed() {
 
 #[test]
 fn all_commands() {
-    let mut ptb = PulseBuffer::with_samplerate(40_000);
+    let mut ptb = PulsedataBuffer::with_samplerate(40_000);
 
     for address in 0..32 {
         for cmdnum in 0..64 {

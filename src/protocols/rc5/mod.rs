@@ -1,11 +1,15 @@
-//! Rc5
 
-use crate::remotecontrol::AsRemoteControlButton;
-use crate::PulseLengths;
+use crate::{
+    send::ToPulsedata,
+    ProtocolId,
+};
 use core::convert::TryInto;
-pub use receiver::Rc5;
+
+#[cfg(feature = "remotes")]
+use crate::remotecontrol::AsButton;
 
 pub mod receiver;
+pub use receiver::Rc5;
 #[cfg(test)]
 mod tests;
 
@@ -58,8 +62,8 @@ impl Rc5Command {
     }
 }
 
-impl PulseLengths for Rc5Command {
-    fn encode(&self, buf: &mut [u16]) -> usize {
+impl ToPulsedata for Rc5Command {
+    fn to_pulsedata(&self, buf: &mut [u16]) -> usize {
         // Command as bits
         let bits = self.pack();
 
@@ -87,7 +91,8 @@ impl PulseLengths for Rc5Command {
     }
 }
 
-impl AsRemoteControlButton for Rc5Command {
+#[cfg(feature = "remotes")]
+impl AsButton for Rc5Command {
     fn address(&self) -> u32 {
         self.addr.into()
     }
@@ -96,7 +101,11 @@ impl AsRemoteControlButton for Rc5Command {
         self.cmd.into()
     }
 
-    fn make(addr: u32, cmd: u32) -> Option<Rc5Command> {
+    fn protocol(&self) -> ProtocolId {
+        ProtocolId::Rc5
+    }
+
+    fn create(addr: u32, cmd: u32) -> Option<Rc5Command> {
         let addr: u8 = addr.try_into().ok()?;
         let cmd = cmd.try_into().ok()?;
 

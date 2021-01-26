@@ -1,5 +1,10 @@
-use crate::remotecontrol::AsRemoteControlButton;
-use crate::PulseLengths;
+use crate::{
+    ProtocolId,
+    send::ToPulsedata,
+};
+#[cfg(feature = "remotes")]
+use crate::remotecontrol::AsButton;
+
 use core::convert::TryInto;
 
 #[derive(Debug, PartialEq)]
@@ -78,8 +83,8 @@ const fn payload(bits: u16) -> [Level; 32] {
     lvls
 }
 
-impl PulseLengths for Rc6Command {
-    fn encode(&self, b: &mut [u16]) -> usize {
+impl ToPulsedata for Rc6Command {
+    fn to_pulsedata(&self, b: &mut [u16]) -> usize {
         use Level::*;
 
         let header = leader(self.toggle);
@@ -117,7 +122,8 @@ impl PulseLengths for Rc6Command {
     }
 }
 
-impl AsRemoteControlButton for Rc6Command {
+#[cfg(feature = "remotes")]
+impl AsButton for Rc6Command {
     fn address(&self) -> u32 {
         self.addr.into()
     }
@@ -126,7 +132,11 @@ impl AsRemoteControlButton for Rc6Command {
         self.cmd.into()
     }
 
-    fn make(addr: u32, cmd: u32) -> Option<Self> {
+    fn protocol(&self) -> ProtocolId {
+        ProtocolId::Rc6
+    }
+
+    fn create(addr: u32, cmd: u32) -> Option<Self> {
         Some(Rc6Command::new(addr.try_into().ok()?, cmd.try_into().ok()?))
     }
 }

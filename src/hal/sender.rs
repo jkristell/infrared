@@ -1,29 +1,31 @@
-use crate::sender::{PulseSender, State};
-use crate::PulseLengths;
 use core::convert::Infallible;
 
-pub struct HalSender<PWMPIN, DUTY>
+use crate::{
+    send::{PulsedataSender, State, ToPulsedata},
+};
+
+pub struct Sender<PWMPIN, DUTY>
 where
     PWMPIN: embedded_hal::PwmPin<Duty = DUTY>,
 {
-    pts: PulseSender,
+    pts: PulsedataSender,
     pin: PWMPIN,
     pub counter: u32,
 }
 
-impl<'a, PWMPIN, DUTY> HalSender<PWMPIN, DUTY>
+impl<'a, PWMPIN, DUTY> Sender<PWMPIN, DUTY>
 where
     PWMPIN: embedded_hal::PwmPin<Duty = DUTY>,
 {
     pub fn new(samplerate: u32, pin: PWMPIN) -> Self {
         Self {
-            pts: PulseSender::new(samplerate),
+            pts: PulsedataSender::new(samplerate),
             pin,
             counter: 0,
         }
     }
 
-    pub fn load<C: PulseLengths>(&mut self, cmd: &C) -> nb::Result<(), Infallible> {
+    pub fn load<C: ToPulsedata>(&mut self, cmd: &C) -> nb::Result<(), Infallible> {
         if self.pts.state == State::Idle {
             self.pts.load_command(cmd);
             self.counter = 0;

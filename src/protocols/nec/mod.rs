@@ -1,11 +1,12 @@
 //! Nec
 
-pub mod cmds;
+mod cmds;
 pub mod receiver;
 #[cfg(test)]
 mod tests;
 
-use crate::protocols::nec::cmds::{
+pub use cmds::{
+    NecCommand,
     Nec16Command, NecAppleCommand, NecRawCommand, NecSamsungCommand,
 };
 
@@ -43,8 +44,8 @@ pub trait NecCommandTrait<Timing: NecTiming>: Sized {
     /// Pack command into a u32
     fn pack(&self) -> u32;
 
-    /// Pulselengths for Command
-    fn to_pulselengths(&self, b: &mut [u16]) -> usize {
+    /// Encode the command for sending
+    fn pulse_distance(&self, b: &mut [u16]) -> usize {
         b[0] = 0;
         b[1] = Timing::PL.hh as u16;
         b[2] = Timing::PL.hl as u16;
@@ -69,11 +70,11 @@ pub trait NecCommandTrait<Timing: NecTiming>: Sized {
 }
 
 pub trait NecTiming {
-    const PL: &'static NecPulselengths;
+    const PL: &'static NecPulseDistance;
 }
 
 impl NecTiming for StandardTiming {
-    const PL: &'static NecPulselengths = &NecPulselengths {
+    const PL: &'static NecPulseDistance = &NecPulseDistance {
         hh: 9000,
         hl: 4500,
         rl: 2250,
@@ -84,7 +85,7 @@ impl NecTiming for StandardTiming {
 }
 
 impl NecTiming for SamsungTiming {
-    const PL: &'static NecPulselengths = &NecPulselengths {
+    const PL: &'static NecPulseDistance = &NecPulseDistance {
         hh: 4500,
         hl: 4500,
         rl: 2250,
@@ -95,7 +96,7 @@ impl NecTiming for SamsungTiming {
 }
 
 /// High and low times for Nec-like protocols. In us.
-pub struct NecPulselengths {
+pub struct NecPulseDistance {
     /// Header high
     hh: u32,
     /// Header low

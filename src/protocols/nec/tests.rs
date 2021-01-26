@@ -1,7 +1,7 @@
-use crate::protocols::nec::cmds::{Nec16Command, NecAppleCommand, NecCommand, NecSamsungCommand};
-use crate::protocols::nec::NecCommandTrait;
-use crate::sender::PulseBuffer;
-use crate::{bufrecv::BufferReceiver, protocols::nec::Nec};
+use crate::protocols::nec::{Nec16Command, NecAppleCommand, NecCommand, NecSamsungCommand, NecCommandTrait};
+use crate::recv::BufferReceiver;
+use crate::protocols::Nec;
+use crate::send::PulsedataBuffer;
 
 #[test]
 #[rustfmt::skip]
@@ -89,7 +89,7 @@ fn cmd_nec16() {
 
 #[test]
 fn all_nec_commands() {
-    let mut ptb = PulseBuffer::with_samplerate(40_000);
+    let mut ptb = PulsedataBuffer::with_samplerate(40_000);
 
     for address in 0..255 {
         for cmdnum in 0..255 {
@@ -113,7 +113,7 @@ fn test_samplerates() {
     let samplerates = [20_000, 40_000, 80_000];
 
     for samplerate in &samplerates {
-        let mut ptb = PulseBuffer::with_samplerate(*samplerate);
+        let mut ptb = PulsedataBuffer::with_samplerate(*samplerate);
 
         let cmd: NecCommand = NecCommand {
             addr: 20,

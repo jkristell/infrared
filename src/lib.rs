@@ -92,30 +92,25 @@
 extern crate std;
 
 pub mod protocols;
+pub mod recv;
+pub mod send;
 
-mod recv;
-pub use recv::{EventReceiver, PeriodicReceiver, ReceiverSM};
-
-pub mod bufrecv;
-
-pub mod sender;
-
-mod remotecontrol;
-pub use remotecontrol::{Button, DeviceType, RemoteControl, AsRemoteControlButton};
-
-mod cmd;
+mod protocolid;
 #[doc(inline)]
-pub use cmd::Protocol;
+pub use protocolid::ProtocolId;
 
 #[cfg(feature = "remotes")]
 pub mod remotes;
 
+#[cfg(feature = "remotes")]
+pub mod remotecontrol;
+
 #[cfg(feature = "embedded-hal")]
 pub mod hal;
+#[cfg(feature = "embedded-hal")]
+#[doc(inline)]
+pub use hal::{PeriodicReceiver, EventReceiver, Sender};
 
-/// Time base
+/// Time base for all time units in the library
 pub const TIMEBASE: u32 = 1_000_000;
 
-pub trait PulseLengths {
-    fn encode(&self, buf: &mut [u16]) -> usize;
-}

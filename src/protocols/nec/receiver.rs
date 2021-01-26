@@ -1,7 +1,6 @@
-use crate::protocols::nec::cmds::NecCommand;
 use crate::protocols::nec::{NecCommandTrait, StandardTiming};
 use crate::{
-    protocols::nec::{NecPulselengths, NecTiming},
+    protocols::nec::{NecPulseDistance, NecTiming, NecCommand},
     protocols::utils::PulseWidthRange,
     recv::{Error, ReceiverSM, State},
 };
@@ -65,7 +64,7 @@ impl<Cmd, Timing: NecTiming> Nec<Cmd, Timing> {
         Self::with_timing(timing)
     }
 
-    fn with_timing(timing: &NecPulselengths) -> Self {
+    fn with_timing(timing: &NecPulseDistance) -> Self {
         let tols = tolerances(timing);
         let ranges = PulseWidthRange::new(&tols);
 
@@ -174,7 +173,7 @@ impl From<usize> for PulseWidth {
     }
 }
 
-const fn tolerances(t: &NecPulselengths) -> [(u32, u32); 4] {
+const fn tolerances(t: &NecPulseDistance) -> [(u32, u32); 4] {
     [
         ((t.hh + t.hl), 5),
         ((t.hh + t.rl), 5),

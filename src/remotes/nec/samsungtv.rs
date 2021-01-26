@@ -1,9 +1,9 @@
 use crate::{
     remotecontrol::{Button, DeviceType, RemoteControl},
-    Protocol,
+    ProtocolId,
 };
 
-use crate::protocols::nec::cmds::NecSamsungCommand;
+use crate::protocols::nec::NecSamsungCommand;
 use Button::*;
 
 pub struct SamsungTv;
@@ -11,7 +11,7 @@ pub struct SamsungTv;
 impl RemoteControl for SamsungTv {
     const MODEL: &'static str = "Samsung TV";
     const DEVTYPE: DeviceType = DeviceType::TV;
-    const PROTOCOL: Protocol = Protocol::NecSamsung;
+    const PROTOCOL: ProtocolId = ProtocolId::NecSamsung;
     const ADDRESS: u32 = 7;
     type Cmd = NecSamsungCommand;
 

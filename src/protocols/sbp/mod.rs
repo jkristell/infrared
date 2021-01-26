@@ -9,11 +9,13 @@
 
 use core::convert::TryInto;
 
-use crate::remotecontrol::AsRemoteControlButton;
 use crate::{
     protocols::utils::PulseWidthRange,
     recv::{Error, ReceiverSM, State},
+    ProtocolId,
 };
+#[cfg(feature = "remotes")]
+use crate::remotecontrol::AsButton;
 
 #[derive(Debug)]
 pub struct Sbp {
@@ -47,7 +49,8 @@ impl SbpCommand {
     }
 }
 
-impl AsRemoteControlButton for SbpCommand {
+#[cfg(feature = "remotes")]
+impl AsButton for SbpCommand {
     fn address(&self) -> u32 {
         self.address.into()
     }
@@ -56,7 +59,11 @@ impl AsRemoteControlButton for SbpCommand {
         self.command.into()
     }
 
-    fn make(address: u32, command: u32) -> Option<Self> {
+    fn protocol(&self) -> ProtocolId {
+        ProtocolId::Sbp
+    }
+
+    fn create(address: u32, command: u32) -> Option<Self> {
         Some(SbpCommand {
             address: address.try_into().ok()?,
             command: command.try_into().ok()?,
@@ -80,39 +87,6 @@ pub enum SbpState {
     Done,
     // In error state
     Err(Error),
-}
-
-impl Default for SbpState {
-    fn default() -> Self {
-        Self::Init
-    }
-}
-
-impl From<SbpState> for State {
-    fn from(state: SbpState) -> State {
-        use SbpState::*;
-        match state {
-            Init => State::Idle,
-            Done => State::Done,
-            Err(e) => State::Error(e),
-            _ => State::Receiving,
-        }
-    }
-}
-
-impl Default for Sbp {
-    fn default() -> Self {
-        let nsamples = nsamples_from_timing(&TIMING);
-        let ranges = PulseWidthRange::new(&nsamples);
-
-        Self {
-            state: SbpState::Init,
-            address: 0,
-            command: 0,
-            since_rising: 0,
-            ranges,
-        }
-    }
 }
 
 impl ReceiverSM for Sbp {
@@ -181,6 +155,39 @@ impl ReceiverSM for Sbp {
         self.state = SbpState::Init;
         self.address = 0;
         self.command = 0;
+    }
+}
+
+impl Default for SbpState {
+    fn default() -> Self {
+        Self::Init
+    }
+}
+
+impl From<SbpState> for State {
+    fn from(state: SbpState) -> State {
+        use SbpState::*;
+        match state {
+            Init => State::Idle,
+            Done => State::Done,
+            Err(e) => State::Error(e),
+            _ => State::Receiving,
+        }
+    }
+}
+
+impl Default for Sbp {
+    fn default() -> Self {
+        let nsamples = nsamples_from_timing(&TIMING);
+        let ranges = PulseWidthRange::new(&nsamples);
+
+        Self {
+            state: SbpState::Init,
+            address: 0,
+            command: 0,
+            since_rising: 0,
+            ranges,
+        }
     }
 }
 

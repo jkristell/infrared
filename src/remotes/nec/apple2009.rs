@@ -1,5 +1,6 @@
-use crate::protocols::nec::cmds::NecAppleCommand;
+use crate::protocols::nec::NecAppleCommand;
 use crate::remotecontrol::{Button, DeviceType, RemoteControl};
+use crate::ProtocolId;
 use Button::*;
 
 /// Generic Mp3 used by me for testing
@@ -20,6 +21,7 @@ const BUTTONS: &[((u8, u8), Button)] = &[
 impl RemoteControl for Apple2009 {
     const MODEL: &'static str = "Apple Remote";
     const DEVTYPE: DeviceType = DeviceType::Generic;
+    const PROTOCOL: ProtocolId = ProtocolId::NecApple;
     const ADDRESS: u32 = 0;
     type Cmd = NecAppleCommand;
 

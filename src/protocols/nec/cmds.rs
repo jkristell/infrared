@@ -1,6 +1,9 @@
-use crate::protocols::nec::{NecCommandTrait, NecTiming, SamsungTiming, StandardTiming};
-use crate::remotecontrol::AsRemoteControlButton;
-use crate::PulseLengths;
+use crate::{
+    protocols::nec::{NecCommandTrait, NecTiming, SamsungTiming, StandardTiming},
+    ProtocolId, send::ToPulsedata,
+};
+#[cfg(feature = "remotes")]
+use crate::remotecontrol::AsButton;
 
 /*
  * -------------------------------------------------------------------------
@@ -15,7 +18,8 @@ pub struct NecCommand {
     pub repeat: bool,
 }
 
-impl AsRemoteControlButton for NecCommand {
+#[cfg(feature = "remotes")]
+impl AsButton for NecCommand {
     fn address(&self) -> u32 {
         self.addr.into()
     }
@@ -24,7 +28,11 @@ impl AsRemoteControlButton for NecCommand {
         self.cmd.into()
     }
 
-    fn make(addr: u32, cmd: u32) -> Option<Self> {
+    fn protocol(&self) -> crate::ProtocolId {
+        crate::ProtocolId::Nec
+    }
+
+    fn create(addr: u32, cmd: u32) -> Option<Self> {
         Some(NecCommand {
             addr: addr as u8,
             cmd: cmd as u8,
@@ -52,9 +60,9 @@ impl NecCommandTrait<StandardTiming> for NecCommand {
     }
 }
 
-impl PulseLengths for NecCommand {
-    fn encode(&self, b: &mut [u16]) -> usize {
-        self.to_pulselengths(b)
+impl ToPulsedata for NecCommand {
+    fn to_pulsedata(&self, b: &mut [u16]) -> usize {
+        self.pulse_distance(b)
     }
 }
 
@@ -91,9 +99,9 @@ impl NecCommandTrait<StandardTiming> for Nec16Command {
     }
 }
 
-impl PulseLengths for Nec16Command {
-    fn encode(&self, b: &mut [u16]) -> usize {
-        self.to_pulselengths(b)
+impl ToPulsedata for Nec16Command {
+    fn to_pulsedata(&self, b: &mut [u16]) -> usize {
+        self.pulse_distance(b)
     }
 }
 
@@ -128,7 +136,8 @@ impl NecCommandTrait<SamsungTiming> for NecSamsungCommand {
     }
 }
 
-impl AsRemoteControlButton for NecSamsungCommand {
+#[cfg(feature = "remotes")]
+impl AsButton for NecSamsungCommand {
     fn address(&self) -> u32 {
         self.addr.into()
     }
@@ -137,7 +146,11 @@ impl AsRemoteControlButton for NecSamsungCommand {
         self.cmd.into()
     }
 
-    fn make(addr: u32, cmd: u32) -> Option<Self> {
+    fn protocol(&self) -> ProtocolId {
+        ProtocolId::NecSamsung
+    }
+
+    fn create(addr: u32, cmd: u32) -> Option<Self> {
         Some(NecSamsungCommand {
             addr: addr as u8,
             cmd: cmd as u8,
@@ -199,7 +212,8 @@ impl NecCommandTrait<StandardTiming> for NecAppleCommand {
     }
 }
 
-impl AsRemoteControlButton for NecAppleCommand {
+#[cfg(feature = "remotes")]
+impl AsButton for NecAppleCommand {
     fn address(&self) -> u32 {
         0
     }
@@ -208,19 +222,23 @@ impl AsRemoteControlButton for NecAppleCommand {
         u32::from(self.command_page << 7 | self.command)
     }
 
-    fn make(_addr: u32, _cmd: u32) -> Option<Self> {
+    fn protocol(&self) -> ProtocolId {
+        ProtocolId::NecApple
+    }
+
+    fn create(_addr: u32, _cmd: u32) -> Option<Self> {
         None
     }
 }
 
 /*
  * -------------------------------------------------------------------------
- *  Nec Raw - variant useful for debugging
+ *  Nec Raw variant. Useful for debugging
  * -------------------------------------------------------------------------
  */
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-/// Nec Command
+/// Nec Command without parsing of bit meaning
 pub struct NecRawCommand {
     pub bits: u32,
 }
