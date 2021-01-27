@@ -2,7 +2,7 @@ use crate::{
     remotecontrol::{Button, DeviceType, RemoteControl},
     remotes::{
         nec::{SamsungTv, SpecialForMp3},
-        rc5::Rc5CdPlayer,
+        rc5::CdPlayer,
         sbp::SamsungBluRayPlayer,
     },
     ProtocolId,
@@ -11,7 +11,7 @@ use crate::{
 pub fn remotes() -> Vec<RemoteControlData> {
     // Pretty much every remote ever manufactured :-)
     vec![
-        RemoteControlData::new::<Rc5CdPlayer>(),
+        RemoteControlData::new::<CdPlayer>(),
         RemoteControlData::new::<SamsungTv>(),
         RemoteControlData::new::<SpecialForMp3>(),
         RemoteControlData::new::<SamsungBluRayPlayer>(),

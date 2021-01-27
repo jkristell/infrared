@@ -1,4 +1,4 @@
-//! # Samsung BluRay Player Protocol
+//! # Samsung Blu-Ray Player Protocol
 //!
 //! Protocol used on some Samsung BluRay players and probably other devices from Samsung.
 //!
@@ -18,6 +18,7 @@ use crate::{
 use crate::remotecontrol::AsButton;
 
 #[derive(Debug)]
+/// Samsung Blu-ray protocol
 pub struct Sbp {
     state: SbpState,
     address: u16,

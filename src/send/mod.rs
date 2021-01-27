@@ -1,5 +1,4 @@
-//! Transmitter state machine
-//!
+//! Infrared send functionality
 
 mod sender;
 pub use sender::*;

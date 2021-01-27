@@ -1,7 +1,7 @@
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[repr(u8)]
 #[non_exhaustive]
-/// Protocol
+/// Protocol id
 pub enum ProtocolId {
     /// Standard Nec
     Nec = 1,

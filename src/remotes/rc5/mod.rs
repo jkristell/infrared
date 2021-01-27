@@ -1,2 +1,2 @@
 mod cdplayer;
-pub use cdplayer::Rc5CdPlayer;
+pub use cdplayer::CdPlayer;

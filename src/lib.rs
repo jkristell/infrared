@@ -7,20 +7,6 @@
 //! and at the same time provide functionality for using it with more efficient implementation
 //! such as input capture, and be useful in host applications (such as Blipper).
 //!
-//! ## Design
-//!
-//! ### Receivers
-//!
-//! ```text
-//! +------------------------+---------------------+
-//! | hal::PeriodicReceiver  | hal::EventReceiver  |  Embedded hal based receivers
-//! |------------------------+---------------------|
-//! |    PeriodicReceiver    |    EventReceiver    |  Generic Receivers
-//! |------+--------+--------+---+-----+-----+-----|
-//! | Nec  | Nec16  | NecSamsung | Rc5 | Rc6 | Sbp |  Protocol state machines
-//! +------+--------+------------+-----+-----+-----+
-//! ```
-//!
 //! ## Using Infrared with embedded-hal
 //!
 //! ### Polled
@@ -29,11 +15,11 @@
 //! 1. Setup a CountDown-timer at a frequency of something like 20 kHz. How to setup the timer
 //! and enable interrupts is HAL-specific but most HALs have examples showing you how to do it.
 //!
-//! 2. Create a `hal::PeriodicReceiver` with the desired Decoder state machine.
+//! 2. Create a `infrared::PeriodicReceiver` with the desired Decoder state machine.
 //!
 //! Example:
 //! ```ignore
-//! use infrared::{hal::PeriodicReceiver, protocols::Rc5}
+//! use infrared::{PeriodicReceiver, protocols::Rc5}
 //! use embedded_hal::digital::v2::InputPin;
 //!
 //! const SAMPLERATE: u32 = 20_000;
@@ -53,9 +39,9 @@
 //! There is also support for receiving and decoding the pulse train to a known remote control
 //!
 //! ```ignore
-//! use infrared::{remotecontrol::Button, remotes::rc5::Rc5CdPlayer};
+//! use infrared::{remotecontrol::Button, remotes::rc5::CdPlayer};
 //!
-//! if let Ok(Some(button)) = recv.poll_button::<Rc5CdPlayer>() {
+//! if let Ok(Some(button)) = recv.poll_button::<CdPlayer>() {
 //!     match button {
 //!         Button::Play => ... // Handle play,
 //!         Button::Stop => ... // Handle stop
@@ -75,12 +61,11 @@
 //!
 //! ## Examples
 //!
-//! In the examples directory in the github repo, there are fully working examples
-//! of different kind of receivers
+//! In the [infrared-examples](https://github.com/jkristell/infrared-examples) github repo.
 //!
 //! * `receiver`: HAL Periodic receiver example
 //! * `receiver_exti`: HAL EventReceiver using external interrupts
-//! * `multireceiver`: receiver for multiple protocols
+//! * `multireceiver`: receiver for multiple protocols at once
 //! * `mediakeyboard`: USB hid media keyboard, RTIC based Media keyboard controlled by remote control.
 //! * `sender`: Send example
 //!
@@ -112,5 +97,5 @@ pub mod hal;
 pub use hal::{PeriodicReceiver, EventReceiver, Sender};
 
 /// Time base for all time units in the library
-pub const TIMEBASE: u32 = 1_000_000;
+pub(crate) const TIMEBASE: u32 = 1_000_000;
 

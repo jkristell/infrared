@@ -1,4 +1,4 @@
-//! Embedded-hal based Receiver types
+//! Embedded-hal based Receivers
 
 use embedded_hal::digital::v2::InputPin;
 
@@ -11,14 +11,13 @@ use crate::{
     },
 };
 
-/// Event driven Hal receiver
+/// Event driven embedded-hal receiver
 pub struct EventReceiver<PROTOCOL, PIN> {
     recv: crate::recv::EventReceiver<PROTOCOL>,
     pub pin: PIN,
 }
 
-//TODO: Order
-impl<PIN, PINERR, PROTOCOL> EventReceiver<PROTOCOL, PIN>
+impl<PROTOCOL, PIN, PINERR> EventReceiver<PROTOCOL, PIN>
 where
     PROTOCOL: ReceiverSM,
     PIN: InputPin<Error = PINERR>,

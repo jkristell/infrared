@@ -1,3 +1,5 @@
+//! Remote control
+
 use crate::ProtocolId;
 
 /// A trait describing a Remote Control

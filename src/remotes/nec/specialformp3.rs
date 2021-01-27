@@ -39,11 +39,3 @@ impl RemoteControl for SpecialForMp3 {
     ];
 }
 
-/*
-impl From<NecRaw> for SpecialForMp3Button {
-    fn from(cmd: NecRaw) -> Self {
-        SpecialForMp3Button(SpecialForMp3::decode(NecStandardCmd::from(cmd)).unwrap())
-    }
-}
-
- */

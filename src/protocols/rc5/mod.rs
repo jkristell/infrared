@@ -1,3 +1,4 @@
+//! Philips Rc5
 
 use crate::{
     send::ToPulsedata,

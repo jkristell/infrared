@@ -1,3 +1,5 @@
+//! Receiver functionality
+
 mod buffer;
 pub use buffer::*;
 mod event;

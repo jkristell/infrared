@@ -1,9 +1,12 @@
+//! Embedded-hal based Sender
+
 use core::convert::Infallible;
 
 use crate::{
     send::{PulsedataSender, State, ToPulsedata},
 };
 
+/// Embedded hal sender
 pub struct Sender<PWMPIN, DUTY>
 where
     PWMPIN: embedded_hal::PwmPin<Duty = DUTY>,
