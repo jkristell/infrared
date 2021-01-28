@@ -107,7 +107,9 @@ pub enum Button {
     Rewind,
     Play,
     Paus,
-    Play_Paus,
+    Play_Pause,
+    Play_Pause2,
+
     Forward,
     Mode,
     Shuffle,

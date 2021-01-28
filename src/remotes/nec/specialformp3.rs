@@ -18,7 +18,7 @@ impl RemoteControl for SpecialForMp3 {
         (69, Power),
         (70, Mode),
         (71, Mute),
-        (68, Play_Paus),
+        (68, Play_Pause),
         (64, Prev),
         (67, Next),
         (7, Eq),
