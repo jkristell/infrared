@@ -1,4 +1,42 @@
-use crate::{Command, Protocol};
+//! Remote control
+
+use crate::ProtocolId;
+
+/// A trait describing a Remote Control
+pub trait RemoteControl {
+    /// Remote control model
+    const MODEL: &'static str = "<NONAME>";
+    /// Type of device that this remote controls
+    const DEVTYPE: DeviceType = DeviceType::Generic;
+    /// Protocol
+    const PROTOCOL: ProtocolId;
+    /// Device address
+    const ADDRESS: u32;
+    /// The type of command
+    type Cmd: AsButton;
+    /// command byte to standardbutton mapping
+    const BUTTONS: &'static [(u32, Button)] = &[];
+
+    /// Try to map a command into an Button for this remote
+    fn decode(cmd: Self::Cmd) -> Option<Button> {
+        // Check address
+        if Self::ADDRESS != cmd.address() {
+            return None;
+        }
+        Self::BUTTONS
+            .iter()
+            .find(|(c, _)| *c == cmd.command())
+            .map(|(_, b)| *b)
+    }
+
+    /// Encode a button into a command
+    fn encode(button: Button) -> Option<Self::Cmd> {
+        Self::BUTTONS
+            .iter()
+            .find(|(_, b)| *b == button)
+            .and_then(|(c, _)| Self::Cmd::create(Self::ADDRESS, *c as u32))
+    }
+}
 
 #[derive(Debug)]
 /// Device type that the remote control controls
@@ -10,38 +48,16 @@ pub enum DeviceType {
     BluRayPlayer,
 }
 
-/// A trait describing a Remote Control
-pub trait RemoteControl {
-    /// Remote control model
-    const MODEL: &'static str = "<NONAME>";
-    /// Type of device that this remote controls
-    const DEVTYPE: DeviceType = DeviceType::Generic;
+/// Trait that is implemented by all Commands that fit into the basic remote control button model
+pub trait AsButton: Sized {
+    /// Address
+    fn address(&self) -> u32;
+    /// Command
+    fn command(&self) -> u32;
     /// Protocol
-    const PROTOCOL: Protocol = Protocol::Unknown;
-    /// Device address
-    const ADDRESS: u32;
-    /// The type of command
-    type Cmd: Command;
-    /// command byte to standardbutton mapping
-    const BUTTONS: &'static [(u8, Button)] = &[];
-    /// Try to map a command into an Button for this remote
-    fn decode(cmd: Self::Cmd) -> Option<Button> {
-        // Check address
-        if Self::ADDRESS != cmd.address() {
-            return None;
-        }
-        Self::BUTTONS
-            .iter()
-            .find(|(c, _)| u32::from(*c) == cmd.data())
-            .map(|(_, b)| *b)
-    }
-    /// Encode a button into a command
-    fn encode(button: Button) -> Option<Self::Cmd> {
-        Self::BUTTONS
-            .iter()
-            .find(|(_, b)| *b == button)
-            .and_then(|(c, _)| Self::Cmd::construct(Self::ADDRESS, *c as u32))
-    }
+    fn protocol(&self) -> ProtocolId;
+    /// Create a Command from this Button for Self
+    fn create(addr: u32, cmd: u32) -> Option<Self>;
 }
 
 #[allow(non_camel_case_types)]
@@ -91,7 +107,9 @@ pub enum Button {
     Rewind,
     Play,
     Paus,
-    Play_Paus,
+    Play_Pause,
+    Play_Pause2,
+
     Forward,
     Mode,
     Shuffle,
@@ -107,9 +125,12 @@ pub enum Button {
     Repeat,
     Time,
     Setup,
+    Menu,
 
     PitchReset,
     PitchPlus,
     PitchMinus,
     Prog,
+
+    BatteryLow,
 }

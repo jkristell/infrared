@@ -63,9 +63,6 @@ impl From<Rc6State> for State {
     }
 }
 
-const RISING: bool = true;
-const FALLING: bool = false;
-
 impl ReceiverSM for Rc6 {
     type Cmd = Rc6Command;
     type InternalState = Rc6State;
@@ -78,24 +75,24 @@ impl ReceiverSM for Rc6 {
     fn event(&mut self, rising: bool, dt: u32) -> Rc6State {
         use Rc6State::*;
 
-        // Number of rc6 units since last pin edge
-        let n_units = Rc6::interval_to_units(dt as u16);
+        // Number of rc6 clock ticks since last edge
+        let ticks = Rc6::interval_to_units(dt as u16);
 
         // Reconstruct the clock
-        if let Some(units) = n_units {
-            self.clock += units;
+        if let Some(t) = ticks {
+            self.clock += t;
         } else {
             self.reset();
         }
 
         let odd = self.clock & 1 == 1;
 
-        self.state = match (self.state, rising, n_units) {
-            (Idle,          FALLING,    _)          => Idle,
-            (Idle,          RISING,     _)          => { self.clock = 0; Leading },
-            (Leading,       FALLING,    Some(6))    => LeadingPaus,
+        self.state = match (self.state, rising, ticks) {
+            (Idle,          false,    _)            => Idle,
+            (Idle,          true,     _)            => { self.clock = 0; Leading },
+            (Leading,       false,    Some(6))      => LeadingPaus,
             (Leading,       _,          _)          => Idle,
-            (LeadingPaus,   RISING,     Some(2))    => HeaderData(3),
+            (LeadingPaus,   true,     Some(2))      => HeaderData(3),
             (LeadingPaus,   _,          _)          => Idle,
 
             (HeaderData(n), _,          Some(_)) if odd => {
@@ -110,16 +107,16 @@ impl ReceiverSM for Rc6 {
             (HeaderData(n), _,          Some(_))    => HeaderData(n),
             (HeaderData(_), _,          None)       => Idle,
 
-            (Trailing,      FALLING,    Some(3))    => { self.toggle = true; Data(15) }
-            (Trailing,      RISING,     Some(2))    => { self.toggle = false; Data(15) }
-            (Trailing,      FALLING,    Some(1))    => Trailing,
+            (Trailing,      false,      Some(3))    => { self.toggle = true; Data(15) }
+            (Trailing,      true,       Some(2))    => { self.toggle = false; Data(15) }
+            (Trailing,      false,      Some(1))    => Trailing,
             (Trailing,      _,          _)          => Idle,
 
-            (Data(0),       RISING,     Some(_)) if odd => Done,
-            (Data(0),       FALLING,    Some(_)) if odd => { self.data |= 1; Done }
+            (Data(0),       true,       Some(_)) if odd => Done,
+            (Data(0),       false,      Some(_)) if odd => { self.data |= 1; Done }
             (Data(0),       _,          Some(_))    => Data(0),
-            (Data(n),       RISING,     Some(_)) if odd => Data(n - 1),
-            (Data(n),       FALLING,    Some(_)) if odd => { self.data |= 1 << n; Data(n - 1) }
+            (Data(n),       true,       Some(_)) if odd => Data(n - 1),
+            (Data(n),       false,      Some(_)) if odd => { self.data |= 1 << n; Data(n - 1) }
             (Data(n),       _,          Some(_))    => Data(n),
             (Data(_),       _,          None)       => Rc6Err(Error::Data),
 

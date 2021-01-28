@@ -1,4 +1,10 @@
-use crate::{Command, Protocol};
+use crate::{
+    ProtocolId,
+    send::ToPulsedata,
+};
+#[cfg(feature = "remotes")]
+use crate::remotecontrol::AsButton;
+
 use core::convert::TryInto;
 
 #[derive(Debug, PartialEq)]
@@ -77,24 +83,8 @@ const fn payload(bits: u16) -> [Level; 32] {
     lvls
 }
 
-impl Command for Rc6Command {
-    fn construct(addr: u32, cmd: u32) -> Option<Self> {
-        Some(Rc6Command::new(addr.try_into().ok()?, cmd.try_into().ok()?))
-    }
-
-    fn address(&self) -> u32 {
-        self.addr.into()
-    }
-
-    fn data(&self) -> u32 {
-        self.cmd.into()
-    }
-
-    fn protocol(&self) -> Protocol {
-        Protocol::Rc6
-    }
-
-    fn pulses(&self, b: &mut [u16]) -> usize {
+impl ToPulsedata for Rc6Command {
+    fn to_pulsedata(&self, b: &mut [u16]) -> usize {
         use Level::*;
 
         let header = leader(self.toggle);
@@ -129,5 +119,24 @@ impl Command for Rc6Command {
         }
 
         index
+    }
+}
+
+#[cfg(feature = "remotes")]
+impl AsButton for Rc6Command {
+    fn address(&self) -> u32 {
+        self.addr.into()
+    }
+
+    fn command(&self) -> u32 {
+        self.cmd.into()
+    }
+
+    fn protocol(&self) -> ProtocolId {
+        ProtocolId::Rc6
+    }
+
+    fn create(addr: u32, cmd: u32) -> Option<Self> {
+        Some(Rc6Command::new(addr.try_into().ok()?, cmd.try_into().ok()?))
     }
 }

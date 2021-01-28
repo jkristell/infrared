@@ -2,16 +2,16 @@ use crate::{
     remotecontrol::{Button, DeviceType, RemoteControl},
     remotes::{
         nec::{SamsungTv, SpecialForMp3},
-        rc5::Rc5CdPlayer,
+        rc5::CdPlayer,
         sbp::SamsungBluRayPlayer,
     },
-    Protocol,
+    ProtocolId,
 };
 
 pub fn remotes() -> Vec<RemoteControlData> {
     // Pretty much every remote ever manufactured :-)
     vec![
-        RemoteControlData::new::<Rc5CdPlayer>(),
+        RemoteControlData::new::<CdPlayer>(),
         RemoteControlData::new::<SamsungTv>(),
         RemoteControlData::new::<SpecialForMp3>(),
         RemoteControlData::new::<SamsungBluRayPlayer>(),
@@ -22,9 +22,9 @@ pub fn remotes() -> Vec<RemoteControlData> {
 pub struct RemoteControlData {
     pub model: &'static str,
     pub addr: u32,
-    pub protocol: Protocol,
+    pub protocol: ProtocolId,
     pub dtype: DeviceType,
-    pub mapping: &'static [(u8, Button)],
+    pub mapping: &'static [(u32, Button)],
 }
 
 impl RemoteControlData {

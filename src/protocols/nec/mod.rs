@@ -1,77 +1,66 @@
 //! Nec
 
-use core::{convert::TryInto, marker::PhantomData};
-
-use crate::{cmd::Protocol, Command};
-
+mod cmds;
 pub mod receiver;
 #[cfg(test)]
 mod tests;
 
+pub use cmds::{
+    NecCommand,
+    Nec16Command, NecAppleCommand, NecRawCommand, NecSamsungCommand,
+};
+
 #[doc(inline)]
 pub use receiver::Nec;
 
-/// Standard Nec protocol
+/// Standard Nec protocol timing
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub struct NecStandard;
+pub struct StandardTiming;
+
 /// Nec protocol with Samsung timings
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub struct NecSamsung;
-/// Nec with 16 bit address, 8 bit command
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub struct Nec16;
+pub struct SamsungTiming;
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-/// Nec Command
-pub struct NecCommand<VARIANT: NecVariant + ?Sized = NecStandard> {
-    pub addr: u16,
-    pub cmd: u8,
-    var: PhantomData<VARIANT>,
-}
+/// Nec variant with Samsung bit encoding and Samsung timing
+pub type NecSamsung = Nec<NecSamsungCommand, SamsungTiming>;
 
-impl<V: NecVariant> NecCommand<V> {
-    pub fn new(addr: u16, cmd: u8) -> Self {
-        NecCommand {
-            addr,
-            cmd,
-            var: PhantomData,
-        }
-    }
-}
+/// Nec variant with 16 bit address and Nec standard timing
+pub type Nec16 = Nec<Nec16Command>;
 
-impl<VARIANT: NecVariant> Command for NecCommand<VARIANT> {
-    fn construct(addr: u32, cmd: u32) -> Option<Self> {
-        Some(NecCommand::new(addr.try_into().ok()?, cmd.try_into().ok()?))
-    }
+/// Nec variant with Apple specific bit encoding and Standard timing
+pub type NecApple = Nec<NecAppleCommand>;
 
-    fn address(&self) -> u32 {
-        self.addr.into()
-    }
+/// Nec variant without any specific bit unpacking, useful for debugging
+pub type NecDebug = Nec<NecRawCommand>;
 
-    fn data(&self) -> u32 {
-        self.cmd.into()
-    }
+/// Nec Command bit fiddling Trait
+pub trait NecCommandTrait<Timing: NecTiming>: Sized {
+    /// Validate the bits as a Command of this type
+    fn validate(bits: u32) -> bool;
 
-    fn protocol(&self) -> Protocol {
-        Protocol::Nec
-    }
+    /// Unpack the bits into Command
+    fn unpack(bits: u32, repeat: bool) -> Option<Self>;
 
-    fn pulses(&self, b: &mut [u16]) -> usize {
+    /// Pack command into a u32
+    fn pack(&self) -> u32;
+
+    /// Encode the command for sending
+    fn pulse_distance(&self, b: &mut [u16]) -> usize {
         b[0] = 0;
-        b[1] = VARIANT::TIMING.hh as u16;
-        b[2] = VARIANT::TIMING.hl as u16;
+        b[1] = Timing::PL.hh as u16;
+        b[2] = Timing::PL.hl as u16;
 
-        let bits = VARIANT::cmd_to_bits(self);
+        let bits = self.pack();
 
         let mut bi = 3;
 
         for i in 0..32 {
             let one = (bits >> i) & 1 != 0;
-            b[bi] = VARIANT::TIMING.dh as u16;
+            b[bi] = Timing::PL.dh as u16;
             if one {
-                b[bi + 1] = VARIANT::TIMING.ol as u16;
+                b[bi + 1] = Timing::PL.ol as u16;
             } else {
-                b[bi + 1] = VARIANT::TIMING.zl as u16;
+                b[bi + 1] = Timing::PL.zl as u16;
             }
             bi += 2;
         }
@@ -80,68 +69,23 @@ impl<VARIANT: NecVariant> Command for NecCommand<VARIANT> {
     }
 }
 
-pub trait NecVariant {
-    const TIMING: &'static NecTiming;
-
-    fn cmd_to_bits(cmd: &NecCommand<Self>) -> u32;
-    fn cmd_from_bits(bits: u32) -> NecCommand<Self>;
-    fn cmd_is_valid(bits: u32) -> bool;
+pub trait NecTiming {
+    const PL: &'static NecPulseDistance;
 }
 
-impl NecVariant for NecStandard {
-    const TIMING: &'static NecTiming = &STANDARD_TIMING;
-
-    // Encode to bit
-    fn cmd_to_bits(cmd: &NecCommand) -> u32 {
-        let addr = cmd.addr;
-        let cmd = cmd.cmd;
-
-        let addr = u32::from(addr) | (u32::from(!addr) & 0xFF) << 8;
-        let cmd = u32::from(cmd) << 16 | u32::from(!cmd) << 24;
-        addr | cmd
-    }
-
-    fn cmd_from_bits(bits: u32) -> NecCommand<NecStandard> {
-        let addr = ((bits) & 0xFF) as u16;
-        let cmd = ((bits >> 16) & 0xFF) as u8;
-        NecCommand {
-            addr,
-            cmd,
-            var: PhantomData,
-        }
-    }
-
-    fn cmd_is_valid(bits: u32) -> bool {
-        ((bits >> 24) ^ (bits >> 16)) & 0xFF == 0xFF && ((bits >> 8) ^ bits) & 0xFF == 0xFF
-    }
+impl NecTiming for StandardTiming {
+    const PL: &'static NecPulseDistance = &NecPulseDistance {
+        hh: 9000,
+        hl: 4500,
+        rl: 2250,
+        dh: 560,
+        zl: 560,
+        ol: 1690,
+    };
 }
 
-impl NecVariant for Nec16 {
-    const TIMING: &'static NecTiming = &STANDARD_TIMING;
-
-    fn cmd_to_bits(cmd: &NecCommand<Self>) -> u32 {
-        let addr = u32::from(cmd.addr);
-        let cmd = u32::from(cmd.cmd) << 16 | u32::from(!cmd.cmd) << 24;
-        addr | cmd
-    }
-
-    fn cmd_from_bits(bits: u32) -> NecCommand<Nec16> {
-        let addr = ((bits) & 0xFFFF) as u16;
-        let cmd = ((bits >> 16) & 0xFF) as u8;
-        NecCommand {
-            addr,
-            cmd,
-            var: PhantomData,
-        }
-    }
-
-    fn cmd_is_valid(bits: u32) -> bool {
-        ((bits >> 24) ^ (bits >> 16)) & 0xFF == 0xFF
-    }
-}
-
-impl NecVariant for NecSamsung {
-    const TIMING: &'static NecTiming = &NecTiming {
+impl NecTiming for SamsungTiming {
+    const PL: &'static NecPulseDistance = &NecPulseDistance {
         hh: 4500,
         hl: 4500,
         rl: 2250,
@@ -149,30 +93,10 @@ impl NecVariant for NecSamsung {
         dh: 560,
         ol: 1690,
     };
-
-    fn cmd_to_bits(cmd: &NecCommand<Self>) -> u32 {
-        let addr = u32::from(cmd.addr) | u32::from(cmd.addr) << 8;
-        let cmd = u32::from(cmd.cmd) << 16 | u32::from(!cmd.cmd) << 24;
-        addr | cmd
-    }
-
-    fn cmd_from_bits(bits: u32) -> NecCommand<NecSamsung> {
-        let addr = ((bits) & 0xFF) as u16;
-        let cmd = ((bits >> 16) & 0xFF) as u8;
-        NecCommand {
-            addr,
-            cmd,
-            var: PhantomData,
-        }
-    }
-
-    fn cmd_is_valid(bits: u32) -> bool {
-        ((bits >> 24) ^ (bits >> 16)) & 0xFF == 0xFF && ((bits >> 8) ^ bits) & 0xFF == 0
-    }
 }
 
 /// High and low times for Nec-like protocols. In us.
-pub struct NecTiming {
+pub struct NecPulseDistance {
     /// Header high
     hh: u32,
     /// Header low
@@ -186,12 +110,3 @@ pub struct NecTiming {
     /// One low
     ol: u32,
 }
-
-const STANDARD_TIMING: NecTiming = NecTiming {
-    hh: 9000,
-    hl: 4500,
-    rl: 2250,
-    dh: 560,
-    zl: 560,
-    ol: 1690,
-};

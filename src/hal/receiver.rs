@@ -1,17 +1,23 @@
-//! Embedded-hal based Receiver types
+//! Embedded-hal based Receivers
 
 use embedded_hal::digital::v2::InputPin;
 
-use crate::recv::{self, ReceiverSM};
-use crate::remotecontrol::{Button, RemoteControl};
+use crate::{
+    recv::{self, ReceiverSM},
+    remotecontrol::{
+        RemoteControl,
+        AsButton,
+        Button
+    },
+};
 
-/// Event driven Hal receiver
+/// Event driven embedded-hal receiver
 pub struct EventReceiver<PROTOCOL, PIN> {
-    recv: recv::EventReceiver<PROTOCOL>,
+    recv: crate::recv::EventReceiver<PROTOCOL>,
     pub pin: PIN,
 }
 
-impl<PIN, PINERR, PROTOCOL> EventReceiver<PROTOCOL, PIN>
+impl<PROTOCOL, PIN, PINERR> EventReceiver<PROTOCOL, PIN>
 where
     PROTOCOL: ReceiverSM,
     PIN: InputPin<Error = PINERR>,
@@ -21,7 +27,7 @@ where
     /// `samplerate`: Sample rate of the receiver
     pub fn new(pin: PIN, samplerate: u32) -> Self {
         Self {
-            recv: recv::EventReceiver::new(samplerate),
+            recv: crate::recv::EventReceiver::new(samplerate),
             pin,
         }
     }
@@ -91,7 +97,10 @@ where
     #[cfg(feature = "remotes")]
     pub fn poll_button<RC: RemoteControl<Cmd = PROTOCOL::Cmd>>(
         &mut self,
-    ) -> Result<Option<Button>, PINERR> {
+    ) -> Result<Option<Button>, PINERR>
+    where
+        <PROTOCOL as ReceiverSM>::Cmd: AsButton,
+    {
         self.poll().map(|cmd| cmd.and_then(RC::decode))
     }
 }
@@ -113,7 +122,6 @@ macro_rules! multireceiver {
     where
         PIN: InputPin<Error = PINERR>,
         $( $P: ReceiverSM<Cmd = $C>),*,
-        $( $C: crate::Command ),*,
     {
         pub fn new(pin: PIN, samplerate: u32) -> Self {
             Self {

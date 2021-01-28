@@ -10,7 +10,6 @@ This library aims for to be useful with the any MCU hal that implements the embe
 and at the same time provide functionality for using it with more efficient implementation
 such as input capture, and be useful in host applications (such as Blipper).
 
-
 ### Supported protocols
  - The NEC Protocol and the Samsung variant of it
  - Philips Rc5

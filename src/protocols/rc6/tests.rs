@@ -1,8 +1,7 @@
-use crate::protocols::rc6::{Rc6, Rc6Command};
-use crate::recv::*;
-use crate::{Command};
-use crate::bufrecv::BufferReceiver;
-use crate::sender::PulseBuffer;
+use crate::recv::{BufferReceiver, EventReceiver};
+use crate::protocols::Rc6;
+use crate::protocols::rc6::Rc6Command;
+use crate::send::{PulsedataBuffer, ToPulsedata};
 
 #[test]
 fn pulses() {
@@ -26,7 +25,7 @@ fn pulses() {
 fn newpulse() {
     let cmd = Rc6Command::new(70, 20);
     let mut b = [0u16; 96];
-    let len = cmd.pulses(&mut b);
+    let len = cmd.to_pulsedata(&mut b);
 
     let mut edge = false;
     let mut recv: EventReceiver<Rc6> = EventReceiver::new(1_000_000);
@@ -78,7 +77,7 @@ fn basic() {
 
 #[test]
 fn all_commands() {
-    let mut ptb = PulseBuffer::with_samplerate(40_000);
+    let mut ptb = PulsedataBuffer::with_samplerate(40_000);
 
     for address in 0..255 {
         for cmdnum in 0..255 {
@@ -91,4 +90,3 @@ fn all_commands() {
         }
     }
 }
-

@@ -1,9 +1,16 @@
 # Changelog
 
+## [0.9.0] - 2021-01-28
+ - Added support the Apple variant of the Nec Protocol and added a basic AppleRemote (Thanks @jhillyerd)
+ - Fixed the repeat detection on the NEC receiver. The NEC commands now have a boolean repeat flag to let the
+   user detect repeats.
+ - Renamed HalSender to Sender and move hal::{Sender, Receiver} to the root of the crate
+ - Lots of various internal refactoring, mostly on the NEC protocol
+
 ## [0.8.0] - 2020-12-29
  - Added HalSender and removed the protocol specific senders
  - Added Rc6 transmit support
- - Updated Nec and Rc5 transit support
+ - Updated Nec and Rc5 transmit support
  - moved examples to the infrared-examples repo
  - Added more tests
 

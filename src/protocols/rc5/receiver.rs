@@ -6,10 +6,11 @@ use crate::{
 };
 
 #[derive(Default)]
+/// Philips Rc5
 pub struct Rc5 {
     pub(crate) state: Rc5State,
     bitbuf: u16,
-    pub(crate) rc5cntr: u32,
+    pub(crate) clock: u32,
 }
 
 impl Rc5 {
@@ -65,18 +66,18 @@ impl ReceiverSM for Rc5 {
         let rc5units = self.interval_to_units(dt);
 
         if let Some(units) = rc5units {
-            self.rc5cntr += units;
+            self.clock += units;
         } else {
             self.reset();
         }
 
-        let is_odd = self.rc5cntr & 1 == 0;
+        let is_odd = self.clock & 1 == 0;
 
         self.state = match (self.state, rising, rc5units) {
 
             (Idle,      false,    _) => Idle,
             (Idle,      true,     _) => {
-                self.rc5cntr = 0;
+                self.clock = 0;
                 self.bitbuf |= 1 << 13; Data(12)
             }
 
@@ -96,13 +97,13 @@ impl ReceiverSM for Rc5 {
     }
 
     fn command(&self) -> Option<Self::Cmd> {
-        Some(Rc5Command::from_bits(self.bitbuf))
+        Some(Rc5Command::unpack(self.bitbuf))
     }
 
     fn reset(&mut self) {
         self.state = Rc5State::Idle;
         self.bitbuf = 0;
-        self.rc5cntr = 0;
+        self.clock = 0;
     }
 }
 

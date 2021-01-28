@@ -1,3 +1,4 @@
+//! Embedded-hal version Receiver and Sender
 mod receiver;
 mod sender;
 
