@@ -83,7 +83,7 @@ impl<Cmd, Timing: NecTiming> Nec<Cmd, Timing> {
 
 impl<Cmd, Timing> ReceiverSM for Nec<Cmd, Timing>
 where
-    Cmd: NecCommandTrait<Timing>,
+    Cmd: NecCommandTrait,
     Timing: NecTiming,
 {
     type Cmd = Cmd;

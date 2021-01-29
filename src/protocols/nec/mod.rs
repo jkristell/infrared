@@ -12,6 +12,7 @@ pub use cmds::{
 
 #[doc(inline)]
 pub use receiver::Nec;
+use crate::send::ToPulsedata;
 
 /// Standard Nec protocol timing
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -34,7 +35,7 @@ pub type NecApple = Nec<NecAppleCommand>;
 pub type NecDebug = Nec<NecRawCommand>;
 
 /// Nec Command bit fiddling Trait
-pub trait NecCommandTrait<Timing: NecTiming>: Sized {
+pub trait NecCommandTrait: Sized {
     /// Validate the bits as a Command of this type
     fn validate(bits: u32) -> bool;
 
@@ -43,12 +44,15 @@ pub trait NecCommandTrait<Timing: NecTiming>: Sized {
 
     /// Pack command into a u32
     fn pack(&self) -> u32;
+}
 
+pub trait NecSomething: NecCommandTrait {
+    type Tim: NecTiming;
     /// Encode the command for sending
     fn pulse_distance(&self, b: &mut [u16]) -> usize {
         b[0] = 0;
-        b[1] = Timing::PL.hh as u16;
-        b[2] = Timing::PL.hl as u16;
+        b[1] = Self::Tim::PL.hh as u16;
+        b[2] = Self::Tim::PL.hl as u16;
 
         let bits = self.pack();
 
@@ -56,16 +60,22 @@ pub trait NecCommandTrait<Timing: NecTiming>: Sized {
 
         for i in 0..32 {
             let one = (bits >> i) & 1 != 0;
-            b[bi] = Timing::PL.dh as u16;
+            b[bi] = Self::Tim::PL.dh as u16;
             if one {
-                b[bi + 1] = Timing::PL.ol as u16;
+                b[bi + 1] = Self::Tim::PL.ol as u16;
             } else {
-                b[bi + 1] = Timing::PL.zl as u16;
+                b[bi + 1] = Self::Tim::PL.zl as u16;
             }
             bi += 2;
         }
 
         bi
+    }
+}
+
+impl<T: NecSomething<Tim=U>, U: NecTiming> ToPulsedata for T {
+    fn to_pulsedata(&self, b: &mut [u16]) -> usize {
+        self.pulse_distance(b)
     }
 }
 
