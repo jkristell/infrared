@@ -1,10 +1,10 @@
 use crate::{
-    protocols::nec::{NecCommandTrait, SamsungTiming, StandardTiming},
+    protocols::nec::{NecCommandTrait},
     ProtocolId,
 };
 #[cfg(feature = "remotes")]
 use crate::remotecontrol::AsButton;
-use crate::protocols::nec::NecSomething;
+use crate::protocols::nec::{NecTiming, NecPulseDistance, NEC_STANDARD_TIMING, NEC_SAMSUNG_TIMING};
 
 /*
  * -------------------------------------------------------------------------
@@ -61,8 +61,8 @@ impl NecCommandTrait for NecCommand {
     }
 }
 
-impl NecSomething for NecCommand {
-    type Tim = StandardTiming;
+impl NecTiming for NecCommand {
+    const PD: &'static NecPulseDistance = NEC_STANDARD_TIMING;
 }
 
 /*
@@ -97,7 +97,9 @@ impl NecCommandTrait for Nec16Command {
         addr | cmd
     }
 }
-impl NecSomething for Nec16Command { type Tim = StandardTiming; }
+impl NecTiming for Nec16Command {
+    const PD: &'static NecPulseDistance = NEC_STANDARD_TIMING;
+}
 
 /*
  * -------------------------------------------------------------------------
@@ -130,8 +132,8 @@ impl NecCommandTrait for NecSamsungCommand {
     }
 }
 
-impl NecSomething for NecSamsungCommand {
-    type Tim = SamsungTiming;
+impl NecTiming for NecSamsungCommand {
+    const PD: &'static NecPulseDistance = NEC_SAMSUNG_TIMING;
 }
 
 #[cfg(feature = "remotes")]
@@ -210,9 +212,8 @@ impl NecCommandTrait for NecAppleCommand {
     }
 }
 
-impl NecSomething for NecAppleCommand {
-    type Tim = StandardTiming;
-
+impl NecTiming for NecAppleCommand {
+    const PD: &'static NecPulseDistance = NEC_STANDARD_TIMING;
 }
 
 #[cfg(feature = "remotes")]
