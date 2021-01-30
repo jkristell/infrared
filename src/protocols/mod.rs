@@ -8,6 +8,8 @@ pub mod rc5;
 pub mod rc6;
 #[cfg(feature = "sbp")]
 pub mod sbp;
+#[cfg(feature = "denon")]
+pub mod denon;
 
 #[cfg(feature = "nec")]
 #[doc(inline)]
@@ -21,5 +23,7 @@ pub use rc6::Rc6;
 #[cfg(feature = "sbp")]
 #[doc(inline)]
 pub use sbp::Sbp;
+#[cfg(feature = "denon")]
+pub use denon::Denon;
 
 pub(crate) mod utils;
