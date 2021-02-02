@@ -15,6 +15,7 @@ such as input capture, and be useful in host applications (such as Blipper).
  - Philips Rc5
  - Philips Rc6
  - "Samsung BluRay Player protocol". Please let know if you know what it really is called :)
+ - Denon 48 bit protocol
 
 ### Examples
  - The [infrared-examples](https://github.com/jkristell/infrared-examples) repo contains various examples for receiving and transmitting infrared with the
@@ -39,8 +40,6 @@ such as input capture, and be useful in host applications (such as Blipper).
  * https://www.sbprojects.net/knowledge/ir/nec.php
  * https://www.vishay.com/docs/82491/tsop382.pdf
 
-![Remote](https://jott.se/remote_small.jpg)
-    
 ## License
 
 Licensed under either of

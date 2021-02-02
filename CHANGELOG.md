@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.10.0] - 2021-02-02
+ - Added some support for Denon 48 bit protocol
+ - Reworked the BufferReceiver API
+
 ## [0.9.0] - 2021-01-28
  - Added support the Apple variant of the Nec Protocol and added a basic AppleRemote (Thanks @jhillyerd)
  - Fixed the repeat detection on the NEC receiver. The NEC commands now have a boolean repeat flag to let the
