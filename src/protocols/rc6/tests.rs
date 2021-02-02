@@ -4,24 +4,6 @@ use crate::protocols::rc6::Rc6Command;
 use crate::send::{PulsedataBuffer, ToPulsedata};
 
 #[test]
-fn pulses() {
-    let mut recv: BufferReceiver<Rc6> = BufferReceiver::with_values(&[], 1_000_000);
-    let cmds = [
-        Rc6Command::new(72, 17),
-        Rc6Command::new(0, 21),
-        Rc6Command::new(1, 33),
-    ];
-
-    for cmd in &cmds {
-        recv.add_cmd(cmd);
-    }
-
-    cmds.iter()
-        .zip(recv.into_iter())
-        .for_each(|(cmd, cmdrecv)| assert_eq!(cmd, &cmdrecv));
-}
-
-#[test]
 fn newpulse() {
     let cmd = Rc6Command::new(70, 20);
     let mut b = [0u16; 96];
@@ -63,9 +45,9 @@ fn basic() {
         16, 19, 16, 37, 17, 19, 34, 19, 17, 19, 16, 19, 17, 19, 16, 20, 16, 19, 16, 37, 34, 20,
     ];
 
-    let recv: BufferReceiver<Rc6> = BufferReceiver::with_values(&dists, 40_000);
+    let recv = BufferReceiver::new(&dists, 40_000);
 
-    let cmds = recv.iter().collect::<std::vec::Vec<_>>();
+    let cmds = recv.iter::<Rc6>().collect::<std::vec::Vec<_>>();
 
     assert_eq!(cmds.len(), 3);
 
@@ -81,10 +63,12 @@ fn all_commands() {
 
     for address in 0..255 {
         for cmdnum in 0..255 {
+            ptb.reset();
+
             let cmd: Rc6Command = Rc6Command::new(address, cmdnum);
             ptb.load(&cmd);
-            let brecv: BufferReceiver<Rc6> = BufferReceiver::with_values(&ptb.buf, 40_000);
-            let cmdres = brecv.iter().next().unwrap();
+            let brecv = BufferReceiver::new(&ptb.buf, 40_000);
+            let cmdres = brecv.iter::<Rc6>().next().unwrap();
             assert_eq!(cmd.addr, cmdres.addr);
             assert_eq!(cmd.cmd, cmdres.cmd);
         }

@@ -8,7 +8,7 @@ mod periodic;
 pub use periodic::*;
 
 /// Receiver state machine
-pub trait ReceiverSM {
+pub trait InfraredReceiver {
     /// The Resulting Command Type
     type Cmd;
     /// Internal State

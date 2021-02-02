@@ -2,7 +2,7 @@ use crate::protocols::nec::{NecCommandTrait, StandardTiming};
 use crate::{
     protocols::nec::{NecPulseDistance, NecTiming, NecCommand},
     protocols::utils::PulseWidthRange,
-    recv::{Error, ReceiverSM, State},
+    recv::{Error, InfraredReceiver, State},
 };
 use core::marker::PhantomData;
 
@@ -81,7 +81,7 @@ impl<Cmd, Timing: NecTiming> Nec<Cmd, Timing> {
     }
 }
 
-impl<Cmd, Timing> ReceiverSM for Nec<Cmd, Timing>
+impl<Cmd, Timing> InfraredReceiver for Nec<Cmd, Timing>
 where
     Cmd: NecCommandTrait<Timing>,
     Timing: NecTiming,

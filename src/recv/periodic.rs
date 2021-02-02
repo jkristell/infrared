@@ -1,6 +1,6 @@
 //! Period reciever
 //!
-use crate::recv::{Error, EventReceiver, ReceiverSM};
+use crate::recv::{Error, EventReceiver, InfraredReceiver};
 
 /// Receiver to use with periodic polling
 pub struct PeriodicReceiver<Protocol> {
@@ -11,7 +11,7 @@ pub struct PeriodicReceiver<Protocol> {
     last: u32,
 }
 
-impl<Protocol: ReceiverSM> PeriodicReceiver<Protocol> {
+impl<Protocol: InfraredReceiver> PeriodicReceiver<Protocol> {
     pub fn new(samplerate: u32) -> Self {
         Self {
             recv: EventReceiver::new(samplerate),

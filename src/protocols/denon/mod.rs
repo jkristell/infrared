@@ -1,5 +1,5 @@
 use crate::{
-    recv::{ReceiverSM, State},
+    recv::{InfraredReceiver, State},
     protocols::utils::PulseWidthRange,
 };
 
@@ -26,7 +26,7 @@ pub struct DenonCommand {
     pub bits: u64,
 }
 
-impl ReceiverSM for Denon {
+impl InfraredReceiver for Denon {
     type Cmd = DenonCommand;
     type InternalState = DenonState;
 

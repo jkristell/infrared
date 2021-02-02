@@ -2,7 +2,7 @@
 
 use core::ops::Range;
 
-use crate::recv::{Error, ReceiverSM, State};
+use crate::recv::{Error, InfraredReceiver, State};
 
 mod cmd;
 pub use cmd::Rc6Command;
@@ -63,7 +63,7 @@ impl From<Rc6State> for State {
     }
 }
 
-impl ReceiverSM for Rc6 {
+impl InfraredReceiver for Rc6 {
     type Cmd = Rc6Command;
     type InternalState = Rc6State;
 

@@ -1,6 +1,6 @@
 //! Event based Receiver
 
-use crate::recv::{Error, ReceiverSM, State};
+use crate::recv::{Error, InfraredReceiver, State};
 
 /// Event driven receiver
 pub struct EventReceiver<Protocol> {
@@ -10,7 +10,7 @@ pub struct EventReceiver<Protocol> {
 }
 
 /// Receiver - event based
-impl<Protocol: ReceiverSM> EventReceiver<Protocol> {
+impl<Protocol: InfraredReceiver> EventReceiver<Protocol> {
     /// Create a new Receiver
     pub fn new(samplerate: u32) -> Self {
         Self {

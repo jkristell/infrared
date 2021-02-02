@@ -11,7 +11,7 @@ use core::convert::TryInto;
 
 use crate::{
     protocols::utils::PulseWidthRange,
-    recv::{Error, ReceiverSM, State},
+    recv::{Error, InfraredReceiver, State},
     ProtocolId,
 };
 #[cfg(feature = "remotes")]
@@ -90,7 +90,7 @@ pub enum SbpState {
     Err(Error),
 }
 
-impl ReceiverSM for Sbp {
+impl InfraredReceiver for Sbp {
     type Cmd = SbpCommand;
     type InternalState = SbpState;
 
