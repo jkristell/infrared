@@ -1,76 +1,75 @@
 use crate::{
-    send::ToPulsedata,
-    recv::{ReceiverSM, State}
+    recv::{InfraredReceiver, State}
 };
-use core::marker::PhantomData;
 
-const BUFRECVBUFLEN: usize = 512;
-
-pub struct BufferReceiver<PROTOCOL> {
-    buf: [u16; BUFRECVBUFLEN],
-    len: usize,
+pub struct BufferReceiver<'a> {
+    buf: &'a [u16],
     scaler: u32,
-    _sm: PhantomData<PROTOCOL>,
 }
 
-impl<PROTOCOL: ReceiverSM> BufferReceiver<PROTOCOL> {
+impl<'a> BufferReceiver<'a> {
     /// Create a new BufferReceiver with initial value change buffer
-    pub fn with_values(values: &[u16], samplerate: u32) -> Self {
-        let mut buf = [0; 512];
-
-        let len = core::cmp::min(BUFRECVBUFLEN, values.len());
-        buf[0..len].copy_from_slice(values);
+    pub fn with_values(buf: &'a [u16], samplerate: u32) -> Self {
 
         Self {
             buf,
-            len,
             scaler: crate::TIMEBASE / samplerate,
-            _sm: PhantomData,
         }
     }
 
-    /// Add command to buffer
-    /// Panics if not enough room in Buffer
-    pub fn add_cmd(&mut self, cmd: &impl ToPulsedata) {
-        let cmdlen = cmd.to_pulsedata(&mut self.buf[self.len..]);
-        self.len += cmdlen
+    pub fn iter<Protocol: InfraredReceiver>(&self) -> BufferIterator<'a, Protocol> {
+        BufferIterator {
+            buf: &self.buf,
+            scaler: self.scaler,
+            pos: 0,
+            sm: Protocol::create(),
+        }
     }
 
-    /// Add values
-    /// Panics if not enough room in Buffer
-    pub fn add(&mut self, values: &[u16]) {
-        self.buf[self.len..values.len()].copy_from_slice(values);
-        self.len += values.len();
-    }
 
-    pub fn iter(&self) -> BufferIterator<'_, PROTOCOL> {
-        self.into_iter()
-    }
+    // Add command to buffer
+    // Panics if not enough room in Buffer
+    //pub fn add_cmd(&mut self, cmd: &impl ToPulsedata) {
+    //    let cmdlen = cmd.to_pulsedata(&mut self.buf[self.len..]);
+    //    self.len += cmdlen
+    //}
+
+    // Add values
+    // Panics if not enough room in Buffer
+    //pub fn add(&mut self, values: &[u16]) {
+    //    self.buf[self.len..values.len()].copy_from_slice(values);
+    //    self.len += values.len();
+    //}
+
+    //pub fn iter(&self) -> BufferIterator<'_, Protocol> {
+    //    self.into_iter()
+    //}
 }
 
-impl<'a, PROTOCOL: ReceiverSM> IntoIterator for &'a BufferReceiver<PROTOCOL> {
-    type Item = PROTOCOL::Cmd;
-    type IntoIter = BufferIterator<'a, PROTOCOL>;
+/*
+impl<'a, Protocol: ReceiverSM> IntoIterator for &'a BufferReceiver<'a, Protocol> {
+    type Item = Protocol::Cmd;
+    type IntoIter = BufferIterator<'a, Protocol>;
 
     fn into_iter(self) -> Self::IntoIter {
         BufferIterator {
             buf: &self.buf,
             scaler: self.scaler,
             pos: 0,
-            sm: PROTOCOL::create(),
+            sm: Protocol::create(),
         }
     }
 }
-
-pub struct BufferIterator<'a, PROTOCOL> {
+*/
+pub struct BufferIterator<'a, Protocol> {
     buf: &'a [u16],
     pos: usize,
     scaler: u32,
-    sm: PROTOCOL,
+    sm: Protocol,
 }
 
-impl<'a, PROTOCOL: ReceiverSM> Iterator for BufferIterator<'a, PROTOCOL> {
-    type Item = PROTOCOL::Cmd;
+impl<'a, Protocol: InfraredReceiver> Iterator for BufferIterator<'a, Protocol> {
+    type Item = Protocol::Cmd;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {

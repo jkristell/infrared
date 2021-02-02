@@ -3,7 +3,7 @@
 use embedded_hal::digital::v2::InputPin;
 
 use crate::{
-    recv::{self, ReceiverSM},
+    recv::{self, InfraredReceiver},
     remotecontrol::{
         RemoteControl,
         AsButton,
@@ -19,7 +19,7 @@ pub struct EventReceiver<PROTOCOL, PIN> {
 
 impl<PROTOCOL, PIN, PINERR> EventReceiver<PROTOCOL, PIN>
 where
-    PROTOCOL: ReceiverSM,
+    PROTOCOL: InfraredReceiver,
     PIN: InputPin<Error = PINERR>,
 {
     /// Create a new EventReceiver
@@ -65,7 +65,7 @@ pub struct PeriodicReceiver<PROTOCOL, PIN> {
 
 impl<PIN, PINERR, PROTOCOL> PeriodicReceiver<PROTOCOL, PIN>
 where
-    PROTOCOL: ReceiverSM,
+    PROTOCOL: InfraredReceiver,
     PIN: InputPin<Error = PINERR>,
 {
     /// Create a new PeriodicReceiver
@@ -99,7 +99,7 @@ where
         &mut self,
     ) -> Result<Option<Button>, PINERR>
     where
-        <PROTOCOL as ReceiverSM>::Cmd: AsButton,
+        <PROTOCOL as InfraredReceiver>::Cmd: AsButton,
     {
         self.poll().map(|cmd| cmd.and_then(RC::decode))
     }
@@ -121,7 +121,7 @@ macro_rules! multireceiver {
     impl<PIN, PINERR, $( $P, $C ),* > $name <$( $P ),* , PIN>
     where
         PIN: InputPin<Error = PINERR>,
-        $( $P: ReceiverSM<Cmd = $C>),*,
+        $( $P: InfraredReceiver<Cmd = $C>),*,
     {
         pub fn new(pin: PIN, samplerate: u32) -> Self {
             Self {

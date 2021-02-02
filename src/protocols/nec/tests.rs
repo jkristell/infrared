@@ -20,8 +20,8 @@ fn standard_nec() {
         24, 21, 24, 21, 24, 21, 24, 65, 25, 65, 24, 21, 24, 21, 24, 66, 24, 65, 25, 65, 24, 66, 24,
     ];
 
-    let brecv: BufferReceiver<Nec> = BufferReceiver::with_values(&dists, 40_000);
-    let cmds = brecv.iter().collect::<Vec<_>>();
+    let brecv = BufferReceiver::with_values(&dists, 40_000);
+    let cmds = brecv.iter::<Nec>().collect::<Vec<_>>();
     assert_eq!(cmds.len(), 2);
 
     for cmd in &cmds {
@@ -37,7 +37,7 @@ fn cmd_standard() {
         cmd: 44,
         repeat: false,
     };
-    let bits: u32 = cmd.pack();
+    let bits = cmd.pack();
 
     assert!(NecCommand::validate(bits));
 
@@ -58,7 +58,7 @@ fn cmd_samsumg() {
         repeat: false,
     };
 
-    let bits: u32 = cmd.pack();
+    let bits = cmd.pack();
     NecSamsungCommand::validate(bits);
 
     assert_eq!(bits, 0xD32C0707);
@@ -76,7 +76,7 @@ fn cmd_nec16() {
         cmd: 220,
         repeat: false,
     };
-    let bits: u32 = cmd.pack();
+    let bits = cmd.pack();
 
     assert!(Nec16Command::validate(bits));
 
@@ -93,15 +93,16 @@ fn all_nec_commands() {
 
     for address in 0..255 {
         for cmdnum in 0..255 {
+            ptb.reset();
             let cmd = NecCommand {
                 addr: address,
                 cmd: cmdnum,
                 repeat: false,
             };
             ptb.load(&cmd);
-            let brecv: BufferReceiver<Nec> = BufferReceiver::with_values(&ptb.buf, 40_000);
+            let brecv = BufferReceiver::with_values(&ptb.buf, 40_000);
 
-            let cmdres = brecv.iter().next().unwrap();
+            let cmdres = brecv.iter::<Nec>().next().unwrap();
             assert_eq!(cmd.addr, cmdres.addr);
             assert_eq!(cmd.cmd, cmdres.cmd);
         }
@@ -122,9 +123,9 @@ fn test_samplerates() {
         };
         ptb.load(&cmd);
 
-        let receiver: BufferReceiver<Nec> = BufferReceiver::with_values(&ptb.buf, *samplerate);
+        let receiver = BufferReceiver::with_values(&ptb.buf, *samplerate);
 
-        if let Some(cmd) = receiver.iter().next() {
+        if let Some(cmd) = receiver.iter::<Nec>().next() {
             println!("{:?}", cmd);
             assert_eq!(cmd.addr, 20);
             assert_eq!(cmd.cmd, 10);

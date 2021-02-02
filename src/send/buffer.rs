@@ -3,7 +3,7 @@ use crate::send::ToPulsedata;
 
 pub struct PulsedataBuffer {
     pub buf: [u16; 96],
-    pub len: usize,
+    pub offset: usize,
     pub scaler: u16,
 }
 
@@ -11,31 +11,32 @@ impl PulsedataBuffer {
     pub fn new() -> Self {
         Self {
             buf: [0; 96],
-            len: 0,
+            offset: 0,
             scaler: 1,
         }
     }
 
     pub fn reset(&mut self) {
-        self.len = 0;
+        self.offset = 0;
     }
 
     pub fn with_samplerate(samplerate: u32) -> Self {
         Self {
             buf: [0; 96],
-            len: 0,
+            offset: 0,
             scaler: u16::try_from(1000 / (samplerate / 1000)).unwrap(),
         }
     }
 
     pub fn load(&mut self, c: &impl ToPulsedata) {
-        let len = c.to_pulsedata(&mut self.buf);
-        self.len = len;
+        let len = c.to_pulsedata(&mut self.buf[self.offset..]);
 
         // Apply the scaling on the buf
-        for elem in &mut self.buf[0..len] {
+        for elem in &mut self.buf[self.offset .. self.offset + len] {
             *elem /= self.scaler;
         }
+
+        self.offset += len;
     }
 
     pub fn get(&self, index: usize) -> Option<u16> {
@@ -43,7 +44,7 @@ impl PulsedataBuffer {
     }
 
     pub fn buffer(&self) -> &[u16] {
-        &self.buf[..self.len]
+        &self.buf[..self.offset]
     }
 }
 
@@ -53,7 +54,7 @@ impl<'a> IntoIterator for &'a PulsedataBuffer {
 
     fn into_iter(self) -> Self::IntoIter {
         PulseIterator {
-            pulses: &self.buf[0..self.len],
+            pulses: &self.buf[0..self.offset],
             index: 0,
         }
     }

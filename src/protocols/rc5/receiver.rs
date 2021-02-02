@@ -2,7 +2,7 @@ use core::ops::Range;
 
 use crate::{
     protocols::rc5::Rc5Command,
-    recv::{Error, ReceiverSM, State},
+    recv::{Error, InfraredReceiver, State},
 };
 
 #[derive(Default)]
@@ -50,7 +50,7 @@ impl From<Rc5State> for State {
     }
 }
 
-impl ReceiverSM for Rc5 {
+impl InfraredReceiver for Rc5 {
     type Cmd = Rc5Command;
     type InternalState = Rc5State;
 
