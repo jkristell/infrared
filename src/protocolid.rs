@@ -17,6 +17,8 @@ pub enum ProtocolId {
     Rc6 = 6,
     /// Samsung Blu-ray player protocol
     Sbp = 7,
+    /// Denon
+    Denon = 8,
     /// Placeholder
     Unknown = 255,
 }
@@ -31,6 +33,7 @@ impl From<u8> for ProtocolId {
             5 => ProtocolId::Rc5,
             6 => ProtocolId::Rc6,
             7 => ProtocolId::Sbp,
+            8 => ProtocolId::Denon,
             _ => ProtocolId::Unknown,
         }
     }

@@ -11,11 +11,12 @@ categories = ["no-std", "embedded"]
 license = "MIT OR Apache-2.0"
 
 [features]
-default = ["nec", "rc5", "rc6", "sbp", "embedded-hal", "remotes"]
+default = ["nec", "rc5", "rc6", "sbp", "denon","embedded-hal", "remotes"]
 nec = []
 rc5 = []
 rc6 = []
 sbp = []
+denon = []
 remotes = []
 std = []
 
