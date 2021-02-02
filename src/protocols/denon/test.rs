@@ -25,7 +25,7 @@ fn denon() {
         17, 16, 19, 15, 19, 15, 18, 15, 19, 49, 19, 15, 18, 16, 17, 16, 18, 16, 18,
         15, 18, 16, 19, 14, 18, 16, 18, 16, 17, 16, 18, 16, 18, 15, 18, 16, 18, 49, 18, 16, 18
     ];
-    let brecv = BufferReceiver::with_values(dists, 40_000);
+    let brecv = BufferReceiver::new(dists, 40_000);
     let cmds = brecv.iter::<Denon>().collect::<Vec<_>>();
 
     for cmd in &cmds {

@@ -16,7 +16,7 @@ fn test_bufrecv() {
         72, 72, 73, 70, 72, 36, 37, 34, 36, 36, 36, 71, 73, 35, 37, 70, 37,
     ];
 
-    let r = BufferReceiver::with_values(&dists, 40_000);
+    let r = BufferReceiver::new(&dists, 40_000);
     let v: std::vec::Vec<_> = r.iter::<Rc5>().collect();
     assert_eq!(v.len(), 2);
 
@@ -37,7 +37,7 @@ fn command_mixed() {
         50973, 38, 34, 73, 70, 73, 70, 74, 34, 37, 35, 37, 34, 38, 34, 37, 35, 37, 34, 38, 70, 37,
     ];
 
-    let r = BufferReceiver::with_values(&dists, 40_000);
+    let r = BufferReceiver::new(&dists, 40_000);
     let v: std::vec::Vec<_> = r.iter::<Rc5>().collect();
     assert_eq!(v.len(), 3);
 
@@ -57,7 +57,7 @@ fn all_commands() {
 
             let cmd: Rc5Command = Rc5Command::new(address, cmdnum, false);
             ptb.load(&cmd);
-            let brecv = BufferReceiver::with_values(&ptb.buf, 40_000);
+            let brecv = BufferReceiver::new(&ptb.buf, 40_000);
             let cmdres = brecv.iter::<Rc5>().next().unwrap();
             assert_eq!(cmd.addr, cmdres.addr);
             assert_eq!(cmd.cmd, cmdres.cmd);

@@ -45,7 +45,7 @@ fn basic() {
         16, 19, 16, 37, 17, 19, 34, 19, 17, 19, 16, 19, 17, 19, 16, 20, 16, 19, 16, 37, 34, 20,
     ];
 
-    let recv = BufferReceiver::with_values(&dists, 40_000);
+    let recv = BufferReceiver::new(&dists, 40_000);
 
     let cmds = recv.iter::<Rc6>().collect::<std::vec::Vec<_>>();
 
@@ -67,7 +67,7 @@ fn all_commands() {
 
             let cmd: Rc6Command = Rc6Command::new(address, cmdnum);
             ptb.load(&cmd);
-            let brecv = BufferReceiver::with_values(&ptb.buf, 40_000);
+            let brecv = BufferReceiver::new(&ptb.buf, 40_000);
             let cmdres = brecv.iter::<Rc6>().next().unwrap();
             assert_eq!(cmd.addr, cmdres.addr);
             assert_eq!(cmd.cmd, cmdres.cmd);

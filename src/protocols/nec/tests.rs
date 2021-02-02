@@ -20,7 +20,7 @@ fn standard_nec() {
         24, 21, 24, 21, 24, 21, 24, 65, 25, 65, 24, 21, 24, 21, 24, 66, 24, 65, 25, 65, 24, 66, 24,
     ];
 
-    let brecv = BufferReceiver::with_values(&dists, 40_000);
+    let brecv = BufferReceiver::new(&dists, 40_000);
     let cmds = brecv.iter::<Nec>().collect::<Vec<_>>();
     assert_eq!(cmds.len(), 2);
 
@@ -100,7 +100,7 @@ fn all_nec_commands() {
                 repeat: false,
             };
             ptb.load(&cmd);
-            let brecv = BufferReceiver::with_values(&ptb.buf, 40_000);
+            let brecv = BufferReceiver::new(&ptb.buf, 40_000);
 
             let cmdres = brecv.iter::<Nec>().next().unwrap();
             assert_eq!(cmd.addr, cmdres.addr);
@@ -123,7 +123,7 @@ fn test_samplerates() {
         };
         ptb.load(&cmd);
 
-        let receiver = BufferReceiver::with_values(&ptb.buf, *samplerate);
+        let receiver = BufferReceiver::new(&ptb.buf, *samplerate);
 
         if let Some(cmd) = receiver.iter::<Nec>().next() {
             println!("{:?}", cmd);
