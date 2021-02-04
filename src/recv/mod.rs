@@ -17,6 +17,11 @@ pub trait InfraredReceiver {
     /// Create a new Receiver State machine
     fn create() -> Self;
 
+    fn with_samplerate(_samplerate: u32) -> Self
+        where Self: Sized {
+        Self::create()
+    }
+
     /// Add event to the state machine
     /// * `edge`: true = positive edge, false = negative edge
     /// * `dt` : Time in micro seconds since last transition

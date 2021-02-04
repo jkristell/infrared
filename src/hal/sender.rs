@@ -5,6 +5,7 @@ use core::convert::Infallible;
 use crate::{
     send::{PulsedataSender, State, ToPulsedata},
 };
+use crate::send::InfraredSender;
 
 /// Embedded hal sender
 pub struct Sender<PWMPIN, DUTY>
@@ -28,7 +29,11 @@ where
         }
     }
 
-    pub fn load<C: ToPulsedata>(&mut self, cmd: &C) -> nb::Result<(), Infallible> {
+    pub fn load<S, C>(&mut self, cmd: &C) -> nb::Result<(), Infallible>
+    where
+        S: InfraredSender,
+        C: ToPulsedata,
+    {
         if self.pts.state == State::Idle {
             self.pts.load_command(cmd);
             self.counter = 0;

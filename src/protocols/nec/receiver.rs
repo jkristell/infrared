@@ -1,10 +1,10 @@
 use crate::protocols::nec::{NecCommandTrait, StandardTiming};
 use crate::{
     protocols::nec::{NecPulseDistance, NecTiming, NecCommand},
-    protocols::utils::PulseWidthRange,
     recv::{Error, InfraredReceiver, State},
 };
 use core::marker::PhantomData;
+use crate::protocols::utils::InfraRange4;
 
 /// Nec Receiver with Nec standard bit encoding and Standard timing
 pub struct Nec<C = NecCommand, T = StandardTiming> {
@@ -13,7 +13,7 @@ pub struct Nec<C = NecCommand, T = StandardTiming> {
     // Data buffer
     bitbuf: u32,
     // Timing and tolerances
-    ranges: PulseWidthRange<PulseWidth>,
+    ranges: InfraRange4,
     // Last command (used by repeat)
     last_cmd: u32,
     // The type of Nec
@@ -51,36 +51,6 @@ impl From<InternalState> for State {
     }
 }
 
-impl<Cmd, Timing: NecTiming> Default for Nec<Cmd, Timing> {
-    fn default() -> Self {
-        Self::with_timing(Timing::PL)
-    }
-}
-
-/// Nec decoder statemachine
-impl<Cmd, Timing: NecTiming> Nec<Cmd, Timing> {
-    pub fn new() -> Self {
-        let timing = Timing::PL;
-        Self::with_timing(timing)
-    }
-
-    fn with_timing(timing: &NecPulseDistance) -> Self {
-        let tols = tolerances(timing);
-        let ranges = PulseWidthRange::new(&tols);
-
-        Self {
-            state: InternalState::Init,
-            bitbuf: 0,
-            last_cmd: 0,
-            timing: PhantomData,
-
-            ranges,
-            dt_save: 0,
-            cmd_type: Default::default(),
-        }
-    }
-}
-
 impl<Cmd, Timing> InfraredReceiver for Nec<Cmd, Timing>
 where
     Cmd: NecCommandTrait<Timing>,
@@ -90,7 +60,22 @@ where
     type InternalState = InternalState;
 
     fn create() -> Self {
-        Self::default()
+        Self::with_samplerate(1_000_000)
+    }
+
+    fn with_samplerate(samplerate: u32) -> Self {
+        let tols = tolerances(Timing::PL);
+        let ranges = InfraRange4::new(&tols, samplerate);
+
+        Self {
+            state: InternalState::Init,
+            bitbuf: 0,
+            last_cmd: 0,
+            timing: PhantomData,
+            ranges,
+            dt_save: 0,
+            cmd_type: Default::default(),
+        }
     }
 
     #[rustfmt::skip]
@@ -99,7 +84,7 @@ where
         use PulseWidth::*;
 
         if rising {
-            let pulsewidth = self.ranges.pulsewidth(self.dt_save + dt);
+            let pulsewidth = self.ranges.find::<PulseWidth>(self.dt_save + dt).unwrap_or(PulseWidth::NotAPulseWidth);
 
             self.state = match (self.state, pulsewidth) {
                 (Init,  Sync)   => Receiving(0),

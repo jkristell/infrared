@@ -108,38 +108,26 @@ impl InfraredReceiver for Sbp {
             let pulsewidth = self.ranges.pulsewidth(dt);
 
             self.state = match (self.state, pulsewidth) {
-                (Init, Sync) => Address(0),
-                (Init, _) => Init,
+                (Init,          Sync)   => Address(0),
+                (Init,          _)      => Init,
 
-                (Address(15), One) => {
-                    self.address |= 1 << 15;
-                    Divider
-                }
-                (Address(15), Zero) => Divider,
-                (Address(bit), One) => {
-                    self.address |= 1 << bit;
-                    Address(bit + 1)
-                }
-                (Address(bit), Zero) => Address(bit + 1),
-                (Address(_), _) => Err(Error::Address),
+                (Address(15),   One)    => { self.address |= 1 << 15; Divider }
+                (Address(15),   Zero)   => Divider,
+                (Address(bit),  One)    => { self.address |= 1 << bit; Address(bit + 1) }
+                (Address(bit),  Zero)   => Address(bit + 1),
+                (Address(_),    _)      => Err(Error::Address),
 
-                (Divider, Paus) => Command(0),
-                (Divider, _) => Err(Error::Data),
+                (Divider,       Paus)   => Command(0),
+                (Divider,       _)      => Err(Error::Data),
 
-                (Command(19), One) => {
-                    self.command |= 1 << 19;
-                    Done
-                }
-                (Command(19), Zero) => Done,
-                (Command(bit), One) => {
-                    self.command |= 1 << bit;
-                    Command(bit + 1)
-                }
-                (Command(bit), Zero) => Command(bit + 1),
-                (Command(_), _) => Err(Error::Data),
+                (Command(19),   One)    => { self.command |= 1 << 19; Done }
+                (Command(19),   Zero)   => Done,
+                (Command(bit),  One)    => { self.command |= 1 << bit; Command(bit + 1) }
+                (Command(bit),  Zero)   => Command(bit + 1),
+                (Command(_),    _)      => Err(Error::Data),
 
-                (Done, _) => Done,
-                (Err(err), _) => Err(err),
+                (Done,          _)      => Done,
+                (Err(err),      _)      => Err(err),
             };
         } else {
             self.since_rising = dt;
