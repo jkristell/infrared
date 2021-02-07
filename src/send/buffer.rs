@@ -25,7 +25,7 @@ impl<SendProto: InfraredSender> PulsedataBuffer<SendProto> {
     }
 
     pub fn load(&mut self, c: &SendProto::Cmd) {
-        let len = self.proto.cmd_pulsedata(c, &self.buf);
+        let len = self.proto.cmd_pulsedata(c, &mut self.buf);
         //let len = c.to_pulsedata(&mut self.buf[self.offset..]);
         self.offset += len;
     }

@@ -9,7 +9,7 @@ pub trait InfraredSender {
     type Cmd;
     fn with_samplerate(samplerate: u32) -> Self;
 
-    fn cmd_pulsedata(&self, cmd: Self::Cmd, buf: &mut [u16]) -> usize;
+    fn cmd_pulsedata(&self, cmd: &Self::Cmd, buf: &mut [u16]) -> usize;
 }
 
 

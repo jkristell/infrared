@@ -37,7 +37,7 @@ impl<Proto: InfraredSender> PulsedataSender<Proto> {
     }
 
     /// Load command into internal buffer
-    pub fn load_command(&mut self, c: &impl ToPulsedata) {
+    pub fn load_command(&mut self, c: &Proto::Cmd) {
         self.reset();
         self.ptb.load(c);
     }

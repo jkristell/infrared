@@ -16,9 +16,7 @@ where
 {
     pin: PwmPin,
     pub counter: u32,
-    //sender: Protocol,
-    //buf: [u16; 96],
-    buffer: PulsedataBuffer<Protocol>,
+    buffer: PulsedataSender<Protocol>,
 }
 
 impl<'a, Protocol, PwmPin, PwmDuty> Sender<Protocol, PwmPin, PwmDuty>
@@ -30,15 +28,13 @@ where
         Self {
             pin,
             counter: 0,
-            //sender: Protocol::with_samplerate(samplerate),
-            //buf: [0; 96],
-            buffer: PulsedataBuffer::with_samplerate(samplerate),
+            buffer: PulsedataSender::new(samplerate),
         }
     }
 
     pub fn load(&mut self, cmd: &Protocol::Cmd) -> nb::Result<(), Infallible>
     {
-        self.buffer.load(cmd);
+        self.buffer.ptb.load(cmd);
         Ok(())
         //self.sender.cmd_pulsedata(cmd, &self.buf);
 
@@ -53,7 +49,7 @@ where
 
     /// Get a reference to the data
     pub fn buffer(&self) -> &[u16] {
-        &self.pts.buffer()
+        &self.buffer.buffer()
     }
 
     /// Method to be called periodically to update the pwm output
