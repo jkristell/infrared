@@ -5,42 +5,50 @@ use core::convert::Infallible;
 use crate::{
     send::{PulsedataSender, State, ToPulsedata},
 };
-use crate::send::InfraredSender;
+use crate::send::{InfraredSender, PulsedataBuffer};
 
 /// Embedded hal sender
-pub struct Sender<PWMPIN, DUTY>
+///
+pub struct Sender<Protocol, PwmPin, PwmDuty>
 where
-    PWMPIN: embedded_hal::PwmPin<Duty = DUTY>,
+    PwmPin: embedded_hal::PwmPin<Duty = PwmDuty>,
+    Protocol: InfraredSender,
 {
-    pts: PulsedataSender,
-    pin: PWMPIN,
+    pin: PwmPin,
     pub counter: u32,
+    //sender: Protocol,
+    //buf: [u16; 96],
+    buffer: PulsedataBuffer<Protocol>,
 }
 
-impl<'a, PWMPIN, DUTY> Sender<PWMPIN, DUTY>
+impl<'a, Protocol, PwmPin, PwmDuty> Sender<Protocol, PwmPin, PwmDuty>
 where
-    PWMPIN: embedded_hal::PwmPin<Duty = DUTY>,
+    PwmPin: embedded_hal::PwmPin<Duty = PwmDuty>,
+    Protocol: InfraredSender,
 {
-    pub fn new(samplerate: u32, pin: PWMPIN) -> Self {
+    pub fn new(samplerate: u32, pin: PwmPin) -> Self {
         Self {
-            pts: PulsedataSender::new(samplerate),
             pin,
             counter: 0,
+            //sender: Protocol::with_samplerate(samplerate),
+            //buf: [0; 96],
+            buffer: PulsedataBuffer::with_samplerate(samplerate),
         }
     }
 
-    pub fn load<S, C>(&mut self, cmd: &C) -> nb::Result<(), Infallible>
-    where
-        S: InfraredSender,
-        C: ToPulsedata,
+    pub fn load(&mut self, cmd: &Protocol::Cmd) -> nb::Result<(), Infallible>
     {
-        if self.pts.state == State::Idle {
-            self.pts.load_command(cmd);
-            self.counter = 0;
-            Ok(())
-        } else {
-            Err(nb::Error::WouldBlock)
-        }
+        self.buffer.load(cmd);
+        Ok(())
+        //self.sender.cmd_pulsedata(cmd, &self.buf);
+
+        //if self.pts.state == State::Idle {
+        //    self.pts.load_command(cmd);
+        //    self.counter = 0;
+        //    Ok(())
+        //} else {
+        //    Err(nb::Error::WouldBlock)
+        //}
     }
 
     /// Get a reference to the data
@@ -50,7 +58,7 @@ where
 
     /// Method to be called periodically to update the pwm output
     pub fn tick(&mut self) {
-        let state = self.pts.tick(self.counter);
+        let state = self.buffer.tick(self.counter);
         self.counter = self.counter.wrapping_add(1);
 
         match state {

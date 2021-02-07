@@ -1,4 +1,4 @@
-use crate::send::{PulsedataBuffer, ToPulsedata};
+use crate::send::{PulsedataBuffer, ToPulsedata, InfraredSender};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 /// Sender state
@@ -11,14 +11,14 @@ pub enum State {
     Error,
 }
 
-pub struct PulsedataSender {
-    pub ptb: PulsedataBuffer,
+pub struct PulsedataSender<Protocol: InfraredSender> {
+    pub ptb: PulsedataBuffer<Protocol>,
     index: usize,
     pub(crate) state: State,
     ts_lastedge: u32,
 }
 
-impl PulsedataSender {
+impl<Proto: InfraredSender> PulsedataSender<Proto> {
     pub fn new(samplerate: u32) -> Self {
         let ptb = PulsedataBuffer::with_samplerate(samplerate);
         Self {
