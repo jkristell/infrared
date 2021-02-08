@@ -221,6 +221,12 @@ pub enum SbpPulse {
     NotAPulseWidth = 4,
 }
 
+impl Default for SbpPulse {
+    fn default() -> Self {
+        SbpPulse::NotAPulseWidth
+    }
+}
+
 impl From<usize> for SbpPulse {
     fn from(v: usize) -> Self {
         match v {
