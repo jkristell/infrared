@@ -1,18 +1,18 @@
 use core::convert::TryFrom;
-use crate::send::ToPulsedata;
+use crate::send::{ToPulsedata, InfraredSender};
 
-pub struct PulsedataBuffer {
+pub struct PulsedataBuffer<SendProto: InfraredSender> {
     pub buf: [u16; 96],
     pub offset: usize,
-    pub scaler: u16,
+    pub proto: SendProto,
 }
 
-impl PulsedataBuffer {
-    pub fn new() -> Self {
+impl<SendProto: InfraredSender> PulsedataBuffer<SendProto> {
+    pub fn new(samplerate: u32) -> Self {
         Self {
             buf: [0; 96],
             offset: 0,
-            scaler: 1,
+            proto: SendProto::with_samplerate(samplerate)
         }
     }
 
@@ -21,21 +21,12 @@ impl PulsedataBuffer {
     }
 
     pub fn with_samplerate(samplerate: u32) -> Self {
-        Self {
-            buf: [0; 96],
-            offset: 0,
-            scaler: u16::try_from(1000 / (samplerate / 1000)).unwrap(),
-        }
+        Self::new(samplerate)
     }
 
-    pub fn load(&mut self, c: &impl ToPulsedata) {
-        let len = c.to_pulsedata(&mut self.buf[self.offset..]);
-
-        // Apply the scaling on the buf
-        for elem in &mut self.buf[self.offset .. self.offset + len] {
-            *elem /= self.scaler;
-        }
-
+    pub fn load(&mut self, c: &SendProto::Cmd) {
+        let len = self.proto.cmd_pulsedata(c, &mut self.buf);
+        //let len = c.to_pulsedata(&mut self.buf[self.offset..]);
         self.offset += len;
     }
 
@@ -48,7 +39,7 @@ impl PulsedataBuffer {
     }
 }
 
-impl<'a> IntoIterator for &'a PulsedataBuffer {
+impl<'a, Protocol: InfraredSender> IntoIterator for &'a PulsedataBuffer<Protocol> {
     type Item = u16;
     type IntoIter = PulseIterator<'a>;
 

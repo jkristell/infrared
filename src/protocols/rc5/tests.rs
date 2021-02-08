@@ -1,5 +1,5 @@
 use crate::protocols::rc5::Rc5Command;
-use crate::recv::BufferReceiver;
+use crate::recv::{BufferReceiver};
 use crate::protocols::Rc5;
 use crate::send::PulsedataBuffer;
 
@@ -15,6 +15,8 @@ fn test_bufrecv() {
         0, 37, 34, 72, 72, 73, 70, 72, 36, 37, 34, 36, 36, 36, 71, 73, 35, 37, 70, 37, 0, 37, 34,
         72, 72, 73, 70, 72, 36, 37, 34, 36, 36, 36, 71, 73, 35, 37, 70, 37,
     ];
+
+    //let rc5 = Rc5::with_samplerate(40_000);
 
     let r = BufferReceiver::new(&dists, 40_000);
     let v: std::vec::Vec<_> = r.iter::<Rc5>().collect();

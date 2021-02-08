@@ -4,7 +4,7 @@ use crate::{
 
 pub struct BufferReceiver<'a> {
     buf: &'a [u16],
-    scale_factor: u32,
+    samplerate: u32,
 }
 
 impl<'a> BufferReceiver<'a> {
@@ -12,7 +12,7 @@ impl<'a> BufferReceiver<'a> {
     pub fn new(buf: &'a [u16], samplerate: u32) -> Self {
         Self {
             buf,
-            scale_factor: crate::TIMEBASE / samplerate,
+            samplerate,
         }
     }
 
@@ -20,9 +20,8 @@ impl<'a> BufferReceiver<'a> {
     pub fn iter<Protocol: InfraredReceiver>(&self) -> BufferIterator<'a, Protocol> {
         BufferIterator {
             buf: &self.buf,
-            scaler: self.scale_factor,
             pos: 0,
-            sm: Protocol::create(),
+            sm: Protocol::with_samplerate(self.samplerate),
         }
     }
 }
@@ -30,7 +29,6 @@ impl<'a> BufferReceiver<'a> {
 pub struct BufferIterator<'a, Protocol> {
     buf: &'a [u16],
     pos: usize,
-    scaler: u32,
     sm: Protocol,
 }
 
@@ -44,7 +42,7 @@ impl<'a, Protocol: InfraredReceiver> Iterator for BufferIterator<'a, Protocol> {
             }
 
             let pos_edge = self.pos & 0x1 == 0;
-            let dt_us = u32::from(self.buf[self.pos]) * self.scaler;
+            let dt_us = u32::from(self.buf[self.pos]);
             self.pos += 1;
 
             let state: State = self.sm.event(pos_edge, dt_us).into();

@@ -1,53 +1,17 @@
-use core::ops::Range;
-
 use crate::{
     protocols::rc5::Rc5Command,
     recv::{Error, InfraredReceiver, State},
 };
+use crate::protocols::utils::InfraRange2;
 
-#[derive(Default)]
+const RC5_BASE_TIME: u32 = 889;
+
 /// Philips Rc5
 pub struct Rc5 {
     pub(crate) state: Rc5State,
     bitbuf: u16,
     pub(crate) clock: u32,
-}
-
-impl Rc5 {
-    pub fn interval_to_units(&self, interval: u32) -> Option<u32> {
-        for i in 1..=2 {
-            if rc5_multiplier(i).contains(&interval) {
-                return Some(i);
-            }
-        }
-        None
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum Rc5State {
-    Idle,
-    Data(u8),
-    Done,
-    Err(Error),
-}
-
-impl Default for Rc5State {
-    fn default() -> Self {
-        Rc5State::Idle
-    }
-}
-
-impl From<Rc5State> for State {
-    fn from(rs: Rc5State) -> Self {
-        use Rc5State::*;
-        match rs {
-            Idle => State::Idle,
-            Data(_) => State::Receiving,
-            Done => State::Done,
-            Err(e) => State::Error(e),
-        }
-    }
+    pub(crate) ranges: InfraRange2,
 }
 
 impl InfraredReceiver for Rc5 {
@@ -55,25 +19,34 @@ impl InfraredReceiver for Rc5 {
     type InternalState = Rc5State;
 
     fn create() -> Self {
-        Rc5::default()
+        Self::with_samplerate(1_000_000)
+    }
+
+    fn with_samplerate(samplerate: u32) -> Self {
+        Rc5 {
+            state: Rc5State::Idle,
+            bitbuf: 0,
+            clock: 0,
+            ranges: InfraRange2::new(&[(RC5_BASE_TIME, 10),(RC5_BASE_TIME * 2, 10)], samplerate)
+        }
     }
 
     #[rustfmt::skip]
     fn event(&mut self, rising: bool, dt: u32) -> Self::InternalState {
         use Rc5State::*;
 
-        // Number of rc5 units since last pin edge
-        let rc5units = self.interval_to_units(dt);
+        // Find this delta t in the defined ranges
+        let clock_ticks = self.ranges.find::<u32>(dt);
 
-        if let Some(units) = rc5units {
-            self.clock += units;
+        if let Some(ticks) = clock_ticks {
+            self.clock += ticks + 1;
         } else {
             self.reset();
         }
 
         let is_odd = self.clock & 1 == 0;
 
-        self.state = match (self.state, rising, rc5units) {
+        self.state = match (self.state, rising, clock_ticks) {
 
             (Idle,      false,    _) => Idle,
             (Idle,      true,     _) => {
@@ -107,16 +80,21 @@ impl InfraredReceiver for Rc5 {
     }
 }
 
-const fn rc5_multiplier(multiplier: u32) -> Range<u32> {
-    let base = 889 * multiplier;
-    range(base, 10)
+#[derive(Clone, Copy, Debug)]
+pub enum Rc5State {
+    Idle,
+    Data(u8),
+    Done,
+    Err(Error),
 }
 
-const fn range(len: u32, percent: u32) -> Range<u32> {
-    let tol = (len * percent) / 100;
-
-    Range {
-        start: len - tol - 2,
-        end: len + tol + 2,
+impl From<Rc5State> for State {
+    fn from(rs: Rc5State) -> Self {
+        match rs {
+            Rc5State::Idle => State::Idle,
+            Rc5State::Data(_) => State::Receiving,
+            Rc5State::Done => State::Done,
+            Rc5State::Err(e) => State::Error(e),
+        }
     }
 }

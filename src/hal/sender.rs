@@ -5,47 +5,56 @@ use core::convert::Infallible;
 use crate::{
     send::{PulsedataSender, State, ToPulsedata},
 };
+use crate::send::{InfraredSender, PulsedataBuffer};
 
 /// Embedded hal sender
-pub struct Sender<PWMPIN, DUTY>
+///
+pub struct Sender<Protocol, PwmPin, PwmDuty>
 where
-    PWMPIN: embedded_hal::PwmPin<Duty = DUTY>,
+    PwmPin: embedded_hal::PwmPin<Duty = PwmDuty>,
+    Protocol: InfraredSender,
 {
-    pts: PulsedataSender,
-    pin: PWMPIN,
+    pin: PwmPin,
     pub counter: u32,
+    buffer: PulsedataSender<Protocol>,
 }
 
-impl<'a, PWMPIN, DUTY> Sender<PWMPIN, DUTY>
+impl<'a, Protocol, PwmPin, PwmDuty> Sender<Protocol, PwmPin, PwmDuty>
 where
-    PWMPIN: embedded_hal::PwmPin<Duty = DUTY>,
+    PwmPin: embedded_hal::PwmPin<Duty = PwmDuty>,
+    Protocol: InfraredSender,
 {
-    pub fn new(samplerate: u32, pin: PWMPIN) -> Self {
+    pub fn new(samplerate: u32, pin: PwmPin) -> Self {
         Self {
-            pts: PulsedataSender::new(samplerate),
             pin,
             counter: 0,
+            buffer: PulsedataSender::new(samplerate),
         }
     }
 
-    pub fn load<C: ToPulsedata>(&mut self, cmd: &C) -> nb::Result<(), Infallible> {
-        if self.pts.state == State::Idle {
-            self.pts.load_command(cmd);
-            self.counter = 0;
-            Ok(())
-        } else {
-            Err(nb::Error::WouldBlock)
-        }
+    pub fn load(&mut self, cmd: &Protocol::Cmd) -> nb::Result<(), Infallible>
+    {
+        self.buffer.ptb.load(cmd);
+        Ok(())
+        //self.sender.cmd_pulsedata(cmd, &self.buf);
+
+        //if self.pts.state == State::Idle {
+        //    self.pts.load_command(cmd);
+        //    self.counter = 0;
+        //    Ok(())
+        //} else {
+        //    Err(nb::Error::WouldBlock)
+        //}
     }
 
     /// Get a reference to the data
     pub fn buffer(&self) -> &[u16] {
-        &self.pts.buffer()
+        &self.buffer.buffer()
     }
 
     /// Method to be called periodically to update the pwm output
     pub fn tick(&mut self) {
-        let state = self.pts.tick(self.counter);
+        let state = self.buffer.tick(self.counter);
         self.counter = self.counter.wrapping_add(1);
 
         match state {
