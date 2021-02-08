@@ -7,8 +7,7 @@ pub mod sender;
 mod tests;
 
 pub use cmds::{
-    NecCommand,
-    Nec16Command, NecAppleCommand, NecRawCommand, NecSamsungCommand,
+    NecCommand, Nec16Command, NecAppleCommand, NecRawCommand, NecSamsungCommand,
 };
 
 #[doc(inline)]
