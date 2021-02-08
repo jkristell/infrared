@@ -51,7 +51,10 @@ fn command_mixed() {
 
 #[test]
 fn all_commands() {
-    let mut ptb = PulsedataBuffer::with_samplerate(40_000);
+
+    const SAMPLERATE: u32 = 40_000;
+
+    let mut ptb: PulsedataBuffer<Rc5> = PulsedataBuffer::with_samplerate(SAMPLERATE);
 
     for address in 0..32 {
         for cmdnum in 0..64 {
@@ -59,7 +62,7 @@ fn all_commands() {
 
             let cmd: Rc5Command = Rc5Command::new(address, cmdnum, false);
             ptb.load(&cmd);
-            let brecv = BufferReceiver::new(&ptb.buf, 40_000);
+            let brecv = BufferReceiver::new(&ptb.buf, SAMPLERATE);
             let cmdres = brecv.iter::<Rc5>().next().unwrap();
             assert_eq!(cmd.addr, cmdres.addr);
             assert_eq!(cmd.cmd, cmdres.cmd);

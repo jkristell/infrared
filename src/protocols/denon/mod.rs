@@ -1,5 +1,5 @@
 use crate::{
-    recv::{InfraredReceiver, State},
+    recv::{InfraredReceiver, Status},
     protocols::utils::PulseWidthRange,
 };
 
@@ -30,7 +30,7 @@ impl InfraredReceiver for Denon {
     type Cmd = DenonCommand;
     type InternalState = DenonState;
 
-    fn create() -> Self {
+    fn create_receiver() -> Self {
 
         let ranges = PulseWidthRange::new(&nsamples());
 
@@ -93,12 +93,12 @@ pub enum DenonState {
     Done,
 }
 
-impl Into<State> for DenonState {
-    fn into(self) -> State {
+impl Into<Status> for DenonState {
+    fn into(self) -> Status {
         match self {
-            DenonState::Idle => State::Idle,
-            DenonState::Data(_) => State::Receiving,
-            DenonState::Done => State::Done,
+            DenonState::Idle => Status::Idle,
+            DenonState::Data(_) => Status::Receiving,
+            DenonState::Done => Status::Done,
         }
     }
 }

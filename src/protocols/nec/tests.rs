@@ -89,7 +89,7 @@ fn cmd_nec16() {
 
 #[test]
 fn all_nec_commands() {
-    let mut ptb = PulsedataBuffer::with_samplerate(40_000);
+    let mut ptb: PulsedataBuffer<Nec> = PulsedataBuffer::with_samplerate(40_000);
 
     for address in 0..255 {
         for cmdnum in 0..255 {
@@ -114,7 +114,7 @@ fn test_samplerates() {
     let samplerates = [20_000, 40_000, 80_000];
 
     for samplerate in &samplerates {
-        let mut ptb = PulsedataBuffer::with_samplerate(*samplerate);
+        let mut ptb: PulsedataBuffer<Nec> = PulsedataBuffer::with_samplerate(*samplerate);
 
         let cmd: NecCommand = NecCommand {
             addr: 20,

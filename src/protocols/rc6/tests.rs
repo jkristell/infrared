@@ -17,12 +17,12 @@ fn newpulse() {
     for dist in &b[..len] {
         edge = !edge;
 
-        let s0 = recv.sm.state;
+        let s0 = recv.receiver.state;
         let cmd = recv.edge_event(edge, *dist as u32);
 
         println!(
             "{} ({}): {:?} -> {:?}",
-            edge as u32, dist, s0, recv.sm.state
+            edge as u32, dist, s0, recv.receiver.state
         );
 
         if let Ok(Some(cmd)) = cmd {

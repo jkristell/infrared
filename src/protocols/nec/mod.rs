@@ -11,8 +11,19 @@ pub use cmds::{
 };
 
 #[doc(inline)]
-pub use receiver::Nec;
 use crate::send::ToPulsedata;
+use core::marker::PhantomData;
+use crate::protocolid::InfraredProtocol;
+
+/// Nec Receiver with Nec standard bit encoding and Standard timing
+pub struct Nec<C = NecCommand> {
+    // Nec Command type
+    pub(crate) cmd_type: PhantomData<C>,
+}
+
+impl<C: NecCommandTrait> InfraredProtocol for Nec<C> {
+    type Cmd = C;
+}
 
 /// Nec variant with Samsung bit encoding and Samsung timing
 pub type NecSamsung = Nec<NecSamsungCommand>;
@@ -119,6 +130,7 @@ impl NecTiming for SamsungTiming {
  */
 
 /// High and low times for Nec-like protocols. In us.
+#[derive(Copy, Clone)]
 pub struct NecPulseDistance {
     /// Header high
     hh: u32,

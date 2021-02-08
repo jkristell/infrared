@@ -10,7 +10,10 @@ use core::convert::TryInto;
 use crate::remotecontrol::AsButton;
 
 pub mod receiver;
-pub use receiver::Rc5;
+use crate::protocolid::InfraredProtocol;
+
+pub mod sender;
+
 #[cfg(test)]
 mod tests;
 
@@ -22,6 +25,14 @@ const TOGGLE_MASK: u16 = 0b_0000_1000_0000_0000;
 const ADDR_SHIFT: u32 = 6;
 const START_SHIFT: u32 = 12;
 const TOGGLE_SHIFT: u32 = 11;
+
+
+/// Philips Rc5
+pub struct Rc5;
+
+impl InfraredProtocol for Rc5 {
+    type Cmd = Rc5Command;
+}
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct Rc5Command {
@@ -60,35 +71,6 @@ impl Rc5Command {
             | u16::from(self.cmd)
             | u16::from(self.toggle) << TOGGLE_SHIFT
             | u16::from(self.start) << START_SHIFT
-    }
-}
-
-impl ToPulsedata for Rc5Command {
-    fn to_pulsedata(&self, buf: &mut [u16]) -> usize {
-        // Command as bits
-        let bits = self.pack();
-
-        // First bit is always one
-        buf[0] = 0;
-        let mut prev = true;
-        let mut index = 1;
-
-        for b in 0..13 {
-            let cur = bits & (1 << (12 - b)) != 0;
-
-            if prev == cur {
-                buf[index] = 889;
-                buf[index + 1] = 889;
-                index += 2;
-            } else {
-                buf[index] = 889 * 2;
-                index += 1;
-            }
-
-            prev = cur;
-        }
-
-        index
     }
 }
 

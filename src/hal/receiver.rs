@@ -4,15 +4,16 @@ use embedded_hal::digital::v2::InputPin;
 
 use crate::{
     recv::{self, InfraredReceiver},
-    remotecontrol::{
-        RemoteControl,
-        AsButton,
-        Button
-    },
 };
 
+#[cfg(feature = "remotes")]
+use crate::remotecontrol::{ RemoteControl, AsButton, Button};
+use crate::protocolid::InfraredProtocol;
+
+
 /// Event driven embedded-hal receiver
-pub struct EventReceiver<PROTOCOL, PIN> {
+pub struct EventReceiver<PROTOCOL: InfraredReceiver, PIN>
+{
     recv: crate::recv::EventReceiver<PROTOCOL>,
     pub pin: PIN,
 }
@@ -54,7 +55,7 @@ where
 /// Periodic and polled Embedded hal Receiver
 ///
 /// The poll methods should be called periodically for this receiver to work
-pub struct PeriodicReceiver<PROTOCOL, PIN> {
+pub struct PeriodicReceiver<PROTOCOL: InfraredReceiver, PIN> {
     /// The receiver state machine
     recv: recv::PeriodicReceiver<PROTOCOL>,
     /// Input pin
@@ -99,7 +100,7 @@ where
         &mut self,
     ) -> Result<Option<Button>, PINERR>
     where
-        <PROTOCOL as InfraredReceiver>::Cmd: AsButton,
+        <PROTOCOL as InfraredProtocol>::Cmd: AsButton,
     {
         self.poll().map(|cmd| cmd.and_then(RC::decode))
     }
@@ -112,7 +113,7 @@ macro_rules! multireceiver {
     ) => {
 
     $(#[$outer])*
-    pub struct $name<$( $P ),* , PIN> {
+    pub struct $name<$( $P: InfraredReceiver ),* , PIN> {
         pin: PIN,
         counter: u32,
         $( $N : recv::PeriodicReceiver<$P> ),*

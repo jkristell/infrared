@@ -1,15 +1,18 @@
 use crate::protocols::nec::{NecCommandTrait};
 use crate::{
     protocols::nec::{NecPulseDistance, NecTiming, NecCommand},
-    recv::{Error, InfraredReceiver, State},
+    protocols::utils::PulseWidthRange,
+    recv::{Error, InfraredReceiver, Status},
 };
 use core::marker::PhantomData;
 use crate::protocols::utils::InfraRange4;
+use crate::protocolid::InfraredProtocol;
+use crate::recv::InfraredReceiverState;
+use crate::protocols::Nec;
 
-/// Nec Receiver with Nec standard bit encoding and Standard timing
-pub struct Nec<C = NecCommand> {
+pub struct NecReceiverState<C = NecCommand>  {
     // State
-    state: InternalState,
+    status: InternalState,
     // Data buffer
     bitbuf: u32,
     // Timing and tolerances
@@ -21,6 +24,35 @@ pub struct Nec<C = NecCommand> {
     // Saved dt
     dt_save: u32,
 }
+
+impl<C: NecTiming> InfraredReceiverState for NecReceiverState<C> {
+    fn create(samplerate: u32) -> Self {
+
+        let tols = tolerances(C::PD);
+        let ranges = InfraRange4::new(&tols, samplerate);
+
+        NecReceiverState {
+            status: InternalState::Init,
+            bitbuf: 0,
+            ranges,
+            last_cmd: 0,
+            cmd_type: Default::default(),
+            dt_save: 0
+        }
+    }
+
+    fn reset(&mut self) {
+        self.status = InternalState::Init;
+        self.last_cmd = if self.bitbuf == 0 {
+            self.last_cmd
+        } else {
+            self.bitbuf
+        };
+        self.bitbuf = 0;
+        self.dt_save = 0;
+    }
+}
+
 
 #[derive(Debug, Copy, Clone)]
 // Internal receiver state
@@ -37,67 +69,42 @@ pub enum InternalState {
     Err(Error),
 }
 
-impl From<InternalState> for State {
+impl From<InternalState> for Status {
     fn from(ns: InternalState) -> Self {
         use InternalState::*;
         match ns {
-            Init => State::Idle,
-            Done | RepeatDone => State::Done,
-            Err(e) => State::Error(e),
-            _ => State::Receiving,
+            Init => Status::Idle,
+            Done | RepeatDone => Status::Done,
+            Err(e) => Status::Error(e),
+            _ => Status::Receiving,
         }
     }
 }
 
-/// Nec decoder statemachine
-impl<Cmd: NecTiming + NecCommandTrait> Nec<Cmd> {
-
-    fn new() -> Self {
-        Self::with_samplerate(1_000_000)
-    }
-
-    fn with_samplerate(samplerate: u32) -> Self {
-        let tols = tolerances(Cmd::PD);
-        let ranges = InfraRange4::new(&tols, samplerate);
-
-        Self {
-            state: InternalState::Init,
-            bitbuf: 0,
-            last_cmd: 0,
-            ranges,
-            dt_save: 0,
-            cmd_type: Default::default(),
-        }
-    }
-}
 
 impl<Cmd> InfraredReceiver for Nec<Cmd>
 where
     Cmd: NecCommandTrait + NecTiming,
 {
-    type Cmd = Cmd;
+    type ReceiverState = NecReceiverState<Cmd>;
     type InternalState = InternalState;
 
-    fn create() -> Self {
-        Self::new()
-    }
-
     #[rustfmt::skip]
-    fn event(&mut self, rising: bool, dt: u32) -> Self::InternalState {
+    fn event(state: &mut Self::ReceiverState, rising: bool, dt: u32) -> Self::InternalState {
         use InternalState::*;
         use PulseWidth::*;
 
         if rising {
-            let pulsewidth = self.ranges.find::<PulseWidth>(self.dt_save + dt).unwrap_or(PulseWidth::NotAPulseWidth);
+            let pulsewidth = state.ranges.find::<PulseWidth>(state.dt_save + dt).unwrap_or(PulseWidth::NotAPulseWidth);
 
-            self.state = match (self.state, pulsewidth) {
+            state.status = match (state.status, pulsewidth) {
                 (Init,  Sync)   => Receiving(0),
                 (Init,  Repeat) => RepeatDone,
                 (Init,  _)      => Init,
 
-                (Receiving(31),     One)    => { self.bitbuf |= 1 << 31; Done }
+                (Receiving(31),     One)    => { state.bitbuf |= 1 << 31; Done }
                 (Receiving(31),     Zero)   => Done,
-                (Receiving(bit),    One)    => { self.bitbuf |= 1 << bit; Receiving(bit + 1) }
+                (Receiving(bit),    One)    => { state.bitbuf |= 1 << bit; Receiving(bit + 1) }
                 (Receiving(bit),    Zero)   => Receiving(bit + 1),
                 (Receiving(_),      _)      => Err(Error::Data),
 
@@ -106,32 +113,21 @@ where
                 (Err(err),      _)  => Err(err),
             };
 
-            self.dt_save = 0;
+            state.dt_save = 0;
         } else {
             // Save
-            self.dt_save = dt;
+            state.dt_save = dt;
         }
 
-        self.state
+        state.status
     }
 
-    fn command(&self) -> Option<Self::Cmd> {
-        match self.state {
-            InternalState::Done => Self::Cmd::unpack(self.bitbuf, false),
-            InternalState::RepeatDone => Self::Cmd::unpack(self.last_cmd, true),
+    fn command(state: &Self::ReceiverState) -> Option<Self::Cmd> {
+        match state.status {
+            InternalState::Done => Self::Cmd::unpack(state.bitbuf, false),
+            InternalState::RepeatDone => Self::Cmd::unpack(state.last_cmd, true),
             _ => None,
         }
-    }
-
-    fn reset(&mut self) {
-        self.state = InternalState::Init;
-        self.last_cmd = if self.bitbuf == 0 {
-            self.last_cmd
-        } else {
-            self.bitbuf
-        };
-        self.bitbuf = 0;
-        self.dt_save = 0;
     }
 }
 
