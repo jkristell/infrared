@@ -1,4 +1,4 @@
-use crate::protocols::nec::{NecCommandTrait, StandardTiming};
+use crate::protocols::nec::{NecCommandTrait};
 use crate::{
     protocols::nec::{NecPulseDistance, NecTiming, NecCommand},
     protocols::utils::PulseWidthRange,
@@ -7,7 +7,7 @@ use crate::{
 use core::marker::PhantomData;
 
 /// Nec Receiver with Nec standard bit encoding and Standard timing
-pub struct Nec<C = NecCommand, T = StandardTiming> {
+pub struct Nec<C = NecCommand> {
     // State
     state: InternalState,
     // Data buffer
@@ -16,8 +16,6 @@ pub struct Nec<C = NecCommand, T = StandardTiming> {
     ranges: PulseWidthRange<PulseWidth>,
     // Last command (used by repeat)
     last_cmd: u32,
-    // The type of Nec
-    timing: PhantomData<T>,
     // Nec Command type
     cmd_type: PhantomData<C>,
     // Saved dt
@@ -51,18 +49,14 @@ impl From<InternalState> for State {
     }
 }
 
-impl<Cmd, Timing: NecTiming> Default for Nec<Cmd, Timing> {
+impl<Cmd: NecTiming> Default for Nec<Cmd> {
     fn default() -> Self {
-        Self::with_timing(Timing::PL)
+        Self::with_timing(Cmd::PD)
     }
 }
 
 /// Nec decoder statemachine
-impl<Cmd, Timing: NecTiming> Nec<Cmd, Timing> {
-    pub fn new() -> Self {
-        let timing = Timing::PL;
-        Self::with_timing(timing)
-    }
+impl<Cmd: NecTiming> Nec<Cmd> {
 
     fn with_timing(timing: &NecPulseDistance) -> Self {
         let tols = tolerances(timing);
@@ -72,8 +66,6 @@ impl<Cmd, Timing: NecTiming> Nec<Cmd, Timing> {
             state: InternalState::Init,
             bitbuf: 0,
             last_cmd: 0,
-            timing: PhantomData,
-
             ranges,
             dt_save: 0,
             cmd_type: Default::default(),
@@ -81,10 +73,9 @@ impl<Cmd, Timing: NecTiming> Nec<Cmd, Timing> {
     }
 }
 
-impl<Cmd, Timing> InfraredReceiver for Nec<Cmd, Timing>
+impl<Cmd> InfraredReceiver for Nec<Cmd>
 where
-    Cmd: NecCommandTrait<Timing>,
-    Timing: NecTiming,
+    Cmd: NecCommandTrait + NecTiming,
 {
     type Cmd = Cmd;
     type InternalState = InternalState;
