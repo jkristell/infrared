@@ -2,10 +2,8 @@
 
 use core::convert::Infallible;
 
-use crate::{
-    send::{PulsedataSender, State, ToPulsedata},
-};
-use crate::send::{InfraredSender, PulsedataBuffer};
+use crate::send::{InfraredSender, };
+use crate::send::{PulsedataSender, State};
 
 /// Embedded hal sender
 ///
@@ -32,8 +30,7 @@ where
         }
     }
 
-    pub fn load(&mut self, cmd: &Protocol::Cmd) -> nb::Result<(), Infallible>
-    {
+    pub fn load(&mut self, cmd: &Protocol::Cmd) -> nb::Result<(), Infallible> {
         self.buffer.ptb.load(cmd);
         Ok(())
         //self.sender.cmd_pulsedata(cmd, &self.buf);

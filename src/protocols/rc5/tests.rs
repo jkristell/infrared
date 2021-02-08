@@ -1,6 +1,6 @@
 use crate::protocols::rc5::Rc5Command;
-use crate::recv::{BufferReceiver};
 use crate::protocols::Rc5;
+use crate::recv::BufferReceiver;
 use crate::send::PulsedataBuffer;
 
 #[test]
@@ -51,7 +51,6 @@ fn command_mixed() {
 
 #[test]
 fn all_commands() {
-
     const SAMPLERATE: u32 = 40_000;
 
     let mut ptb: PulsedataBuffer<Rc5> = PulsedataBuffer::with_samplerate(SAMPLERATE);

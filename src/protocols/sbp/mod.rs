@@ -9,22 +9,51 @@
 
 use core::convert::TryInto;
 
+#[cfg(feature = "remotes")]
+use crate::remotecontrol::AsButton;
 use crate::{
     protocols::utils::PulseWidthRange,
     recv::{Error, InfraredReceiver, Status},
     ProtocolId,
 };
-#[cfg(feature = "remotes")]
-use crate::remotecontrol::AsButton;
+use crate::protocolid::InfraredProtocol;
+use crate::recv::InfraredReceiverState;
+
+pub struct Sbp;
+
+impl InfraredProtocol for Sbp {
+    type Cmd = SbpCommand;
+}
 
 #[derive(Debug)]
 /// Samsung Blu-ray protocol
-pub struct Sbp {
-    state: SbpState,
+pub struct SbpReceiverState {
+    state: SbpStatus,
     address: u16,
     command: u32,
     since_rising: u32,
     ranges: PulseWidthRange<SbpPulse>,
+}
+
+impl InfraredReceiverState for SbpReceiverState {
+    fn create(samplerate: u32) -> Self {
+        let nsamples = nsamples_from_timing(&TIMING);
+        let ranges = PulseWidthRange::new(&nsamples);
+
+        SbpReceiverState {
+            state: SbpStatus::Init,
+            address: 0,
+            command: 0,
+            since_rising: 0,
+            ranges,
+        }
+    }
+
+    fn reset(&mut self) {
+        self.state = SbpStatus::Init;
+        self.address = 0;
+        self.command = 0;
+    }
 }
 
 #[derive(Debug)]
@@ -75,7 +104,7 @@ impl AsButton for SbpCommand {
 
 #[derive(Debug, Copy, Clone)]
 // Internal receiver state
-pub enum SbpState {
+pub enum SbpStatus {
     // Waiting for first pulse
     Init,
     // Receiving address
@@ -91,38 +120,34 @@ pub enum SbpState {
 }
 
 impl InfraredReceiver for Sbp {
-    type Cmd = SbpCommand;
-    type InternalState = SbpState;
-
-    fn create_receiver() -> Self {
-        Self::default()
-    }
+    type ReceiverState = SbpReceiverState;
+    type InternalStatus = SbpStatus;
 
     #[rustfmt::skip]
-    fn event(&mut self, rising: bool, dt: u32) -> SbpState {
+    fn event(state: &mut Self::ReceiverState, rising: bool, dt: u32) -> SbpStatus {
         use SbpPulse::*;
-        use SbpState::*;
+        use SbpStatus::*;
 
         if rising {
-            let dt = self.since_rising + dt;
-            let pulsewidth = self.ranges.pulsewidth(dt);
+            let dt = state.since_rising + dt;
+            let pulsewidth = state.ranges.pulsewidth(dt);
 
-            self.state = match (self.state, pulsewidth) {
+            state.state = match (state.state, pulsewidth) {
                 (Init,          Sync)   => Address(0),
                 (Init,          _)      => Init,
 
-                (Address(15),   One)    => { self.address |= 1 << 15; Divider }
+                (Address(15),   One)    => { state.address |= 1 << 15; Divider }
                 (Address(15),   Zero)   => Divider,
-                (Address(bit),  One)    => { self.address |= 1 << bit; Address(bit + 1) }
+                (Address(bit),  One)    => { state.address |= 1 << bit; Address(bit + 1) }
                 (Address(bit),  Zero)   => Address(bit + 1),
                 (Address(_),    _)      => Err(Error::Address),
 
                 (Divider,       Paus)   => Command(0),
                 (Divider,       _)      => Err(Error::Data),
 
-                (Command(19),   One)    => { self.command |= 1 << 19; Done }
+                (Command(19),   One)    => { state.command |= 1 << 19; Done }
                 (Command(19),   Zero)   => Done,
-                (Command(bit),  One)    => { self.command |= 1 << bit; Command(bit + 1) }
+                (Command(bit),  One)    => { state.command |= 1 << bit; Command(bit + 1) }
                 (Command(bit),  Zero)   => Command(bit + 1),
                 (Command(_),    _)      => Err(Error::Data),
 
@@ -130,52 +155,26 @@ impl InfraredReceiver for Sbp {
                 (Err(err),      _)      => Err(err),
             };
         } else {
-            self.since_rising = dt;
+            state.since_rising = dt;
         }
 
-        self.state
+        state.state
     }
 
-    fn command(&self) -> Option<Self::Cmd> {
-        Some(SbpCommand::from_receiver(self.address, self.command))
+    fn command(state: &Self::ReceiverState) -> Option<Self::Cmd> {
+        Some(SbpCommand::from_receiver(state.address, state.command))
     }
 
-    fn reset(&mut self) {
-        self.state = SbpState::Init;
-        self.address = 0;
-        self.command = 0;
-    }
 }
 
-impl Default for SbpState {
-    fn default() -> Self {
-        Self::Init
-    }
-}
-
-impl From<SbpState> for Status {
-    fn from(state: SbpState) -> Status {
-        use SbpState::*;
+impl From<SbpStatus> for Status {
+    fn from(state: SbpStatus) -> Status {
+        use SbpStatus::*;
         match state {
             Init => Status::Idle,
             Done => Status::Done,
             Err(e) => Status::Error(e),
             _ => Status::Receiving,
-        }
-    }
-}
-
-impl Default for Sbp {
-    fn default() -> Self {
-        let nsamples = nsamples_from_timing(&TIMING);
-        let ranges = PulseWidthRange::new(&nsamples);
-
-        Self {
-            state: SbpState::Init,
-            address: 0,
-            command: 0,
-            since_rising: 0,
-            ranges,
         }
     }
 }
@@ -220,12 +219,6 @@ pub enum SbpPulse {
     Zero = 2,
     One = 3,
     NotAPulseWidth = 4,
-}
-
-impl Default for SbpPulse {
-    fn default() -> Self {
-        SbpPulse::NotAPulseWidth
-    }
 }
 
 impl From<usize> for SbpPulse {

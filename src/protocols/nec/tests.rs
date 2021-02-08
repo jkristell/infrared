@@ -1,6 +1,8 @@
-use crate::protocols::nec::{Nec16Command, NecAppleCommand, NecCommand, NecSamsungCommand, NecCommandTrait};
-use crate::recv::BufferReceiver;
+use crate::protocols::nec::{
+    Nec16Command, NecAppleCommand, NecCommand, NecCommandTrait, NecSamsungCommand,
+};
 use crate::protocols::Nec;
+use crate::recv::BufferReceiver;
 use crate::send::PulsedataBuffer;
 
 #[test]

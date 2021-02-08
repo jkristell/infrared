@@ -1,13 +1,18 @@
-use crate::recv::{BufferReceiver, EventReceiver};
-use crate::protocols::Rc6;
 use crate::protocols::rc6::Rc6Command;
-use crate::send::{PulsedataBuffer, ToPulsedata};
+use crate::protocols::Rc6;
+use crate::recv::{BufferReceiver, EventReceiver};
+use crate::send::{PulsedataBuffer, };
 
 #[test]
 fn newpulse() {
     let cmd = Rc6Command::new(70, 20);
-    let mut b = [0u16; 96];
-    let len = cmd.to_pulsedata(&mut b);
+
+    let mut sender: PulsedataBuffer<Rc6> = PulsedataBuffer::new(1_000_000);
+
+    sender.load(&cmd);
+
+    let b = sender.buf;
+    let len = sender.offset;
 
     let mut edge = false;
     let mut recv: EventReceiver<Rc6> = EventReceiver::new(1_000_000);
@@ -17,12 +22,12 @@ fn newpulse() {
     for dist in &b[..len] {
         edge = !edge;
 
-        let s0 = recv.receiver.state;
+        let s0 = recv.state.state;
         let cmd = recv.edge_event(edge, *dist as u32);
 
         println!(
             "{} ({}): {:?} -> {:?}",
-            edge as u32, dist, s0, recv.receiver.state
+            edge as u32, dist, s0, recv.state.state
         );
 
         if let Ok(Some(cmd)) = cmd {
@@ -63,7 +68,7 @@ fn basic() {
 
 #[test]
 fn all_commands() {
-    let mut ptb = PulsedataBuffer::with_samplerate(40_000);
+    let mut ptb: PulsedataBuffer<Rc6> = PulsedataBuffer::with_samplerate(40_000);
 
     for address in 0..255 {
         for cmdnum in 0..255 {

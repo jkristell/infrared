@@ -33,10 +33,7 @@ impl InfraRange4 {
     }
 
     pub fn find<T: From<usize>>(&self, dt: u32) -> Option<T> {
-        self.0
-            .iter()
-            .position(|r| r.contains(&dt))
-            .map(T::from)
+        self.0.iter().position(|r| r.contains(&dt)).map(T::from)
     }
 }
 
@@ -52,14 +49,11 @@ impl InfraRange6 {
         ])
     }
     pub fn find(&self, dt: u32) -> Option<usize> {
-        self.0
-            .iter()
-            .position(|r| r.contains(&dt))
+        self.0.iter().position(|r| r.contains(&dt))
     }
 }
 
 const fn infra_range(samplerate: u32, len: u32, percent: u32) -> Range<u32> {
-
     let base = (len * samplerate) / 1_000_000;
     let tol = (base * percent) / 100;
 
@@ -68,7 +62,6 @@ const fn infra_range(samplerate: u32, len: u32, percent: u32) -> Range<u32> {
         end: base + tol + 4,
     }
 }
-
 
 #[derive(Debug, Clone)]
 pub struct PulseWidthRange<T> {

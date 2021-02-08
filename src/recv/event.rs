@@ -1,15 +1,13 @@
 //! Event based Receiver
 
-use crate::recv::{Error, InfraredReceiver, Status, InfraredReceiverState};
+use crate::recv::{Error, InfraredReceiver, InfraredReceiverState, Status};
 
 /// Event driven receiver
 pub struct EventReceiver<Protocol>
 where
     Protocol: InfraredReceiver,
 {
-    pub receiver_state: Protocol::ReceiverState,
-    /// Receiver running at samplerate
-    precalc_multiplier: u32,
+    pub state: Protocol::ReceiverState,
 }
 
 /// Receiver - event based
@@ -17,8 +15,7 @@ impl<Protocol: InfraredReceiver> EventReceiver<Protocol> {
     /// Create a new Receiver
     pub fn new(samplerate: u32) -> Self {
         Self {
-            receiver_state: Protocol::receiver_state(samplerate),
-            precalc_multiplier: crate::TIMEBASE / samplerate,
+            state: Protocol::receiver_state(samplerate),
         }
     }
 
@@ -29,21 +26,19 @@ impl<Protocol: InfraredReceiver> EventReceiver<Protocol> {
         delta_samples: T,
     ) -> Result<Option<Protocol::Cmd>, Error> {
         // Convert to micro seconds
-        let dt_us = delta_samples.into() * self.precalc_multiplier;
+        let dt_us = delta_samples.into();
 
         // Update state machine
-        let state: Status = Protocol::event(
-            &mut self.receiver_state,
-            edge, dt_us).into();
+        let state: Status = Protocol::event(&mut self.state, edge, dt_us).into();
 
         match state {
             Status::Done => {
-                let cmd = Protocol::command(&mut self.receiver_state);
-                self.receiver_state.reset();
+                let cmd = Protocol::command(&mut self.state);
+                self.state.reset();
                 Ok(cmd)
             }
             Status::Error(err) => {
-                self.receiver_state.reset();
+                self.state.reset();
                 Err(err)
             }
             Status::Idle | Status::Receiving => Ok(None),
@@ -52,7 +47,6 @@ impl<Protocol: InfraredReceiver> EventReceiver<Protocol> {
 
     /// Reset receiver
     pub fn reset(&mut self) {
-        self.receiver_state.reset();
+        self.state.reset();
     }
 }
-

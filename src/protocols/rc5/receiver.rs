@@ -1,11 +1,10 @@
+use crate::protocols::utils::InfraRange2;
+use crate::protocols::Rc5;
+use crate::recv::InfraredReceiverState;
 use crate::{
     protocols::rc5::Rc5Command,
     recv::{Error, InfraredReceiver, Status},
 };
-use crate::protocols::utils::InfraRange2;
-use crate::recv::InfraredReceiverState;
-use crate::protocolid::InfraredProtocol;
-use crate::protocols::Rc5;
 
 const RC5_BASE_TIME: u32 = 889;
 
@@ -16,15 +15,13 @@ pub struct Rc5ReceiverState {
     pub(crate) ranges: InfraRange2,
 }
 
-
 impl InfraredReceiverState for Rc5ReceiverState {
-
     fn create(samplerate: u32) -> Self {
         Rc5ReceiverState {
             state: Rc5State::Idle,
             bitbuf: 0,
             clock: 0,
-            ranges: InfraRange2::new(&[(RC5_BASE_TIME, 10), (RC5_BASE_TIME * 2, 10)], samplerate)
+            ranges: InfraRange2::new(&[(RC5_BASE_TIME, 10), (RC5_BASE_TIME * 2, 10)], samplerate),
         }
     }
 
@@ -35,13 +32,12 @@ impl InfraredReceiverState for Rc5ReceiverState {
     }
 }
 
-
 impl InfraredReceiver for Rc5 {
     type ReceiverState = Rc5ReceiverState;
-    type InternalState = Rc5State;
+    type InternalStatus = Rc5State;
 
     #[rustfmt::skip]
-    fn event(state :&mut Self::ReceiverState, rising: bool, dt: u32) -> Self::InternalState {
+    fn event(state :&mut Self::ReceiverState, rising: bool, dt: u32) -> Self::InternalStatus {
         use Rc5State::*;
 
         // Find this delta t in the defined ranges

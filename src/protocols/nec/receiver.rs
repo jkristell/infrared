@@ -1,16 +1,14 @@
-use crate::protocols::nec::{NecCommandTrait};
+use crate::protocols::nec::NecCommandTrait;
+use crate::protocols::utils::InfraRange4;
+use crate::protocols::Nec;
+use crate::recv::InfraredReceiverState;
 use crate::{
-    protocols::nec::{NecPulseDistance, NecTiming, NecCommand},
-    protocols::utils::PulseWidthRange,
+    protocols::nec::{NecCommand, NecPulseDistance, NecTiming},
     recv::{Error, InfraredReceiver, Status},
 };
 use core::marker::PhantomData;
-use crate::protocols::utils::InfraRange4;
-use crate::protocolid::InfraredProtocol;
-use crate::recv::InfraredReceiverState;
-use crate::protocols::Nec;
 
-pub struct NecReceiverState<C = NecCommand>  {
+pub struct NecReceiverState<C = NecCommand> {
     // State
     status: InternalState,
     // Data buffer
@@ -27,7 +25,6 @@ pub struct NecReceiverState<C = NecCommand>  {
 
 impl<C: NecTiming> InfraredReceiverState for NecReceiverState<C> {
     fn create(samplerate: u32) -> Self {
-
         let tols = tolerances(C::PD);
         let ranges = InfraRange4::new(&tols, samplerate);
 
@@ -37,7 +34,7 @@ impl<C: NecTiming> InfraredReceiverState for NecReceiverState<C> {
             ranges,
             last_cmd: 0,
             cmd_type: Default::default(),
-            dt_save: 0
+            dt_save: 0,
         }
     }
 
@@ -52,7 +49,6 @@ impl<C: NecTiming> InfraredReceiverState for NecReceiverState<C> {
         self.dt_save = 0;
     }
 }
-
 
 #[derive(Debug, Copy, Clone)]
 // Internal receiver state
@@ -81,16 +77,15 @@ impl From<InternalState> for Status {
     }
 }
 
-
 impl<Cmd> InfraredReceiver for Nec<Cmd>
 where
     Cmd: NecCommandTrait + NecTiming,
 {
     type ReceiverState = NecReceiverState<Cmd>;
-    type InternalState = InternalState;
+    type InternalStatus = InternalState;
 
     #[rustfmt::skip]
-    fn event(state: &mut Self::ReceiverState, rising: bool, dt: u32) -> Self::InternalState {
+    fn event(state: &mut Self::ReceiverState, rising: bool, dt: u32) -> Self::InternalStatus {
         use InternalState::*;
         use PulseWidth::*;
 

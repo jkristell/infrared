@@ -1,7 +1,9 @@
 use crate::{
-    recv::{InfraredReceiver, Status},
     protocols::utils::PulseWidthRange,
+    recv::{InfraredReceiver, Status},
 };
+use crate::protocolid::InfraredProtocol;
+use crate::recv::InfraredReceiverState;
 
 #[cfg(test)]
 mod test;
@@ -12,70 +14,29 @@ const DATA_HIGH: u32 = 480;
 const ZERO_LOW: u32 = 360;
 const ONE_LOW: u32 = 1200;
 
-
 /// Denon protocol
-pub struct Denon {
+pub struct Denon;
+
+impl InfraredProtocol for Denon {
+    type Cmd = DenonCommand;
+}
+
+pub struct DenonReceiverState {
     state: DenonState,
     buf: u64,
     dt_save: u32,
     ranges: PulseWidthRange<PulseWidth>,
 }
 
-#[derive(Debug)]
-pub struct DenonCommand {
-    pub bits: u64,
-}
-
-impl InfraredReceiver for Denon {
-    type Cmd = DenonCommand;
-    type InternalState = DenonState;
-
-    fn create_receiver() -> Self {
-
+impl InfraredReceiverState for DenonReceiverState {
+    fn create(samplerate: u32) -> Self {
         let ranges = PulseWidthRange::new(&nsamples());
 
-        Denon {
+        DenonReceiverState {
             state: DenonState::Idle,
             buf: 0,
             dt_save: 0,
             ranges,
-        }
-    }
-
-    fn event(&mut self, rising: bool, dt: u32) -> DenonState {
-
-        if rising {
-            let pulsewidth = self.ranges.pulsewidth(self.dt_save + dt);
-
-            self.state = match (self.state, pulsewidth) {
-                (DenonState::Idle,      PulseWidth::SYNC)   => DenonState::Data(0),
-                (DenonState::Idle,      _)                  => DenonState::Idle,
-                (DenonState::Data(47),  PulseWidth::ZERO)   => DenonState::Done,
-                (DenonState::Data(47),  PulseWidth::ONE)    => DenonState::Done,
-                (DenonState::Data(idx), PulseWidth::ZERO)   => DenonState::Data(idx + 1),
-                (DenonState::Data(idx), PulseWidth::ONE)    => {
-                    self.buf |= 1 << idx;
-                    DenonState::Data(idx + 1)
-                },
-                (DenonState::Data(_ix), _)                  => DenonState::Idle,
-                (DenonState::Done,      _)                  => DenonState::Done,
-            };
-
-            self.dt_save = 0;
-        } else {
-            self.dt_save = dt;
-        }
-
-        self.state
-    }
-
-    fn command(&self) -> Option<Self::Cmd> {
-        if self.state == DenonState::Done {
-            Some(DenonCommand {
-                bits: self.buf,
-            })
-        } else {
-            None
         }
     }
 
@@ -84,6 +45,51 @@ impl InfraredReceiver for Denon {
         self.buf = 0;
         self.dt_save = 0;
     }
+}
+
+#[derive(Debug)]
+pub struct DenonCommand {
+    pub bits: u64,
+}
+
+impl InfraredReceiver for Denon {
+    type ReceiverState = DenonReceiverState;
+    type InternalStatus = DenonState;
+
+    fn event(state: &mut Self::ReceiverState, rising: bool, dt: u32) -> DenonState {
+        if rising {
+            let pulsewidth = state.ranges.pulsewidth(state.dt_save + dt);
+
+            state.state = match (state.state, pulsewidth) {
+                (DenonState::Idle, PulseWidth::SYNC) => DenonState::Data(0),
+                (DenonState::Idle, _) => DenonState::Idle,
+                (DenonState::Data(47), PulseWidth::ZERO) => DenonState::Done,
+                (DenonState::Data(47), PulseWidth::ONE) => DenonState::Done,
+                (DenonState::Data(idx), PulseWidth::ZERO) => DenonState::Data(idx + 1),
+                (DenonState::Data(idx), PulseWidth::ONE) => {
+                    state.buf |= 1 << idx;
+                    DenonState::Data(idx + 1)
+                }
+                (DenonState::Data(_ix), _) => DenonState::Idle,
+                (DenonState::Done, _) => DenonState::Done,
+            };
+
+            state.dt_save = 0;
+        } else {
+            state.dt_save = dt;
+        }
+
+        state.state
+    }
+
+    fn command(state: &Self::ReceiverState) -> Option<Self::Cmd> {
+        if state.state == DenonState::Done {
+            Some(DenonCommand { bits: state.buf })
+        } else {
+            None
+        }
+    }
+
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -131,15 +137,12 @@ impl From<usize> for PulseWidth {
 const fn nsamples() -> [(u32, u32); 4] {
     [
         // SYNC
-        ((HEADER_HIGH + HEADER_LOW) , 5),
+        ((HEADER_HIGH + HEADER_LOW), 5),
         // ZERO
-        ((DATA_HIGH + ZERO_LOW) , 10),
+        ((DATA_HIGH + ZERO_LOW), 10),
         // ONE
-        ((DATA_HIGH + ONE_LOW) , 10),
+        ((DATA_HIGH + ONE_LOW), 10),
         // Not needed. Fix when const generics arrive
         (0xFFFFFFFF, 0),
     ]
 }
-
-
-

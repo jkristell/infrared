@@ -1,10 +1,7 @@
-use crate::{
-    protocols::nec::{NecCommandTrait},
-    ProtocolId,
-};
+use crate::protocols::nec::{NecPulseDistance, NecCommandTrait, NecTiming, NEC_SAMSUNG_TIMING, NEC_STANDARD_TIMING};
 #[cfg(feature = "remotes")]
 use crate::remotecontrol::AsButton;
-use crate::protocols::nec::{NecTiming, NecPulseDistance, NEC_STANDARD_TIMING, NEC_SAMSUNG_TIMING};
+use crate::ProtocolId;
 
 /*
  * -------------------------------------------------------------------------

@@ -94,8 +94,5 @@ pub mod remotecontrol;
 pub mod hal;
 #[cfg(feature = "embedded-hal")]
 #[doc(inline)]
-pub use hal::{PeriodicReceiver, EventReceiver, Sender};
-
-/// Time base for all time units in the library
-pub(crate) const TIMEBASE: u32 = 1_000_000;
+pub use hal::{EventReceiver, PeriodicReceiver, Sender};
 

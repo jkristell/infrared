@@ -1,6 +1,6 @@
-use crate::send::{InfraredSender, InfraredSenderState};
+use crate::protocols::nec::{NecCommandTrait, NecPulseDistance, NecTiming};
 use crate::protocols::Nec;
-use crate::protocols::nec::{NecCommandTrait, NecTiming, NecPulseDistance};
+use crate::send::{InfraredSender, InfraredSenderState};
 
 pub struct NecSenderState<Cmd: NecTiming> {
     dists: NecPulseDistance,
@@ -8,9 +8,7 @@ pub struct NecSenderState<Cmd: NecTiming> {
 }
 
 impl<Cmd: NecTiming> InfraredSenderState for NecSenderState<Cmd> {
-
     fn create(samplerate: u32) -> Self {
-
         let dists = NecPulseDistance {
             hh: (samplerate * Cmd::PD.hh) / 1_000_000,
             hl: (samplerate * Cmd::PD.hl) / 1_000_000,
@@ -32,10 +30,6 @@ where
     Cmd: NecCommandTrait + NecTiming,
 {
     type State = NecSenderState<Cmd>;
-
-    fn with_samplerate(samplerate: u32) -> Self {
-        Nec { cmd_type: Default::default() }
-    }
 
     fn cmd_pulsedata(state: &Self::State, cmd: &Self::Cmd, b: &mut [u16]) -> usize {
         b[0] = 0;

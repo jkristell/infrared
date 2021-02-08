@@ -2,18 +2,14 @@
 
 use embedded_hal::digital::v2::InputPin;
 
-use crate::{
-    recv::{self, InfraredReceiver},
-};
+use crate::recv::{self, InfraredReceiver};
 
-#[cfg(feature = "remotes")]
-use crate::remotecontrol::{ RemoteControl, AsButton, Button};
 use crate::protocolid::InfraredProtocol;
-
+#[cfg(feature = "remotes")]
+use crate::remotecontrol::{AsButton, Button, RemoteControl};
 
 /// Event driven embedded-hal receiver
-pub struct EventReceiver<PROTOCOL: InfraredReceiver, PIN>
-{
+pub struct EventReceiver<PROTOCOL: InfraredReceiver, PIN> {
     recv: crate::recv::EventReceiver<PROTOCOL>,
     pub pin: PIN,
 }

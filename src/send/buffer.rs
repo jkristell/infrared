@@ -1,5 +1,4 @@
-use core::convert::TryFrom;
-use crate::send::{ToPulsedata, InfraredSender};
+use crate::send::{InfraredSender, };
 
 pub struct PulsedataBuffer<SendProto: InfraredSender> {
     pub buf: [u16; 96],

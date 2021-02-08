@@ -5,14 +5,14 @@ pub use buffer::*;
 mod event;
 pub use event::*;
 mod periodic;
-pub use periodic::*;
 use crate::protocolid::InfraredProtocol;
+pub use periodic::*;
 
 /// Receiver state machine
 pub trait InfraredReceiver: InfraredProtocol {
     type ReceiverState: InfraredReceiverState;
     /// Internal State
-    type InternalState: Into<Status>;
+    type InternalStatus: Into<Status>;
 
     fn receiver_state(samplerate: u32) -> Self::ReceiverState {
         Self::ReceiverState::create(samplerate)
@@ -21,7 +21,7 @@ pub trait InfraredReceiver: InfraredProtocol {
     /// Add event to the state machine
     /// * `edge`: true = positive edge, false = negative edge
     /// * `dt` : Time in micro seconds since last transition
-    fn event(state: &mut Self::ReceiverState, edge: bool, dt: u32) -> Self::InternalState;
+    fn event(state: &mut Self::ReceiverState, edge: bool, dt: u32) -> Self::InternalStatus;
 
     /// Get the command
     /// Returns the data if State == Done, otherwise None
@@ -29,7 +29,6 @@ pub trait InfraredReceiver: InfraredProtocol {
 }
 
 pub trait InfraredReceiverState {
-
     fn create(samplerate: u32) -> Self;
 
     fn reset(&mut self);

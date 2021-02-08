@@ -1,4 +1,4 @@
-use crate::send::{PulsedataBuffer, ToPulsedata, InfraredSender};
+use crate::send::{InfraredSender, PulsedataBuffer, };
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 /// Sender state

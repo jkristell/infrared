@@ -1,9 +1,6 @@
 //! Philips Rc5
 
-use crate::{
-    send::ToPulsedata,
-    ProtocolId,
-};
+use crate::{ProtocolId};
 use core::convert::TryInto;
 
 #[cfg(feature = "remotes")]
@@ -25,7 +22,6 @@ const TOGGLE_MASK: u16 = 0b_0000_1000_0000_0000;
 const ADDR_SHIFT: u32 = 6;
 const START_SHIFT: u32 = 12;
 const TOGGLE_SHIFT: u32 = 11;
-
 
 /// Philips Rc5
 pub struct Rc5;

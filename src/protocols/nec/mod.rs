@@ -6,19 +6,15 @@ pub mod sender;
 #[cfg(test)]
 mod tests;
 
-pub use cmds::{
-    NecCommand, Nec16Command, NecAppleCommand, NecRawCommand, NecSamsungCommand,
-};
+pub use cmds::{Nec16Command, NecAppleCommand, NecCommand, NecRawCommand, NecSamsungCommand};
 
-#[doc(inline)]
-use crate::send::ToPulsedata;
-use core::marker::PhantomData;
 use crate::protocolid::InfraredProtocol;
+use core::marker::PhantomData;
 
 /// Nec Receiver with Nec standard bit encoding and Standard timing
 pub struct Nec<C = NecCommand> {
     // Nec Command type
-    pub(crate) cmd_type: PhantomData<C>,
+    pub(crate) cmd: PhantomData<C>,
 }
 
 impl<C: NecCommandTrait> InfraredProtocol for Nec<C> {
@@ -51,36 +47,6 @@ pub trait NecCommandTrait: Sized {
 
 pub trait NecTiming: NecCommandTrait {
     const PD: &'static NecPulseDistance;
-
-    /// Encode the command for sending
-    fn pulse_distance(&self, b: &mut [u16]) -> usize {
-        b[0] = 0;
-        b[1] = Self::PD.hh as u16;
-        b[2] = Self::PD.hl as u16;
-
-        let bits = self.pack();
-
-        let mut bi = 3;
-
-        for i in 0..32 {
-            let one = (bits >> i) & 1 != 0;
-            b[bi] = Self::PD.dh as u16;
-            if one {
-                b[bi + 1] = Self::PD.ol as u16;
-            } else {
-                b[bi + 1] = Self::PD.zl as u16;
-            }
-            bi += 2;
-        }
-
-        bi
-    }
-}
-
-impl<T: NecTiming> ToPulsedata for T {
-    fn to_pulsedata(&self, b: &mut [u16]) -> usize {
-        self.pulse_distance(b)
-    }
 }
 
 pub(crate) const NEC_STANDARD_TIMING: &'static NecPulseDistance = &NecPulseDistance {
@@ -101,34 +67,6 @@ pub(crate) const NEC_SAMSUNG_TIMING: &'static NecPulseDistance = &NecPulseDistan
     ol: 1690,
 };
 
-/*
-pub trait NecTiming {
-    const PL: &'static NecPulseDistance;
-}
-
-impl NecTiming for StandardTiming {
-    const PL: &'static NecPulseDistance = &NecPulseDistance {
-        hh: 9000,
-        hl: 4500,
-        rl: 2250,
-        dh: 560,
-        zl: 560,
-        ol: 1690,
-    };
-}
-
-impl NecTiming for SamsungTiming {
-    const PL: &'static NecPulseDistance = &NecPulseDistance {
-        hh: 4500,
-        hl: 4500,
-        rl: 2250,
-        zl: 560,
-        dh: 560,
-        ol: 1690,
-    };
-}
- */
-
 /// High and low times for Nec-like protocols. In us.
 #[derive(Copy, Clone)]
 pub struct NecPulseDistance {
@@ -145,4 +83,3 @@ pub struct NecPulseDistance {
     /// One low
     ol: u32,
 }
-

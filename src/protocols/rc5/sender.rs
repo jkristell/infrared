@@ -1,6 +1,5 @@
-use crate::send::{InfraredSender, InfraredSenderState};
-use crate::protocolid::InfraredProtocol;
 use crate::protocols::Rc5;
+use crate::send::{InfraredSender, InfraredSenderState};
 
 pub struct Rc5SenderState {
     pub rc5len: u32,
@@ -8,25 +7,16 @@ pub struct Rc5SenderState {
 
 impl InfraredSenderState for Rc5SenderState {
     fn create(samplerate: u32) -> Self {
-
         let rc5len = (889 * samplerate) / 1_000_000;
 
-        Rc5SenderState {
-            rc5len
-        }
+        Rc5SenderState { rc5len }
     }
 }
 
 impl InfraredSender for Rc5 {
     type State = Rc5SenderState;
 
-    fn with_samplerate(samplerate: u32) -> Self {
-        Rc5 {}
-    }
-
-    fn cmd_pulsedata(
-                     state: &Self::State,
-                     cmd: &Self::Cmd, buf: &mut [u16]) -> usize {
+    fn cmd_pulsedata(state: &Self::State, cmd: &Self::Cmd, buf: &mut [u16]) -> usize {
         // Command as bits
         let bits = cmd.pack();
 

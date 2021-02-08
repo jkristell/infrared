@@ -1,7 +1,5 @@
-use crate::{
-    recv::{InfraredReceiver, Status}
-};
 use crate::recv::InfraredReceiverState;
+use crate::recv::{InfraredReceiver, Status};
 
 pub struct BufferReceiver<'a> {
     buf: &'a [u16],
@@ -11,10 +9,7 @@ pub struct BufferReceiver<'a> {
 impl<'a> BufferReceiver<'a> {
     /// Create a new BufferReceiver with `buf` as the underlying value change buffer
     pub fn new(buf: &'a [u16], samplerate: u32) -> Self {
-        Self {
-            buf,
-            samplerate,
-        }
+        Self { buf, samplerate }
     }
 
     /// Create an iterator over the buffer with `Prococol` as decoder
@@ -28,7 +23,8 @@ impl<'a> BufferReceiver<'a> {
 }
 
 pub struct BufferIterator<'a, Protocol>
-where Protocol: InfraredReceiver,
+where
+    Protocol: InfraredReceiver,
 {
     buf: &'a [u16],
     pos: usize,
@@ -48,25 +44,19 @@ impl<'a, Protocol: InfraredReceiver> Iterator for BufferIterator<'a, Protocol> {
             let dt_us = u32::from(self.buf[self.pos]);
             self.pos += 1;
 
-            let state: Status = Protocol::event(
-                &mut self.receiver_state,
-                pos_edge, dt_us).into();
+            let state: Status = Protocol::event(&mut self.receiver_state, pos_edge, dt_us).into();
 
             match state {
                 Status::Idle | Status::Receiving => {
                     continue;
                 }
                 Status::Done => {
-                    let cmd = Protocol::command(
-                        &self.receiver_state
-                    );
-                    self.receiver_state.reset(
-                    );
+                    let cmd = Protocol::command(&self.receiver_state);
+                    self.receiver_state.reset();
                     break cmd;
                 }
                 Status::Error(_) => {
-                    self.receiver_state.reset(
-                    );
+                    self.receiver_state.reset();
                     break None;
                 }
             }

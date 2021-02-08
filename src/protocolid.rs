@@ -1,8 +1,6 @@
-
 pub trait InfraredProtocol {
     type Cmd;
 }
-
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[repr(u8)]
