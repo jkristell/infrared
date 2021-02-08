@@ -2,7 +2,7 @@
 
 use core::ops::Range;
 
-use crate::recv::{Error, InfraredReceiver, State};
+use crate::recv::{Error, InfraredReceiver, Status};
 
 mod cmd;
 pub use cmd::Rc6Command;
@@ -51,14 +51,14 @@ impl Default for Rc6State {
     }
 }
 
-impl From<Rc6State> for State {
+impl From<Rc6State> for Status {
     fn from(state: Rc6State) -> Self {
         use Rc6State::*;
         match state {
-            Idle => State::Idle,
-            Done => State::Done,
-            Rc6Err(err) => State::Error(err),
-            _ => State::Receiving,
+            Idle => Status::Idle,
+            Done => Status::Done,
+            Rc6Err(err) => Status::Error(err),
+            _ => Status::Receiving,
         }
     }
 }
@@ -67,7 +67,7 @@ impl InfraredReceiver for Rc6 {
     type Cmd = Rc6Command;
     type InternalState = Rc6State;
 
-    fn create() -> Self {
+    fn create_receiver() -> Self {
         Self::default()
     }
 

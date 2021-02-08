@@ -11,7 +11,7 @@ use core::convert::TryInto;
 
 use crate::{
     protocols::utils::PulseWidthRange,
-    recv::{Error, InfraredReceiver, State},
+    recv::{Error, InfraredReceiver, Status},
     ProtocolId,
 };
 #[cfg(feature = "remotes")]
@@ -94,7 +94,7 @@ impl InfraredReceiver for Sbp {
     type Cmd = SbpCommand;
     type InternalState = SbpState;
 
-    fn create() -> Self {
+    fn create_receiver() -> Self {
         Self::default()
     }
 
@@ -165,14 +165,14 @@ impl Default for SbpState {
     }
 }
 
-impl From<SbpState> for State {
-    fn from(state: SbpState) -> State {
+impl From<SbpState> for Status {
+    fn from(state: SbpState) -> Status {
         use SbpState::*;
         match state {
-            Init => State::Idle,
-            Done => State::Done,
-            Err(e) => State::Error(e),
-            _ => State::Receiving,
+            Init => Status::Idle,
+            Done => Status::Done,
+            Err(e) => Status::Error(e),
+            _ => Status::Receiving,
         }
     }
 }

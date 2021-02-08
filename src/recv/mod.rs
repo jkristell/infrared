@@ -11,17 +11,24 @@ pub use periodic::*;
 pub trait InfraredReceiver {
     /// The Resulting Command Type
     type Cmd;
+    type ReceiverState: InfraredReceiverState;
     /// Internal State
-    type InternalState: Into<State>;
+    type InternalState: Into<Status>;
 
     /// Create a new Receiver State machine
-    fn create() -> Self;
+    fn create_receiver() -> Self;
+
+    fn create_receiver_state() -> Self::ReceiverState;
 
     /// Add event to the state machine
     /// * `edge`: true = positive edge, false = negative edge
     /// * `dt` : Time in micro seconds since last transition
-    fn event(&mut self, edge: bool, dt: u32) -> Self::InternalState;
+    fn event(&mut self,
+             sss: &mut Self::ReceiverState,
+             edge: bool, dt: u32) -> Self::InternalState;
+}
 
+pub trait InfraredReceiverState {
     /// Get the command
     /// Returns the data if State == Done, otherwise None
     fn command(&self) -> Option<Self::Cmd>;
@@ -32,7 +39,7 @@ pub trait InfraredReceiver {
 
 #[derive(PartialEq, Eq, Copy, Clone)]
 /// Protocol decoder state
-pub enum State {
+pub enum Status {
     /// Idle
     Idle,
     /// Receiving data
@@ -43,9 +50,9 @@ pub enum State {
     Error(Error),
 }
 
-impl Default for State {
-    fn default() -> State {
-        State::Idle
+impl Default for Status {
+    fn default() -> Status {
+        Status::Idle
     }
 }
 

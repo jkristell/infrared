@@ -2,7 +2,7 @@ use core::ops::Range;
 
 use crate::{
     protocols::rc5::Rc5Command,
-    recv::{Error, InfraredReceiver, State},
+    recv::{Error, InfraredReceiver, Status},
 };
 
 #[derive(Default)]
@@ -38,14 +38,14 @@ impl Default for Rc5State {
     }
 }
 
-impl From<Rc5State> for State {
+impl From<Rc5State> for Status {
     fn from(rs: Rc5State) -> Self {
         use Rc5State::*;
         match rs {
-            Idle => State::Idle,
-            Data(_) => State::Receiving,
-            Done => State::Done,
-            Err(e) => State::Error(e),
+            Idle => Status::Idle,
+            Data(_) => Status::Receiving,
+            Done => Status::Done,
+            Err(e) => Status::Error(e),
         }
     }
 }
@@ -54,7 +54,7 @@ impl InfraredReceiver for Rc5 {
     type Cmd = Rc5Command;
     type InternalState = Rc5State;
 
-    fn create() -> Self {
+    fn create_receiver() -> Self {
         Rc5::default()
     }
 
