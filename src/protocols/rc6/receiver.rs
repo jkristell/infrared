@@ -52,7 +52,7 @@ impl InfraredReceiver for Rc6 {
         use Rc6State::*;
 
         // Find the nbr of time unit ticks the dt represents
-        let ticks = state.ranges.find(dt).map(|v| (v + 1) as u32);
+        let ticks = state.ranges.find::<usize>(dt).map(|v| (v + 1) as u32);
 
         // Reconstruct the clock
         if let Some(ticks) = ticks {

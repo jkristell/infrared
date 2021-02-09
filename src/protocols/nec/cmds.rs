@@ -1,4 +1,4 @@
-use crate::protocols::nec::{NecPulseDistance, NecCommandTrait, NecTiming, NEC_SAMSUNG_TIMING, NEC_STANDARD_TIMING};
+use crate::protocols::nec::{NecPulseDistance, NecCommandTrait, NEC_SAMSUNG_TIMING, NEC_STANDARD_TIMING};
 #[cfg(feature = "remotes")]
 use crate::remotecontrol::AsButton;
 use crate::ProtocolId;
@@ -40,6 +40,8 @@ impl AsButton for NecCommand {
 }
 
 impl NecCommandTrait for NecCommand {
+    const PULSE_DISTANCE: &'static NecPulseDistance = NEC_STANDARD_TIMING;
+
     fn validate(bits: u32) -> bool {
         ((bits >> 24) ^ (bits >> 16)) & 0xFF == 0xFF && ((bits >> 8) ^ bits) & 0xFF == 0xFF
     }
@@ -58,10 +60,6 @@ impl NecCommandTrait for NecCommand {
     }
 }
 
-impl NecTiming for NecCommand {
-    const PD: &'static NecPulseDistance = NEC_STANDARD_TIMING;
-}
-
 /*
  * -------------------------------------------------------------------------
  *  NEC variant with 16 bit address
@@ -77,6 +75,8 @@ pub struct Nec16Command {
 }
 
 impl NecCommandTrait for Nec16Command {
+    const PULSE_DISTANCE: &'static NecPulseDistance = NEC_STANDARD_TIMING;
+
     fn validate(bits: u32) -> bool {
         ((bits >> 24) ^ (bits >> 16)) & 0xFF == 0xFF
     }
@@ -94,9 +94,6 @@ impl NecCommandTrait for Nec16Command {
         addr | cmd
     }
 }
-impl NecTiming for Nec16Command {
-    const PD: &'static NecPulseDistance = NEC_STANDARD_TIMING;
-}
 
 /*
  * -------------------------------------------------------------------------
@@ -112,6 +109,8 @@ pub struct NecSamsungCommand {
 }
 
 impl NecCommandTrait for NecSamsungCommand {
+    const PULSE_DISTANCE: &'static NecPulseDistance = NEC_SAMSUNG_TIMING;
+
     fn validate(bits: u32) -> bool {
         ((bits >> 24) ^ (bits >> 16)) & 0xFF == 0xFF && ((bits >> 8) ^ bits) & 0xFF == 0x00
     }
@@ -127,10 +126,6 @@ impl NecCommandTrait for NecSamsungCommand {
         let cmd = u32::from(self.cmd) << 16 | u32::from(!self.cmd) << 24;
         addr | cmd
     }
-}
-
-impl NecTiming for NecSamsungCommand {
-    const PD: &'static NecPulseDistance = NEC_SAMSUNG_TIMING;
 }
 
 #[cfg(feature = "remotes")]
@@ -171,6 +166,8 @@ pub struct NecAppleCommand {
 }
 
 impl NecCommandTrait for NecAppleCommand {
+    const PULSE_DISTANCE: &'static NecPulseDistance = NEC_STANDARD_TIMING;
+
     fn validate(bits: u32) -> bool {
         let vendor = ((bits >> 5) & 0x7FF) as u16;
         const APPLE_VENDOR_ID: u16 = 0x43f;
@@ -209,10 +206,6 @@ impl NecCommandTrait for NecAppleCommand {
     }
 }
 
-impl NecTiming for NecAppleCommand {
-    const PD: &'static NecPulseDistance = NEC_STANDARD_TIMING;
-}
-
 #[cfg(feature = "remotes")]
 impl AsButton for NecAppleCommand {
     fn address(&self) -> u32 {
@@ -245,6 +238,8 @@ pub struct NecRawCommand {
 }
 
 impl NecCommandTrait for NecRawCommand {
+    const PULSE_DISTANCE: &'static NecPulseDistance = NEC_STANDARD_TIMING;
+
     fn validate(_bits: u32) -> bool {
         true
     }

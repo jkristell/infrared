@@ -12,12 +12,12 @@ use core::convert::TryInto;
 #[cfg(feature = "remotes")]
 use crate::remotecontrol::AsButton;
 use crate::{
-    protocols::utils::PulseWidthRange,
     recv::{Error, InfraredReceiver, Status},
     ProtocolId,
 };
 use crate::protocolid::InfraredProtocol;
 use crate::recv::InfraredReceiverState;
+use crate::protocols::utils::InfraRange4;
 
 pub struct Sbp;
 
@@ -25,20 +25,19 @@ impl InfraredProtocol for Sbp {
     type Cmd = SbpCommand;
 }
 
-#[derive(Debug)]
 /// Samsung Blu-ray protocol
 pub struct SbpReceiverState {
     state: SbpStatus,
     address: u16,
     command: u32,
     since_rising: u32,
-    ranges: PulseWidthRange<SbpPulse>,
+    ranges: InfraRange4,
 }
 
 impl InfraredReceiverState for SbpReceiverState {
     fn create(samplerate: u32) -> Self {
         let nsamples = nsamples_from_timing(&TIMING);
-        let ranges = PulseWidthRange::new(&nsamples);
+        let ranges = InfraRange4::new(&nsamples, samplerate);
 
         SbpReceiverState {
             state: SbpStatus::Init,
@@ -64,7 +63,7 @@ pub struct SbpCommand {
 }
 
 impl SbpCommand {
-    pub fn from_receiver(address: u16, mut command: u32) -> Self {
+    pub fn unpack(address: u16, mut command: u32) -> Self {
         // Discard the 4 unknown bits
         command >>= 4;
 
@@ -130,7 +129,7 @@ impl InfraredReceiver for Sbp {
 
         if rising {
             let dt = state.since_rising + dt;
-            let pulsewidth = state.ranges.pulsewidth(dt);
+            let pulsewidth = state.ranges.find::<SbpPulse>(dt).unwrap_or(SbpPulse::NotAPulseWidth);
 
             state.state = match (state.state, pulsewidth) {
                 (Init,          Sync)   => Address(0),
@@ -162,7 +161,7 @@ impl InfraredReceiver for Sbp {
     }
 
     fn command(state: &Self::ReceiverState) -> Option<Self::Cmd> {
-        Some(SbpCommand::from_receiver(state.address, state.command))
+        Some(SbpCommand::unpack(state.address, state.command))
     }
 
 }
@@ -182,7 +181,7 @@ impl From<SbpStatus> for Status {
 const fn nsamples_from_timing(t: &SbpTiming) -> [(u32, u32); 4] {
     [
         ((t.hh + t.hl), 5),
-        ((t.data + t.paus), 5),
+        ((t.data + t.pause), 5),
         ((t.data + t.zero), 10),
         ((t.data + t.one), 10),
     ]
@@ -194,7 +193,7 @@ struct SbpTiming {
     /// Header low
     hl: u32,
     /// Repeat low
-    paus: u32,
+    pause: u32,
     /// Data high
     data: u32,
     /// Zero low
@@ -206,7 +205,7 @@ struct SbpTiming {
 const TIMING: SbpTiming = SbpTiming {
     hh: 4500,
     hl: 4500,
-    paus: 4500,
+    pause: 4500,
     data: 500,
     zero: 500,
     one: 1500,
@@ -219,12 +218,6 @@ pub enum SbpPulse {
     Zero = 2,
     One = 3,
     NotAPulseWidth = 4,
-}
-
-impl Default for SbpPulse {
-    fn default() -> Self {
-        SbpPulse::NotAPulseWidth
-    }
 }
 
 impl From<usize> for SbpPulse {

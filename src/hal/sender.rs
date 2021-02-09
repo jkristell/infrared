@@ -2,11 +2,9 @@
 
 use core::convert::Infallible;
 
-use crate::send::{InfraredSender, };
-use crate::send::{PulsedataSender, State};
+use crate::send::{InfraredSender, PulsedataSender, Status};
 
 /// Embedded hal sender
-///
 pub struct Sender<Protocol, PwmPin, PwmDuty>
 where
     PwmPin: embedded_hal::PwmPin<Duty = PwmDuty>,
@@ -31,17 +29,13 @@ where
     }
 
     pub fn load(&mut self, cmd: &Protocol::Cmd) -> nb::Result<(), Infallible> {
-        self.buffer.ptb.load(cmd);
-        Ok(())
-        //self.sender.cmd_pulsedata(cmd, &self.buf);
-
-        //if self.pts.state == State::Idle {
-        //    self.pts.load_command(cmd);
-        //    self.counter = 0;
-        //    Ok(())
-        //} else {
-        //    Err(nb::Error::WouldBlock)
-        //}
+        if self.buffer.status == Status::Idle {
+            self.buffer.load_command(cmd);
+            self.counter = 0;
+            Ok(())
+        } else {
+            Err(nb::Error::WouldBlock)
+        }
     }
 
     /// Get a reference to the data
@@ -51,14 +45,14 @@ where
 
     /// Method to be called periodically to update the pwm output
     pub fn tick(&mut self) {
-        let state = self.buffer.tick(self.counter);
+        let status = self.buffer.tick(self.counter);
         self.counter = self.counter.wrapping_add(1);
 
-        match state {
-            State::Transmit(true) => self.pin.enable(),
-            State::Transmit(false) => self.pin.disable(),
-            State::Idle => self.pin.disable(),
-            State::Error => self.pin.disable(),
+        match status {
+            Status::Transmit(true) => self.pin.enable(),
+            Status::Transmit(false) => self.pin.disable(),
+            Status::Idle => self.pin.disable(),
+            Status::Error => self.pin.disable(),
         };
     }
 }

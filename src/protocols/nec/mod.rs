@@ -35,6 +35,8 @@ pub type NecDebug = Nec<NecRawCommand>;
 
 /// Nec Command bit fiddling Trait
 pub trait NecCommandTrait: Sized {
+    const PULSE_DISTANCE: &'static NecPulseDistance;
+
     /// Validate the bits as a Command of this type
     fn validate(bits: u32) -> bool;
 
@@ -45,41 +47,37 @@ pub trait NecCommandTrait: Sized {
     fn pack(&self) -> u32;
 }
 
-pub trait NecTiming: NecCommandTrait {
-    const PD: &'static NecPulseDistance;
-}
-
-pub(crate) const NEC_STANDARD_TIMING: &'static NecPulseDistance = &NecPulseDistance {
-    hh: 9000,
-    hl: 4500,
-    rl: 2250,
-    dh: 560,
-    zl: 560,
-    ol: 1690,
+pub(crate) const NEC_STANDARD_TIMING: &NecPulseDistance = &NecPulseDistance {
+    header_high: 9000,
+    header_low: 4500,
+    repeat_low: 2250,
+    data_high: 560,
+    data_zero_low: 560,
+    data_one_low: 1690,
 };
 
-pub(crate) const NEC_SAMSUNG_TIMING: &'static NecPulseDistance = &NecPulseDistance {
-    hh: 4500,
-    hl: 4500,
-    rl: 2250,
-    zl: 560,
-    dh: 560,
-    ol: 1690,
+pub(crate) const NEC_SAMSUNG_TIMING: &NecPulseDistance = &NecPulseDistance {
+    header_high: 4500,
+    header_low: 4500,
+    repeat_low: 2250,
+    data_zero_low: 560,
+    data_high: 560,
+    data_one_low: 1690,
 };
 
 /// High and low times for Nec-like protocols. In us.
 #[derive(Copy, Clone)]
 pub struct NecPulseDistance {
     /// Header high
-    hh: u32,
+    header_high: u32,
     /// Header low
-    hl: u32,
+    header_low: u32,
     /// Repeat low
-    rl: u32,
+    repeat_low: u32,
     /// Data high
-    dh: u32,
+    data_high: u32,
     /// Zero low
-    zl: u32,
+    data_zero_low: u32,
     /// One low
-    ol: u32,
+    data_one_low: u32,
 }

@@ -1,12 +1,13 @@
-use crate::protocols::nec::NecCommandTrait;
-use crate::protocols::utils::InfraRange4;
-use crate::protocols::Nec;
-use crate::recv::InfraredReceiverState;
-use crate::{
-    protocols::nec::{NecCommand, NecPulseDistance, NecTiming},
-    recv::{Error, InfraredReceiver, Status},
-};
 use core::marker::PhantomData;
+
+use crate::{
+    protocols::{
+        utils::InfraRange4,
+        Nec,
+        nec::{NecCommand, NecPulseDistance, NecCommandTrait}
+    },
+    recv::{Error, InfraredReceiver, InfraredReceiverState, Status},
+};
 
 pub struct NecReceiverState<C = NecCommand> {
     // State
@@ -23,9 +24,9 @@ pub struct NecReceiverState<C = NecCommand> {
     dt_save: u32,
 }
 
-impl<C: NecTiming> InfraredReceiverState for NecReceiverState<C> {
+impl<C: NecCommandTrait> InfraredReceiverState for NecReceiverState<C> {
     fn create(samplerate: u32) -> Self {
-        let tols = tolerances(C::PD);
+        let tols = tolerances(C::PULSE_DISTANCE);
         let ranges = InfraRange4::new(&tols, samplerate);
 
         NecReceiverState {
@@ -79,7 +80,7 @@ impl From<InternalState> for Status {
 
 impl<Cmd> InfraredReceiver for Nec<Cmd>
 where
-    Cmd: NecCommandTrait + NecTiming,
+    Cmd: NecCommandTrait,
 {
     type ReceiverState = NecReceiverState<Cmd>;
     type InternalStatus = InternalState;
@@ -93,9 +94,9 @@ where
             let pulsewidth = state.ranges.find::<PulseWidth>(state.dt_save + dt).unwrap_or(PulseWidth::NotAPulseWidth);
 
             state.status = match (state.status, pulsewidth) {
-                (Init,  Sync)   => Receiving(0),
-                (Init,  Repeat) => RepeatDone,
-                (Init,  _)      => Init,
+                (Init,              Sync)   => Receiving(0),
+                (Init,              Repeat) => RepeatDone,
+                (Init,              _)      => Init,
 
                 (Receiving(31),     One)    => { state.bitbuf |= 1 << 31; Done }
                 (Receiving(31),     Zero)   => Done,
@@ -103,9 +104,9 @@ where
                 (Receiving(bit),    Zero)   => Receiving(bit + 1),
                 (Receiving(_),      _)      => Err(Error::Data),
 
-                (Done,          _)  => Done,
-                (RepeatDone,    _)  => RepeatDone,
-                (Err(err),      _)  => Err(err),
+                (Done,              _)      => Done,
+                (RepeatDone,        _)      => RepeatDone,
+                (Err(err),          _)      => Err(err),
             };
 
             state.dt_save = 0;
@@ -135,12 +136,6 @@ pub enum PulseWidth {
     NotAPulseWidth = 4,
 }
 
-impl Default for PulseWidth {
-    fn default() -> Self {
-        PulseWidth::NotAPulseWidth
-    }
-}
-
 impl From<usize> for PulseWidth {
     fn from(v: usize) -> Self {
         match v {
@@ -155,9 +150,9 @@ impl From<usize> for PulseWidth {
 
 const fn tolerances(t: &NecPulseDistance) -> [(u32, u32); 4] {
     [
-        ((t.hh + t.hl), 5),
-        ((t.hh + t.rl), 5),
-        ((t.dh + t.zl), 10),
-        ((t.dh + t.ol), 10),
+        ((t.header_high + t.header_low), 5),
+        ((t.header_high + t.repeat_low), 5),
+        ((t.data_high + t.data_zero_low), 10),
+        ((t.data_high + t.data_one_low), 10),
     ]
 }

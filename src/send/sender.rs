@@ -2,7 +2,7 @@ use crate::send::{InfraredSender, PulsedataBuffer, };
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 /// Sender state
-pub enum State {
+pub enum Status {
     /// Sender is ready for transmitting
     Idle,
     /// Transmitting
@@ -14,7 +14,7 @@ pub enum State {
 pub struct PulsedataSender<Protocol: InfraredSender> {
     pub ptb: PulsedataBuffer<Protocol>,
     index: usize,
-    pub(crate) state: State,
+    pub(crate) status: Status,
     ts_lastedge: u32,
 }
 
@@ -24,7 +24,7 @@ impl<Proto: InfraredSender> PulsedataSender<Proto> {
         Self {
             ptb,
             index: 0,
-            state: State::Idle,
+            status: Status::Idle,
             ts_lastedge: 0,
         }
     }
@@ -32,7 +32,7 @@ impl<Proto: InfraredSender> PulsedataSender<Proto> {
     pub fn reset(&mut self) {
         self.index = 0;
         self.ts_lastedge = 0;
-        self.state = State::Idle;
+        self.status = Status::Idle;
         self.ptb.reset();
     }
 
@@ -42,24 +42,24 @@ impl<Proto: InfraredSender> PulsedataSender<Proto> {
         self.ptb.load(c);
     }
 
-    pub fn tick(&mut self, ts: u32) -> State {
+    pub fn tick(&mut self, ts: u32) -> Status {
         if let Some(dist) = self.ptb.get(self.index) {
             let delta_ts = ts.wrapping_sub(self.ts_lastedge);
             if delta_ts >= u32::from(dist) {
-                let newstate = match self.state {
-                    State::Idle | State::Transmit(false) => State::Transmit(true),
-                    _ => State::Transmit(false),
+                let newstate = match self.status {
+                    Status::Idle | Status::Transmit(false) => Status::Transmit(true),
+                    _ => Status::Transmit(false),
                 };
 
-                self.state = newstate;
+                self.status = newstate;
                 self.index += 1;
                 self.ts_lastedge = ts;
             }
         } else {
-            self.state = State::Idle;
+            self.status = Status::Idle;
         }
 
-        self.state
+        self.status
     }
 
     pub fn buffer(&self) -> &[u16] {
