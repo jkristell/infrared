@@ -16,6 +16,27 @@ pub struct NecCommand {
     pub repeat: bool,
 }
 
+impl NecCommandTrait for NecCommand {
+    const PULSE_DISTANCE: &'static NecPulseDistance = NEC_STANDARD_TIMING;
+
+    fn validate(bits: u32) -> bool {
+        ((bits >> 24) ^ (bits >> 16)) & 0xFF == 0xFF && ((bits >> 8) ^ bits) & 0xFF == 0xFF
+    }
+
+    fn unpack(bits: u32, repeat: bool) -> Option<Self> {
+        let addr = ((bits) & 0xFF) as u8;
+        let cmd = ((bits >> 16) & 0xFF) as u8;
+
+        Some(NecCommand { addr, cmd, repeat })
+    }
+
+    fn pack(&self) -> u32 {
+        let addr = u32::from(self.addr) | (u32::from(!self.addr) & 0xFF) << 8;
+        let cmd = u32::from(self.cmd) << 16 | u32::from(!self.cmd) << 24;
+        addr | cmd
+    }
+}
+
 #[cfg(feature = "remotes")]
 impl AsButton for NecCommand {
     fn address(&self) -> u32 {
@@ -39,26 +60,6 @@ impl AsButton for NecCommand {
     }
 }
 
-impl NecCommandTrait for NecCommand {
-    const PULSE_DISTANCE: &'static NecPulseDistance = NEC_STANDARD_TIMING;
-
-    fn validate(bits: u32) -> bool {
-        ((bits >> 24) ^ (bits >> 16)) & 0xFF == 0xFF && ((bits >> 8) ^ bits) & 0xFF == 0xFF
-    }
-
-    fn unpack(bits: u32, repeat: bool) -> Option<Self> {
-        let addr = ((bits) & 0xFF) as u8;
-        let cmd = ((bits >> 16) & 0xFF) as u8;
-
-        Some(NecCommand { addr, cmd, repeat })
-    }
-
-    fn pack(&self) -> u32 {
-        let addr = u32::from(self.addr) | (u32::from(!self.addr) & 0xFF) << 8;
-        let cmd = u32::from(self.cmd) << 16 | u32::from(!self.cmd) << 24;
-        addr | cmd
-    }
-}
 
 /*
  * -------------------------------------------------------------------------

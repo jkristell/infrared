@@ -25,11 +25,10 @@ impl<Protocol: InfraredReceiver> EventReceiver<Protocol> {
         edge: bool,
         delta_samples: T,
     ) -> Result<Option<Protocol::Cmd>, Error> {
-        // Convert to micro seconds
-        let dt_us = delta_samples.into();
+        let delta = delta_samples.into();
 
         // Update state machine
-        let state: Status = Protocol::event(&mut self.state, edge, dt_us).into();
+        let state: Status = Protocol::event(&mut self.state, edge, delta).into();
 
         match state {
             Status::Done => {
