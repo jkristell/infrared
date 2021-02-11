@@ -12,7 +12,7 @@ use crate::protocolid::InfraredProtocol;
 use core::marker::PhantomData;
 
 /// Nec Receiver with Nec standard bit encoding and Standard timing
-pub struct Nec<C = NecCommand> {
+pub struct Nec<C: NecCommandTrait = NecCommand> {
     // Nec Command type
     pub(crate) cmd: PhantomData<C>,
 }

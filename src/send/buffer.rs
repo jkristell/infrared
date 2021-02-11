@@ -1,17 +1,15 @@
 use crate::send::{InfraredSender};
 
-pub struct PulsedataBuffer<SendProto: InfraredSender> {
+pub struct PulsedataBuffer {
     pub buf: [u16; 96],
     pub offset: usize,
-    pub state: SendProto::State,
 }
 
-impl<SendProto: InfraredSender> PulsedataBuffer<SendProto> {
-    pub fn new(samplerate: u32) -> Self {
+impl PulsedataBuffer {
+    pub fn new() -> Self {
         Self {
             buf: [0; 96],
             offset: 0,
-            state: SendProto::sender_state(samplerate),
         }
     }
 
@@ -19,12 +17,8 @@ impl<SendProto: InfraredSender> PulsedataBuffer<SendProto> {
         self.offset = 0;
     }
 
-    pub fn with_samplerate(samplerate: u32) -> Self {
-        Self::new(samplerate)
-    }
-
-    pub fn load(&mut self, c: &SendProto::Cmd) {
-        let len = SendProto::cmd_pulsedata(&self.state, c, &mut self.buf[self.offset..]);
+    pub fn load<SendProto: InfraredSender>(&mut self, state: &SendProto::State, c: &SendProto::Cmd) {
+        let len = SendProto::cmd_pulsedata(state, c, &mut self.buf[self.offset..]);
         self.offset += len;
     }
 
@@ -37,7 +31,7 @@ impl<SendProto: InfraredSender> PulsedataBuffer<SendProto> {
     }
 }
 
-impl<'a, Protocol: InfraredSender> IntoIterator for &'a PulsedataBuffer<Protocol> {
+impl<'a> IntoIterator for &'a PulsedataBuffer {
     type Item = u16;
     type IntoIter = PulseIterator<'a>;
 

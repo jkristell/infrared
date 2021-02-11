@@ -15,11 +15,8 @@ const ZERO_LOW: u32 = 360;
 const ONE_LOW: u32 = 1200;
 
 const PULSELENGTHS: [(u32, u32); 3] = [
-    // SYNC
     ((HEADER_HIGH + HEADER_LOW), 5),
-    // ZERO
     ((DATA_HIGH + ZERO_LOW), 10),
-    // ONE
     ((DATA_HIGH + ONE_LOW), 10),
 ];
 

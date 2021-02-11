@@ -11,16 +11,16 @@ pub enum Status {
     Error,
 }
 
-pub struct PulsedataSender<Protocol: InfraredSender> {
-    pub ptb: PulsedataBuffer<Protocol>,
+pub struct PulsedataSender {
+    pub ptb: PulsedataBuffer,
     index: usize,
     pub(crate) status: Status,
     ts_lastedge: u32,
 }
 
-impl<Proto: InfraredSender> PulsedataSender<Proto> {
-    pub fn new(samplerate: u32) -> Self {
-        let ptb = PulsedataBuffer::with_samplerate(samplerate);
+impl PulsedataSender {
+    pub fn new() -> Self {
+        let ptb = PulsedataBuffer::new();
         Self {
             ptb,
             index: 0,
@@ -37,9 +37,9 @@ impl<Proto: InfraredSender> PulsedataSender<Proto> {
     }
 
     /// Load command into internal buffer
-    pub fn load_command(&mut self, c: &Proto::Cmd) {
+    pub fn load_command<Proto: InfraredSender>(&mut self, state: &Proto::State, c: &Proto::Cmd) {
         self.reset();
-        self.ptb.load(c);
+        self.ptb.load::<Proto>(state, c);
     }
 
     pub fn tick(&mut self, ts: u32) -> Status {

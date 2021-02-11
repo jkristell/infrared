@@ -11,7 +11,7 @@ use crate::{
 
 pub struct NecReceiverState<C = NecCommand> {
     // State
-    status: InternalState,
+    status: InternalStatus,
     // Data buffer
     bitbuf: u32,
     // Timing and tolerances
@@ -30,7 +30,7 @@ impl<C: NecCommandTrait> InfraredReceiverState for NecReceiverState<C> {
         let ranges = InfraRange4::new(&tols, samplerate);
 
         NecReceiverState {
-            status: InternalState::Init,
+            status: InternalStatus::Init,
             bitbuf: 0,
             ranges,
             last_cmd: 0,
@@ -40,7 +40,7 @@ impl<C: NecCommandTrait> InfraredReceiverState for NecReceiverState<C> {
     }
 
     fn reset(&mut self) {
-        self.status = InternalState::Init;
+        self.status = InternalStatus::Init;
         self.last_cmd = if self.bitbuf == 0 {
             self.last_cmd
         } else {
@@ -53,7 +53,7 @@ impl<C: NecCommandTrait> InfraredReceiverState for NecReceiverState<C> {
 
 #[derive(Debug, Copy, Clone)]
 // Internal receiver state
-pub enum InternalState {
+pub enum InternalStatus {
     // Waiting for first pulse
     Init,
     // Receiving data
@@ -66,9 +66,9 @@ pub enum InternalState {
     Err(Error),
 }
 
-impl From<InternalState> for Status {
-    fn from(ns: InternalState) -> Self {
-        use InternalState::*;
+impl From<InternalStatus> for Status {
+    fn from(ns: InternalStatus) -> Self {
+        use InternalStatus::*;
         match ns {
             Init => Status::Idle,
             Done | RepeatDone => Status::Done,
@@ -83,11 +83,11 @@ where
     Cmd: NecCommandTrait,
 {
     type ReceiverState = NecReceiverState<Cmd>;
-    type InternalStatus = InternalState;
+    type InternalStatus = InternalStatus;
 
     #[rustfmt::skip]
     fn event(state: &mut Self::ReceiverState, rising: bool, dt: u32) -> Self::InternalStatus {
-        use InternalState::*;
+        use InternalStatus::*;
         use PulseWidth::*;
 
         if rising {
@@ -120,8 +120,8 @@ where
 
     fn command(state: &Self::ReceiverState) -> Option<Self::Cmd> {
         match state.status {
-            InternalState::Done => Self::Cmd::unpack(state.bitbuf, false),
-            InternalState::RepeatDone => Self::Cmd::unpack(state.last_cmd, true),
+            InternalStatus::Done => Self::Cmd::unpack(state.bitbuf, false),
+            InternalStatus::RepeatDone => Self::Cmd::unpack(state.last_cmd, true),
             _ => None,
         }
     }

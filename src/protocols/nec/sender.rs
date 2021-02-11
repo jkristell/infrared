@@ -1,8 +1,12 @@
-use crate::protocols::nec::{NecCommandTrait, NecPulseDistance};
-use crate::protocols::Nec;
-use crate::send::{InfraredSender, InfraredSenderState};
+use crate::{
+    protocols::{
+        Nec,
+        nec::{NecCommandTrait, NecPulseDistance, NecCommand}
+    },
+    send::{InfraredSender, InfraredSenderState},
+};
 
-pub struct NecSenderState<Cmd: NecCommandTrait> {
+pub struct NecSenderState<Cmd: NecCommandTrait = NecCommand> {
     dists: NecPulseDistance,
     cmd: core::marker::PhantomData<Cmd>,
 }
