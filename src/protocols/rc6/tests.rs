@@ -1,15 +1,16 @@
 use crate::protocols::rc6::Rc6Command;
 use crate::protocols::Rc6;
 use crate::recv::{BufferReceiver, EventReceiver};
-use crate::send::{PulsedataBuffer, };
+use crate::send::{PulsedataBuffer, InfraredSender};
 
 #[test]
 fn newpulse() {
     let cmd = Rc6Command::new(70, 20);
 
-    let mut sender: PulsedataBuffer<Rc6> = PulsedataBuffer::new(1_000_000);
+    let mut sender = PulsedataBuffer::new();
+    let state = Rc6::sender_state(1_000_000);
 
-    sender.load(&cmd);
+    sender.load::<Rc6>(&state, &cmd);
 
     let b = sender.buf;
     let len = sender.offset;
@@ -68,14 +69,15 @@ fn basic() {
 
 #[test]
 fn all_commands() {
-    let mut ptb: PulsedataBuffer<Rc6> = PulsedataBuffer::with_samplerate(40_000);
+    let mut ptb = PulsedataBuffer::new();
+    let state = Rc6::sender_state(40_000);
 
     for address in 0..255 {
         for cmdnum in 0..255 {
             ptb.reset();
 
             let cmd = Rc6Command::new(address, cmdnum);
-            ptb.load(&cmd);
+            ptb.load::<Rc6>(&state, &cmd);
             let brecv = BufferReceiver::new(&ptb.buf, 40_000);
             let cmdres = brecv.iter::<Rc6>().next().unwrap();
             assert_eq!(cmd.addr, cmdres.addr);

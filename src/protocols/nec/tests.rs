@@ -3,7 +3,7 @@ use crate::protocols::nec::{
 };
 use crate::protocols::Nec;
 use crate::recv::BufferReceiver;
-use crate::send::PulsedataBuffer;
+use crate::send::{PulsedataBuffer, InfraredSender};
 
 #[test]
 #[rustfmt::skip]
@@ -91,7 +91,9 @@ fn cmd_nec16() {
 
 #[test]
 fn all_nec_commands() {
-    let mut ptb: PulsedataBuffer<Nec> = PulsedataBuffer::with_samplerate(40_000);
+    const SAMPLERATE: u32 = 40_000;
+    let mut ptb = PulsedataBuffer::new();
+    let state = Nec::sender_state(SAMPLERATE);
 
     for address in 0..255 {
         for cmdnum in 0..255 {
@@ -101,7 +103,7 @@ fn all_nec_commands() {
                 cmd: cmdnum,
                 repeat: false,
             };
-            ptb.load(&cmd);
+            ptb.load::<Nec>(&state, &cmd);
             let brecv = BufferReceiver::new(&ptb.buf, 40_000);
 
             let cmdres = brecv.iter::<Nec>().next().unwrap();
@@ -116,14 +118,15 @@ fn test_samplerates() {
     let samplerates = [20_000, 40_000, 80_000];
 
     for samplerate in &samplerates {
-        let mut ptb: PulsedataBuffer<Nec> = PulsedataBuffer::with_samplerate(*samplerate);
+        let mut ptb = PulsedataBuffer::new();
+        let state = Nec::sender_state(*samplerate);
 
         let cmd: NecCommand = NecCommand {
             addr: 20,
             cmd: 10,
             repeat: false,
         };
-        ptb.load(&cmd);
+        ptb.load::<Nec>(&state, &cmd);
 
         let receiver = BufferReceiver::new(&ptb.buf, *samplerate);
 

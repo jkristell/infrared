@@ -15,7 +15,7 @@ const UNITS_AND_TOLERANCE: &[(u32, u32); 6] = &[
 ];
 
 pub struct Rc6ReceiverState {
-    pub(crate) state: Rc6State,
+    pub(crate) state: Rc6Status,
     data: u32,
     headerdata: u32,
     toggle: bool,
@@ -26,7 +26,7 @@ pub struct Rc6ReceiverState {
 impl InfraredReceiverState for Rc6ReceiverState {
     fn create(samplerate: u32) -> Self {
         Self {
-            state: Rc6State::Idle,
+            state: Rc6Status::Idle,
             data: 0,
             headerdata: 0,
             toggle: false,
@@ -36,7 +36,7 @@ impl InfraredReceiverState for Rc6ReceiverState {
     }
 
     fn reset(&mut self) {
-        self.state = Rc6State::Idle;
+        self.state = Rc6Status::Idle;
         self.data = 0;
         self.headerdata = 0;
         self.clock = 0;
@@ -45,11 +45,11 @@ impl InfraredReceiverState for Rc6ReceiverState {
 
 impl InfraredReceiver for Rc6 {
     type ReceiverState = Rc6ReceiverState;
-    type InternalStatus = Rc6State;
+    type InternalStatus = Rc6Status;
 
     #[rustfmt::skip]
-    fn event(state: &mut Rc6ReceiverState, rising: bool, dt: u32) -> Rc6State {
-        use Rc6State::*;
+    fn event(state: &mut Rc6ReceiverState, rising: bool, dt: u32) -> Rc6Status {
+        use Rc6Status::*;
 
         // Find the nbr of time unit ticks the dt represents
         let ticks = state.ranges.find::<usize>(dt).map(|v| (v + 1) as u32);
@@ -109,7 +109,7 @@ impl InfraredReceiver for Rc6 {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum Rc6State {
+pub enum Rc6Status {
     Idle,
     Leading,
     LeadingPaus,
@@ -120,12 +120,12 @@ pub enum Rc6State {
     Rc6Err(Error),
 }
 
-impl From<Rc6State> for Status {
-    fn from(state: Rc6State) -> Self {
+impl From<Rc6Status> for Status {
+    fn from(state: Rc6Status) -> Self {
         match state {
-            Rc6State::Idle => Status::Idle,
-            Rc6State::Done => Status::Done,
-            Rc6State::Rc6Err(err) => Status::Error(err),
+            Rc6Status::Idle => Status::Idle,
+            Rc6Status::Done => Status::Done,
+            Rc6Status::Rc6Err(err) => Status::Error(err),
             _ => Status::Receiving,
         }
     }
