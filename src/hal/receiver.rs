@@ -150,34 +150,23 @@ macro_rules! multireceiver {
 multireceiver!(
     /// Receiver for two protocols
     PeriodicReceiver2,
-    [(recv1, RECV1), (recv2, RECV2)]
+    [(r1, R1), (r2, R2)]
 );
 
 multireceiver!(
     /// Receiver for three protocols
     PeriodicReceiver3,
-    [(recv1, RECV1), (recv2, RECV2), (recv3, RECV3)]
+    [(r1, R1), (r2, R2), (r3, R3)]
 );
 
 multireceiver!(
     /// Receiver for four protocols
     PeriodicReceiver4,
-    [
-        (recv1, RECV1),
-        (recv2, RECV2),
-        (recv3, RECV3),
-        (recv4, RECV4)
-    ]
+    [(r1, R1), (r2, R2), (r3, R3), (r4, R4)]
 );
 
 multireceiver!(
     /// Receiver for five protocols
     PeriodicReceiver5,
-    [
-        (recv1, RECV1),
-        (recv2, RECV2),
-        (recv3, RECV3),
-        (recv4, RECV4),
-        (recv5, RECV5)
-    ]
+    [(r1, R1), (r2, R2), (r3, R3), (r4, R4), (r5, R5)]
 );
