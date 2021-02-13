@@ -156,11 +156,7 @@ multireceiver!(
 multireceiver!(
     /// Receiver for three protocols
     PeriodicReceiver3,
-    [
-        (recv1, RECV1),
-        (recv2, RECV2),
-        (recv3, RECV3)
-    ]
+    [(recv1, RECV1), (recv2, RECV2), (recv3, RECV3)]
 );
 
 multireceiver!(
@@ -185,4 +181,3 @@ multireceiver!(
         (recv5, RECV5)
     ]
 );
-

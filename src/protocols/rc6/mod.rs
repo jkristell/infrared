@@ -1,6 +1,5 @@
 //! Philips Rc6
 
-
 mod cmd;
 use crate::protocol::InfraredProtocol;
 pub use cmd::Rc6Command;

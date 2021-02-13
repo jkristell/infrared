@@ -1,4 +1,4 @@
-use crate::send::{InfraredSender};
+use crate::send::InfraredSender;
 
 pub(crate) struct PulsedataBuffer {
     pub buf: [u16; 96],
@@ -17,7 +17,11 @@ impl PulsedataBuffer {
         self.offset = 0;
     }
 
-    pub fn load<SendProto: InfraredSender>(&mut self, state: &SendProto::State, c: &SendProto::Cmd) {
+    pub fn load<SendProto: InfraredSender>(
+        &mut self,
+        state: &SendProto::State,
+        c: &SendProto::Cmd,
+    ) {
         let len = SendProto::cmd_pulsedata(state, c, &mut self.buf[self.offset..]);
         self.offset += len;
     }

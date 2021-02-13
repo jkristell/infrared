@@ -1,7 +1,7 @@
 use crate::protocols::rc6::Rc6Command;
 use crate::protocols::Rc6;
 use crate::recv::{BufferReceiver, EventReceiver};
-use crate::send::{PulsedataBuffer, InfraredSender};
+use crate::send::{InfraredSender, PulsedataBuffer};
 
 #[test]
 fn newpulse() {

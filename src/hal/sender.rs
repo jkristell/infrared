@@ -2,7 +2,7 @@
 
 use core::convert::Infallible;
 
-use crate::send::{InfraredSender, PulsedataSender, Status, InfraredSenderState};
+use crate::send::{InfraredSender, InfraredSenderState, PulsedataSender, Status};
 
 /// Embedded hal sender
 pub struct Sender<Protocol, PwmPin, PwmDuty>
@@ -110,5 +110,3 @@ where
         };
     }
 }
-
-

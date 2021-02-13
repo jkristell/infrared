@@ -9,15 +9,15 @@
 
 use core::convert::TryInto;
 
+use crate::protocol::InfraredProtocol;
+use crate::protocols::utils::InfraRange4;
+use crate::recv::InfraredReceiverState;
 #[cfg(feature = "remotes")]
 use crate::remotecontrol::AsButton;
 use crate::{
     recv::{Error, InfraredReceiver, Status},
     ProtocolId,
 };
-use crate::protocol::InfraredProtocol;
-use crate::recv::InfraredReceiverState;
-use crate::protocols::utils::InfraRange4;
 
 pub struct Sbp;
 
@@ -163,7 +163,6 @@ impl InfraredReceiver for Sbp {
     fn command(state: &Self::ReceiverState) -> Option<Self::Cmd> {
         Some(SbpCommand::unpack(state.address, state.command))
     }
-
 }
 
 impl From<SbpStatus> for Status {

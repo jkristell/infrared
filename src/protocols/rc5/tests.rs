@@ -1,7 +1,7 @@
 use crate::protocols::rc5::Rc5Command;
 use crate::protocols::Rc5;
 use crate::recv::{BufferReceiver, InfraredReceiver};
-use crate::send::{PulsedataBuffer, InfraredSender};
+use crate::send::{InfraredSender, PulsedataBuffer};
 
 #[test]
 fn rc5_command() {

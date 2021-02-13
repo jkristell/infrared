@@ -94,5 +94,4 @@ pub mod remotecontrol;
 pub mod hal;
 #[cfg(feature = "embedded-hal")]
 #[doc(inline)]
-pub use hal::{EventReceiver, PeriodicReceiver, Sender, MultiSender};
-
+pub use hal::{EventReceiver, MultiSender, PeriodicReceiver, Sender};

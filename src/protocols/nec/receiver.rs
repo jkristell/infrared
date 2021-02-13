@@ -2,9 +2,9 @@ use core::marker::PhantomData;
 
 use crate::{
     protocols::{
+        nec::{NecCommand, NecCommandVariant, NecPulseDistance},
         utils::InfraRange4,
         Nec,
-        nec::{NecCommand, NecPulseDistance, NecCommandVariant}
     },
     recv::{Error, InfraredReceiver, InfraredReceiverState, Status},
 };

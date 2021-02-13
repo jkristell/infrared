@@ -21,4 +21,3 @@ pub trait InfraredSender: InfraredProtocol {
 
     fn cmd_pulsedata(state: &Self::State, cmd: &Self::Cmd, buf: &mut [u16]) -> usize;
 }
-

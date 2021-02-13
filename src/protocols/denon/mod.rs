@@ -1,9 +1,7 @@
-use crate::{
-    recv::{InfraredReceiver, Status},
-};
 use crate::protocol::InfraredProtocol;
-use crate::recv::InfraredReceiverState;
 use crate::protocols::utils::InfraRange3;
+use crate::recv::InfraredReceiverState;
+use crate::recv::{InfraredReceiver, Status};
 
 #[cfg(test)]
 mod test;
@@ -19,7 +17,6 @@ const PULSELENGTHS: [(u32, u32); 3] = [
     ((DATA_HIGH + ZERO_LOW), 10),
     ((DATA_HIGH + ONE_LOW), 10),
 ];
-
 
 /// Denon protocol
 pub struct Denon;
@@ -95,7 +92,6 @@ impl InfraredReceiver for Denon {
             None
         }
     }
-
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

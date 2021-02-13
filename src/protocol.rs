@@ -1,4 +1,3 @@
-
 /// Infrared protocol
 pub trait InfraredProtocol {
     type Cmd;

@@ -42,8 +42,6 @@ impl InfraRange3 {
     }
 }
 
-
-
 impl InfraRange4 {
     pub const fn new(vals: &[(u32, u32); 4], samplerate: u32) -> InfraRange4 {
         InfraRange4([
@@ -84,4 +82,3 @@ const fn infra_range(samplerate: u32, len: u32, percent: u32) -> Range<u32> {
         end: base + tol + 4,
     }
 }
-

@@ -1,4 +1,4 @@
-use crate::protocols::{Rc6};
+use crate::protocols::Rc6;
 use crate::send::{InfraredSender, InfraredSenderState};
 
 pub struct Rc6SenderState {

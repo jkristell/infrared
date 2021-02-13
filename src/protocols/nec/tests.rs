@@ -3,7 +3,7 @@ use crate::protocols::nec::{
 };
 use crate::protocols::Nec;
 use crate::recv::BufferReceiver;
-use crate::send::{PulsedataBuffer, InfraredSender};
+use crate::send::{InfraredSender, PulsedataBuffer};
 
 #[test]
 #[rustfmt::skip]

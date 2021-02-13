@@ -1,6 +1,6 @@
 #[cfg(feature = "remotes")]
 use crate::remotecontrol::AsButton;
-use crate::{ProtocolId};
+use crate::ProtocolId;
 
 use core::convert::TryInto;
 
@@ -26,8 +26,6 @@ impl Rc6Command {
         Self { addr, cmd, toggle }
     }
 }
-
-
 
 #[cfg(feature = "remotes")]
 impl AsButton for Rc6Command {

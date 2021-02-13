@@ -1,6 +1,6 @@
 //! Philips Rc5
 
-use crate::{ProtocolId};
+use crate::ProtocolId;
 use core::convert::TryInto;
 
 #[cfg(feature = "remotes")]

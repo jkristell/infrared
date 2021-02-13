@@ -1,4 +1,6 @@
-use crate::protocols::nec::{NecPulseDistance, NecCommandVariant, NEC_SAMSUNG_TIMING, NEC_STANDARD_TIMING};
+use crate::protocols::nec::{
+    NecCommandVariant, NecPulseDistance, NEC_SAMSUNG_TIMING, NEC_STANDARD_TIMING,
+};
 #[cfg(feature = "remotes")]
 use crate::remotecontrol::AsButton;
 use crate::ProtocolId;
@@ -59,7 +61,6 @@ impl AsButton for NecCommand {
         })
     }
 }
-
 
 /*
  * -------------------------------------------------------------------------

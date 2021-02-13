@@ -1,7 +1,7 @@
 use crate::{
     protocols::{
+        nec::{NecCommand, NecCommandVariant, NecPulseDistance},
         Nec,
-        nec::{NecCommandVariant, NecPulseDistance, NecCommand}
     },
     send::{InfraredSender, InfraredSenderState},
 };
