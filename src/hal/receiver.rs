@@ -4,7 +4,7 @@ use embedded_hal::digital::v2::InputPin;
 
 use crate::recv::{self, InfraredReceiver};
 
-use crate::protocolid::InfraredProtocol;
+use crate::protocol::InfraredProtocol;
 #[cfg(feature = "remotes")]
 use crate::remotecontrol::{AsButton, Button, RemoteControl};
 
@@ -105,7 +105,7 @@ where
 macro_rules! multireceiver {
     (
         $(#[$outer:meta])*
-        $name:ident, [ $( ($N:ident, $P:ident, $C:ident) ),* ]
+        $name:ident, [ $( ($N:ident, $P:ident) ),* ]
     ) => {
 
     $(#[$outer])*
@@ -115,10 +115,10 @@ macro_rules! multireceiver {
         $( $N : recv::PeriodicReceiver<$P> ),*
     }
 
-    impl<PIN, PINERR, $( $P, $C ),* > $name <$( $P ),* , PIN>
+    impl<PIN, PINERR, $( $P ),* > $name <$( $P ),* , PIN>
     where
         PIN: InputPin<Error = PINERR>,
-        $( $P: InfraredReceiver<Cmd = $C>),*,
+        $( $P: InfraredReceiver),*,
     {
         pub fn new(pin: PIN, samplerate: u32) -> Self {
             Self {
@@ -132,7 +132,7 @@ macro_rules! multireceiver {
             self.pin
         }
 
-        pub fn poll(&mut self) -> Result<( $( Option<$C>),*), PINERR> {
+        pub fn poll(&mut self) -> Result<( $( Option<$P::Cmd>),*), PINERR> {
             let pinval = self.pin.is_low()?;
             self.counter = self.counter.wrapping_add(1);
 
@@ -150,16 +150,16 @@ macro_rules! multireceiver {
 multireceiver!(
     /// Receiver for two protocols
     PeriodicReceiver2,
-    [(recv1, RECV1, CMD1), (recv2, RECV2, CMD2)]
+    [(recv1, RECV1), (recv2, RECV2)]
 );
 
 multireceiver!(
     /// Receiver for three protocols
     PeriodicReceiver3,
     [
-        (recv1, RECV1, CMD1),
-        (recv2, RECV2, CMD2),
-        (recv3, RECV3, CMD3)
+        (recv1, RECV1),
+        (recv2, RECV2),
+        (recv3, RECV3)
     ]
 );
 
@@ -167,10 +167,10 @@ multireceiver!(
     /// Receiver for four protocols
     PeriodicReceiver4,
     [
-        (recv1, RECV1, CMD1),
-        (recv2, RECV2, CMD2),
-        (recv3, RECV3, CMD3),
-        (recv4, RECV4, CMD4)
+        (recv1, RECV1),
+        (recv2, RECV2),
+        (recv3, RECV3),
+        (recv4, RECV4)
     ]
 );
 
@@ -178,10 +178,11 @@ multireceiver!(
     /// Receiver for five protocols
     PeriodicReceiver5,
     [
-        (recv1, RECV1, CMD1),
-        (recv2, RECV2, CMD2),
-        (recv3, RECV3, CMD3),
-        (recv4, RECV4, CMD4),
-        (recv5, RECV5, CMD5)
+        (recv1, RECV1),
+        (recv2, RECV2),
+        (recv3, RECV3),
+        (recv4, RECV4),
+        (recv5, RECV5)
     ]
 );
+

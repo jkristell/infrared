@@ -8,16 +8,16 @@ mod tests;
 
 pub use cmds::{Nec16Command, NecAppleCommand, NecCommand, NecRawCommand, NecSamsungCommand};
 
-use crate::protocolid::InfraredProtocol;
+use crate::protocol::InfraredProtocol;
 use core::marker::PhantomData;
 
 /// Nec Receiver with Nec standard bit encoding and Standard timing
-pub struct Nec<C: NecCommandTrait = NecCommand> {
+pub struct Nec<C: NecCommandVariant = NecCommand> {
     // Nec Command type
     pub(crate) cmd: PhantomData<C>,
 }
 
-impl<C: NecCommandTrait> InfraredProtocol for Nec<C> {
+impl<C: NecCommandVariant> InfraredProtocol for Nec<C> {
     type Cmd = C;
 }
 
@@ -33,8 +33,8 @@ pub type NecApple = Nec<NecAppleCommand>;
 /// Nec variant without any specific bit unpacking, useful for debugging
 pub type NecDebug = Nec<NecRawCommand>;
 
-/// Nec Command bit fiddling Trait
-pub trait NecCommandTrait: Sized {
+/// Nec Command Variant
+pub trait NecCommandVariant: Sized {
     const PULSE_DISTANCE: &'static NecPulseDistance;
 
     /// Validate the bits as a Command of this type

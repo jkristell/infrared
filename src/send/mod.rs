@@ -1,9 +1,11 @@
 //! Infrared send functionality
 
+use crate::protocol::InfraredProtocol;
+
 mod sender;
 pub use sender::*;
+
 mod buffer;
-use crate::protocolid::InfraredProtocol;
 pub use buffer::*;
 
 pub trait InfraredSenderState {

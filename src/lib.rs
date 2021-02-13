@@ -80,9 +80,9 @@ pub mod protocols;
 pub mod recv;
 pub mod send;
 
-mod protocolid;
+mod protocol;
 #[doc(inline)]
-pub use protocolid::ProtocolId;
+pub use protocol::ProtocolId;
 
 #[cfg(feature = "remotes")]
 pub mod remotes;

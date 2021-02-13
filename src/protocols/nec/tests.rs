@@ -1,5 +1,5 @@
 use crate::protocols::nec::{
-    Nec16Command, NecAppleCommand, NecCommand, NecCommandTrait, NecSamsungCommand,
+    Nec16Command, NecAppleCommand, NecCommand, NecCommandVariant, NecSamsungCommand,
 };
 use crate::protocols::Nec;
 use crate::recv::BufferReceiver;

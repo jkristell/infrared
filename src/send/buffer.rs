@@ -1,6 +1,6 @@
 use crate::send::{InfraredSender};
 
-pub struct PulsedataBuffer {
+pub(crate) struct PulsedataBuffer {
     pub buf: [u16; 96],
     pub offset: usize,
 }
@@ -38,25 +38,25 @@ impl<'a> IntoIterator for &'a PulsedataBuffer {
     fn into_iter(self) -> Self::IntoIter {
         PulseIterator {
             pulses: &self.buf[0..self.offset],
-            index: 0,
+            pos: 0,
         }
     }
 }
 
 pub struct PulseIterator<'a> {
     pulses: &'a [u16],
-    index: usize,
+    pos: usize,
 }
 
 impl<'a> Iterator for PulseIterator<'a> {
     type Item = u16;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.index == self.pulses.len() {
+        if self.pos == self.pulses.len() {
             None
         } else {
-            let r = self.pulses[self.index];
-            self.index += 1;
+            let r = self.pulses[self.pos];
+            self.pos += 1;
             Some(r)
         }
     }

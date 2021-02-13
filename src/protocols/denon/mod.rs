@@ -1,7 +1,7 @@
 use crate::{
     recv::{InfraredReceiver, Status},
 };
-use crate::protocolid::InfraredProtocol;
+use crate::protocol::InfraredProtocol;
 use crate::recv::InfraredReceiverState;
 use crate::protocols::utils::InfraRange3;
 

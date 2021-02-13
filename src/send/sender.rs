@@ -12,8 +12,8 @@ pub enum Status {
 }
 
 pub struct PulsedataSender {
-    pub ptb: PulsedataBuffer,
-    index: usize,
+    pub(crate) ptb: PulsedataBuffer,
+    pos: usize,
     pub(crate) status: Status,
     ts_lastedge: u32,
 }
@@ -23,14 +23,14 @@ impl PulsedataSender {
         let ptb = PulsedataBuffer::new();
         Self {
             ptb,
-            index: 0,
+            pos: 0,
             status: Status::Idle,
             ts_lastedge: 0,
         }
     }
 
     pub fn reset(&mut self) {
-        self.index = 0;
+        self.pos = 0;
         self.ts_lastedge = 0;
         self.status = Status::Idle;
         self.ptb.reset();
@@ -43,7 +43,7 @@ impl PulsedataSender {
     }
 
     pub fn tick(&mut self, ts: u32) -> Status {
-        if let Some(dist) = self.ptb.get(self.index) {
+        if let Some(dist) = self.ptb.get(self.pos) {
             let delta_ts = ts.wrapping_sub(self.ts_lastedge);
             if delta_ts >= u32::from(dist) {
                 let newstate = match self.status {
@@ -52,7 +52,7 @@ impl PulsedataSender {
                 };
 
                 self.status = newstate;
-                self.index += 1;
+                self.pos += 1;
                 self.ts_lastedge = ts;
             }
         } else {

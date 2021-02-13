@@ -1,4 +1,4 @@
-use crate::protocols::nec::{NecPulseDistance, NecCommandTrait, NEC_SAMSUNG_TIMING, NEC_STANDARD_TIMING};
+use crate::protocols::nec::{NecPulseDistance, NecCommandVariant, NEC_SAMSUNG_TIMING, NEC_STANDARD_TIMING};
 #[cfg(feature = "remotes")]
 use crate::remotecontrol::AsButton;
 use crate::ProtocolId;
@@ -16,7 +16,7 @@ pub struct NecCommand {
     pub repeat: bool,
 }
 
-impl NecCommandTrait for NecCommand {
+impl NecCommandVariant for NecCommand {
     const PULSE_DISTANCE: &'static NecPulseDistance = NEC_STANDARD_TIMING;
 
     fn validate(bits: u32) -> bool {
@@ -75,7 +75,7 @@ pub struct Nec16Command {
     pub repeat: bool,
 }
 
-impl NecCommandTrait for Nec16Command {
+impl NecCommandVariant for Nec16Command {
     const PULSE_DISTANCE: &'static NecPulseDistance = NEC_STANDARD_TIMING;
 
     fn validate(bits: u32) -> bool {
@@ -109,7 +109,7 @@ pub struct NecSamsungCommand {
     pub repeat: bool,
 }
 
-impl NecCommandTrait for NecSamsungCommand {
+impl NecCommandVariant for NecSamsungCommand {
     const PULSE_DISTANCE: &'static NecPulseDistance = NEC_SAMSUNG_TIMING;
 
     fn validate(bits: u32) -> bool {
@@ -166,7 +166,7 @@ pub struct NecAppleCommand {
     pub repeat: bool,
 }
 
-impl NecCommandTrait for NecAppleCommand {
+impl NecCommandVariant for NecAppleCommand {
     const PULSE_DISTANCE: &'static NecPulseDistance = NEC_STANDARD_TIMING;
 
     fn validate(bits: u32) -> bool {
@@ -238,7 +238,7 @@ pub struct NecRawCommand {
     pub bits: u32,
 }
 
-impl NecCommandTrait for NecRawCommand {
+impl NecCommandVariant for NecRawCommand {
     const PULSE_DISTANCE: &'static NecPulseDistance = NEC_STANDARD_TIMING;
 
     fn validate(_bits: u32) -> bool {

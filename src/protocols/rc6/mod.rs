@@ -2,7 +2,7 @@
 
 
 mod cmd;
-use crate::protocolid::InfraredProtocol;
+use crate::protocol::InfraredProtocol;
 pub use cmd::Rc6Command;
 
 mod receiver;

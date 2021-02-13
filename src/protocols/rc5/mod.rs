@@ -7,7 +7,7 @@ use core::convert::TryInto;
 use crate::remotecontrol::AsButton;
 
 pub mod receiver;
-use crate::protocolid::InfraredProtocol;
+use crate::protocol::InfraredProtocol;
 
 pub mod sender;
 

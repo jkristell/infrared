@@ -1,17 +1,17 @@
 use crate::{
     protocols::{
         Nec,
-        nec::{NecCommandTrait, NecPulseDistance, NecCommand}
+        nec::{NecCommandVariant, NecPulseDistance, NecCommand}
     },
     send::{InfraredSender, InfraredSenderState},
 };
 
-pub struct NecSenderState<Cmd: NecCommandTrait = NecCommand> {
+pub struct NecSenderState<Cmd: NecCommandVariant = NecCommand> {
     dists: NecPulseDistance,
     cmd: core::marker::PhantomData<Cmd>,
 }
 
-impl<Cmd: NecCommandTrait> InfraredSenderState for NecSenderState<Cmd> {
+impl<Cmd: NecCommandVariant> InfraredSenderState for NecSenderState<Cmd> {
     fn create(samplerate: u32) -> Self {
         let dists = NecPulseDistance {
             header_high: (samplerate * Cmd::PULSE_DISTANCE.header_high) / 1_000_000,
@@ -31,7 +31,7 @@ impl<Cmd: NecCommandTrait> InfraredSenderState for NecSenderState<Cmd> {
 
 impl<Cmd> InfraredSender for Nec<Cmd>
 where
-    Cmd: NecCommandTrait,
+    Cmd: NecCommandVariant,
 {
     type State = NecSenderState<Cmd>;
 

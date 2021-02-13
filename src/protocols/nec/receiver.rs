@@ -4,7 +4,7 @@ use crate::{
     protocols::{
         utils::InfraRange4,
         Nec,
-        nec::{NecCommand, NecPulseDistance, NecCommandTrait}
+        nec::{NecCommand, NecPulseDistance, NecCommandVariant}
     },
     recv::{Error, InfraredReceiver, InfraredReceiverState, Status},
 };
@@ -24,7 +24,7 @@ pub struct NecReceiverState<C = NecCommand> {
     dt_save: u32,
 }
 
-impl<C: NecCommandTrait> InfraredReceiverState for NecReceiverState<C> {
+impl<C: NecCommandVariant> InfraredReceiverState for NecReceiverState<C> {
     fn create(samplerate: u32) -> Self {
         let tols = tolerances(C::PULSE_DISTANCE);
         let ranges = InfraRange4::new(&tols, samplerate);
@@ -80,7 +80,7 @@ impl From<InternalStatus> for Status {
 
 impl<Cmd> InfraredReceiver for Nec<Cmd>
 where
-    Cmd: NecCommandTrait,
+    Cmd: NecCommandVariant,
 {
     type ReceiverState = NecReceiverState<Cmd>;
     type InternalStatus = InternalStatus;

@@ -15,7 +15,7 @@ use crate::{
     recv::{Error, InfraredReceiver, Status},
     ProtocolId,
 };
-use crate::protocolid::InfraredProtocol;
+use crate::protocol::InfraredProtocol;
 use crate::recv::InfraredReceiverState;
 use crate::protocols::utils::InfraRange4;
 

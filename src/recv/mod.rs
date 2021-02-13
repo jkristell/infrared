@@ -5,7 +5,7 @@ pub use buffer::*;
 mod event;
 pub use event::*;
 mod periodic;
-use crate::protocolid::InfraredProtocol;
+use crate::protocol::InfraredProtocol;
 pub use periodic::*;
 
 /// Receiver state machine
