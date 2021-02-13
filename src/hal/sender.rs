@@ -11,7 +11,7 @@ where
     Protocol: InfraredSender,
 {
     pin: PwmPin,
-    pub counter: u32,
+    counter: u32,
     state: Protocol::State,
     buffer: PulsedataSender,
 }
