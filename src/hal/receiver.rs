@@ -3,26 +3,24 @@
 use embedded_hal::digital::v2::InputPin;
 
 use crate::recv::{self, InfraredReceiver};
-
-use crate::protocol::InfraredProtocol;
 #[cfg(feature = "remotes")]
 use crate::remotecontrol::{AsButton, Button, RemoteControl};
 
 /// Event driven embedded-hal receiver
-pub struct EventReceiver<PROTOCOL: InfraredReceiver, PIN> {
-    recv: crate::recv::EventReceiver<PROTOCOL>,
-    pub pin: PIN,
+pub struct EventReceiver<Protocol: InfraredReceiver, Pin> {
+    recv: crate::recv::EventReceiver<Protocol>,
+    pub pin: Pin,
 }
 
-impl<PROTOCOL, PIN, PINERR> EventReceiver<PROTOCOL, PIN>
+impl<Protocol, Pin, PinErr> EventReceiver<Protocol, Pin>
 where
-    PROTOCOL: InfraredReceiver,
-    PIN: InputPin<Error = PINERR>,
+    Protocol: InfraredReceiver,
+    Pin: InputPin<Error = PinErr>,
 {
     /// Create a new EventReceiver
     /// `pin`: The Inputpin connected to the receiver,
     /// `samplerate`: Sample rate of the receiver
-    pub fn new(pin: PIN, samplerate: u32) -> Self {
+    pub fn new(pin: Pin, samplerate: u32) -> Self {
         Self {
             recv: crate::recv::EventReceiver::new(samplerate),
             pin,
@@ -30,7 +28,7 @@ where
     }
 
     /// Destroy Receiver and hand back pin
-    pub fn destroy(self) -> PIN {
+    pub fn destroy(self) -> Pin {
         self.pin
     }
 
@@ -38,7 +36,7 @@ where
     ///
     /// Returns Ok(None) until a command is detected
     #[inline(always)]
-    pub fn edge_event(&mut self, dt: u32) -> Result<Option<PROTOCOL::Cmd>, PINERR> {
+    pub fn edge_event(&mut self, dt: u32) -> Result<Option<Protocol::Cmd>, PinErr> {
         let pinval = self.pin.is_low()?;
 
         match self.recv.edge_event(pinval, dt) {
@@ -51,24 +49,24 @@ where
 /// Periodic and polled Embedded hal Receiver
 ///
 /// The poll methods should be called periodically for this receiver to work
-pub struct PeriodicReceiver<PROTOCOL: InfraredReceiver, PIN> {
+pub struct PeriodicReceiver<Protocol: InfraredReceiver, PIN> {
     /// The receiver state machine
-    recv: recv::PeriodicReceiver<PROTOCOL>,
+    recv: recv::PeriodicReceiver<Protocol>,
     /// Input pin
     pin: PIN,
     /// Internal sample counter
     counter: u32,
 }
 
-impl<PIN, PINERR, PROTOCOL> PeriodicReceiver<PROTOCOL, PIN>
+impl<Protocol, Pin, PinErr> PeriodicReceiver<Protocol, Pin>
 where
-    PROTOCOL: InfraredReceiver,
-    PIN: InputPin<Error = PINERR>,
+    Protocol: InfraredReceiver,
+    Pin: InputPin<Error =PinErr>,
 {
     /// Create a new PeriodicReceiver
     /// `pin` : The gpio pin the hw is connected to
     /// `samplerate` : Rate of which you intend to call poll.
-    pub fn new(pin: PIN, samplerate: u32) -> Self {
+    pub fn new(pin: Pin, samplerate: u32) -> Self {
         Self {
             recv: recv::PeriodicReceiver::new(samplerate),
             pin,
@@ -76,11 +74,11 @@ where
         }
     }
 
-    pub fn destroy(self) -> PIN {
+    pub fn destroy(self) -> Pin {
         self.pin
     }
 
-    pub fn poll(&mut self) -> Result<Option<PROTOCOL::Cmd>, PINERR> {
+    pub fn poll(&mut self) -> Result<Option<Protocol::Cmd>, PinErr> {
         let pinval = self.pin.is_low()?;
 
         self.counter = self.counter.wrapping_add(1);
@@ -92,11 +90,11 @@ where
     }
 
     #[cfg(feature = "remotes")]
-    pub fn poll_button<RC: RemoteControl<Cmd = PROTOCOL::Cmd>>(
+    pub fn poll_button<RC: RemoteControl<Cmd = Protocol::Cmd>>(
         &mut self,
-    ) -> Result<Option<Button>, PINERR>
+    ) -> Result<Option<Button>, PinErr>
     where
-        <PROTOCOL as InfraredProtocol>::Cmd: AsButton,
+        Protocol::Cmd: AsButton,
     {
         self.poll().map(|cmd| cmd.and_then(RC::decode))
     }

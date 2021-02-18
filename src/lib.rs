@@ -70,11 +70,7 @@
 //! * `sender`: Send example
 //!
 
-#![cfg_attr(not(feature = "std"), no_std)]
-
-#[cfg(test)]
-#[macro_use]
-extern crate std;
+#![no_std]
 
 pub mod protocols;
 pub mod recv;
@@ -92,6 +88,13 @@ pub mod remotecontrol;
 
 #[cfg(feature = "embedded-hal")]
 pub mod hal;
+
 #[cfg(feature = "embedded-hal")]
 #[doc(inline)]
 pub use hal::{EventReceiver, MultiSender, PeriodicReceiver, Sender};
+
+
+#[cfg(test)]
+#[macro_use]
+extern crate std;
+

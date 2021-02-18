@@ -7,8 +7,10 @@ use crate::send::{InfraredSender, PulsedataBuffer};
 fn newpulse() {
     let cmd = Rc6Command::new(70, 20);
 
+    let sample_rate = 1_000_000;
+
     let mut sender = PulsedataBuffer::new();
-    let state = Rc6::sender_state(1_000_000);
+    let state = Rc6::sender_state(sample_rate);
 
     sender.load::<Rc6>(&state, &cmd);
 
@@ -16,7 +18,7 @@ fn newpulse() {
     let len = sender.offset;
 
     let mut edge = false;
-    let mut recv: EventReceiver<Rc6> = EventReceiver::new(1_000_000);
+    let mut recv: EventReceiver<Rc6> = EventReceiver::new(sample_rate);
 
     let mut res_cmd = None;
 
@@ -36,9 +38,8 @@ fn newpulse() {
         }
     }
 
-    if let Some(res) = res_cmd {
-        assert_eq!(res, cmd)
-    }
+    let res_cmd = res_cmd.unwrap();
+    assert_eq!(res_cmd, cmd)
 }
 
 #[test]
@@ -70,7 +71,8 @@ fn basic() {
 #[test]
 fn all_commands() {
     let mut ptb = PulsedataBuffer::new();
-    let state = Rc6::sender_state(40_000);
+    let sample_rate = 40_000;
+    let state = Rc6::sender_state(sample_rate);
 
     for address in 0..255 {
         for cmdnum in 0..255 {
@@ -78,8 +80,9 @@ fn all_commands() {
 
             let cmd = Rc6Command::new(address, cmdnum);
             ptb.load::<Rc6>(&state, &cmd);
-            let brecv = BufferReceiver::new(&ptb.buf, 40_000);
+            let brecv = BufferReceiver::new(&ptb.buf, sample_rate);
             let cmdres = brecv.iter::<Rc6>().next().unwrap();
+
             assert_eq!(cmd.addr, cmdres.addr);
             assert_eq!(cmd.cmd, cmdres.cmd);
         }
