@@ -78,7 +78,7 @@ pub mod send;
 
 mod protocol;
 #[doc(inline)]
-pub use protocol::ProtocolId;
+pub use protocol::{ProtocolId, InfraredProtocol};
 
 #[cfg(feature = "remotes")]
 pub mod remotes;

@@ -68,8 +68,10 @@ impl InfraRange6 {
             infra_range(samplerate, vals[5].0, vals[5].1),
         ])
     }
-    pub fn find<T: From<usize>>(&self, dt: u32) -> Option<T> {
-        self.0.iter().position(|r| r.contains(&dt)).map(T::from)
+    pub fn find<T: From<u32>>(&self, dt: u32) -> Option<T> {
+        self.0.iter().position(|r| r.contains(&dt))
+            .map(|v| v as u32)
+            .map(T::from)
     }
 }
 

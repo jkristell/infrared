@@ -40,6 +40,12 @@ impl<C: NecCommandVariant> InfraredReceiverState for NecReceiverState<C> {
     }
 
     fn reset(&mut self) {
+
+        //match self.status  {
+        //    InternalStatus::Err(_) => self.bitbuf = 0,
+        //    _ => (),
+        //};
+
         self.status = InternalStatus::Init;
         self.last_cmd = if self.bitbuf == 0 {
             self.last_cmd
@@ -150,9 +156,9 @@ impl From<usize> for PulseWidth {
 
 const fn tolerances(t: &NecPulseDistance) -> [(u32, u32); 4] {
     [
-        ((t.header_high + t.header_low), 5),
-        ((t.header_high + t.repeat_low), 5),
-        ((t.data_high + t.data_zero_low), 10),
-        ((t.data_high + t.data_one_low), 10),
+        ((t.header_high + t.header_low), 10),
+        ((t.header_high + t.repeat_low), 10),
+        ((t.data_high + t.data_zero_low), 5),
+        ((t.data_high + t.data_one_low), 5),
     ]
 }

@@ -26,4 +26,6 @@ pub use rc6::Rc6;
 #[doc(inline)]
 pub use sbp::Sbp;
 
+pub mod capture;
+
 pub(crate) mod utils;
