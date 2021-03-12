@@ -16,8 +16,8 @@ const UNITS_AND_TOLERANCE: &[(u32, u32); 6] = &[
 
 pub struct Rc6ReceiverState {
     pub(crate) state: Rc6Status,
-    data: u32,
-    headerdata: u32,
+    data: u16,
+    headerdata: u16,
     toggle: bool,
     clock: u32,
     ranges: InfraRange6,

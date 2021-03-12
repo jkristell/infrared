@@ -20,7 +20,7 @@ impl Rc6Command {
         }
     }
 
-    pub fn from_bits(bits: u32, toggle: bool) -> Self {
+    pub fn from_bits(bits: u16, toggle: bool) -> Self {
         let addr = (bits >> 8) as u8;
         let cmd = (bits & 0xFF) as u8;
         Self { addr, cmd, toggle }
