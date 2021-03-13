@@ -8,6 +8,3 @@ pub mod rc5;
 pub mod rc6;
 #[cfg(feature = "sbp")]
 pub mod sbp;
-
-#[cfg(feature = "std")]
-pub mod std;
