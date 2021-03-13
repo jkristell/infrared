@@ -41,23 +41,21 @@ impl<C: NecCommandVariant> InfraredReceiverState for NecReceiverState<C> {
 
     fn reset(&mut self) {
 
-        //match self.status  {
-        //    InternalStatus::Err(_) => self.bitbuf = 0,
-        //    _ => (),
-        //};
+        // Check if a command was successfully received
+        let done = self.status == InternalStatus::Done;
+
+        // Save the bitbuf as last cmd. This is used by the repeat logic
+        if self.bitbuf != 0 && done {
+            self.last_cmd = self.bitbuf;
+        }
 
         self.status = InternalStatus::Init;
-        self.last_cmd = if self.bitbuf == 0 {
-            self.last_cmd
-        } else {
-            self.bitbuf
-        };
         self.bitbuf = 0;
         self.dt_save = 0;
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 // Internal receiver state
 pub enum InternalStatus {
     // Waiting for first pulse
