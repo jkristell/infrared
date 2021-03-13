@@ -1,9 +1,9 @@
-use crate::{
-    protocols::nec::{NecCommandTrait, NecTiming, SamsungTiming, StandardTiming},
-    ProtocolId, send::ToPulsedata,
+use crate::protocols::nec::{
+    NecCommandVariant, NecPulseDistance, NEC_SAMSUNG_TIMING, NEC_STANDARD_TIMING,
 };
 #[cfg(feature = "remotes")]
 use crate::remotecontrol::AsButton;
+use crate::ProtocolId;
 
 /*
  * -------------------------------------------------------------------------
@@ -16,6 +16,27 @@ pub struct NecCommand {
     pub addr: u8,
     pub cmd: u8,
     pub repeat: bool,
+}
+
+impl NecCommandVariant for NecCommand {
+    const PULSE_DISTANCE: &'static NecPulseDistance = NEC_STANDARD_TIMING;
+
+    fn validate(bits: u32) -> bool {
+        ((bits >> 24) ^ (bits >> 16)) & 0xFF == 0xFF && ((bits >> 8) ^ bits) & 0xFF == 0xFF
+    }
+
+    fn unpack(bits: u32, repeat: bool) -> Option<Self> {
+        let addr = ((bits) & 0xFF) as u8;
+        let cmd = ((bits >> 16) & 0xFF) as u8;
+
+        Some(NecCommand { addr, cmd, repeat })
+    }
+
+    fn pack(&self) -> u32 {
+        let addr = u32::from(self.addr) | (u32::from(!self.addr) & 0xFF) << 8;
+        let cmd = u32::from(self.cmd) << 16 | u32::from(!self.cmd) << 24;
+        addr | cmd
+    }
 }
 
 #[cfg(feature = "remotes")]
@@ -41,31 +62,6 @@ impl AsButton for NecCommand {
     }
 }
 
-impl NecCommandTrait<StandardTiming> for NecCommand {
-    fn validate(bits: u32) -> bool {
-        ((bits >> 24) ^ (bits >> 16)) & 0xFF == 0xFF && ((bits >> 8) ^ bits) & 0xFF == 0xFF
-    }
-
-    fn unpack(bits: u32, repeat: bool) -> Option<Self> {
-        let addr = ((bits) & 0xFF) as u8;
-        let cmd = ((bits >> 16) & 0xFF) as u8;
-
-        Some(NecCommand { addr, cmd, repeat })
-    }
-
-    fn pack(&self) -> u32 {
-        let addr = u32::from(self.addr) | (u32::from(!self.addr) & 0xFF) << 8;
-        let cmd = u32::from(self.cmd) << 16 | u32::from(!self.cmd) << 24;
-        addr | cmd
-    }
-}
-
-impl ToPulsedata for NecCommand {
-    fn to_pulsedata(&self, b: &mut [u16]) -> usize {
-        self.pulse_distance(b)
-    }
-}
-
 /*
  * -------------------------------------------------------------------------
  *  NEC variant with 16 bit address
@@ -80,7 +76,9 @@ pub struct Nec16Command {
     pub repeat: bool,
 }
 
-impl NecCommandTrait<StandardTiming> for Nec16Command {
+impl NecCommandVariant for Nec16Command {
+    const PULSE_DISTANCE: &'static NecPulseDistance = NEC_STANDARD_TIMING;
+
     fn validate(bits: u32) -> bool {
         ((bits >> 24) ^ (bits >> 16)) & 0xFF == 0xFF
     }
@@ -99,12 +97,6 @@ impl NecCommandTrait<StandardTiming> for Nec16Command {
     }
 }
 
-impl ToPulsedata for Nec16Command {
-    fn to_pulsedata(&self, b: &mut [u16]) -> usize {
-        self.pulse_distance(b)
-    }
-}
-
 /*
  * -------------------------------------------------------------------------
  *  NEC Samsung Command variant
@@ -118,7 +110,9 @@ pub struct NecSamsungCommand {
     pub repeat: bool,
 }
 
-impl NecCommandTrait<SamsungTiming> for NecSamsungCommand {
+impl NecCommandVariant for NecSamsungCommand {
+    const PULSE_DISTANCE: &'static NecPulseDistance = NEC_SAMSUNG_TIMING;
+
     fn validate(bits: u32) -> bool {
         ((bits >> 24) ^ (bits >> 16)) & 0xFF == 0xFF && ((bits >> 8) ^ bits) & 0xFF == 0x00
     }
@@ -173,7 +167,9 @@ pub struct NecAppleCommand {
     pub repeat: bool,
 }
 
-impl NecCommandTrait<StandardTiming> for NecAppleCommand {
+impl NecCommandVariant for NecAppleCommand {
+    const PULSE_DISTANCE: &'static NecPulseDistance = NEC_STANDARD_TIMING;
+
     fn validate(bits: u32) -> bool {
         let vendor = ((bits >> 5) & 0x7FF) as u16;
         const APPLE_VENDOR_ID: u16 = 0x43f;
@@ -243,7 +239,9 @@ pub struct NecRawCommand {
     pub bits: u32,
 }
 
-impl<T: NecTiming> NecCommandTrait<T> for NecRawCommand {
+impl NecCommandVariant for NecRawCommand {
+    const PULSE_DISTANCE: &'static NecPulseDistance = NEC_STANDARD_TIMING;
+
     fn validate(_bits: u32) -> bool {
         true
     }

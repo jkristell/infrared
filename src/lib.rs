@@ -70,19 +70,15 @@
 //! * `sender`: Send example
 //!
 
-#![cfg_attr(not(feature = "std"), no_std)]
-
-#[cfg(test)]
-#[macro_use]
-extern crate std;
+#![no_std]
 
 pub mod protocols;
 pub mod recv;
 pub mod send;
 
-mod protocolid;
+mod protocol;
 #[doc(inline)]
-pub use protocolid::ProtocolId;
+pub use protocol::{ProtocolId, InfraredProtocol};
 
 #[cfg(feature = "remotes")]
 pub mod remotes;
@@ -92,10 +88,13 @@ pub mod remotecontrol;
 
 #[cfg(feature = "embedded-hal")]
 pub mod hal;
+
 #[cfg(feature = "embedded-hal")]
 #[doc(inline)]
-pub use hal::{PeriodicReceiver, EventReceiver, Sender};
+pub use hal::{EventReceiver, MultiSender, PeriodicReceiver, Sender};
 
-/// Time base for all time units in the library
-pub(crate) const TIMEBASE: u32 = 1_000_000;
+
+#[cfg(test)]
+#[macro_use]
+extern crate std;
 

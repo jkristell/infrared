@@ -38,4 +38,3 @@ impl RemoteControl for SpecialForMp3 {
         (74, Nine),
     ];
 }
-

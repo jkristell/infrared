@@ -3,7 +3,10 @@
 use crate::recv::{Error, EventReceiver, InfraredReceiver};
 
 /// Receiver to use with periodic polling
-pub struct PeriodicReceiver<Protocol> {
+pub struct PeriodicReceiver<Protocol>
+where
+    Protocol: InfraredReceiver,
+{
     pub recv: EventReceiver<Protocol>,
     /// Last seen edge
     edge: bool,

@@ -1,8 +1,8 @@
-use crate::send::{PulsedataBuffer, ToPulsedata};
+use crate::send::{InfraredSender, PulsedataBuffer};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 /// Sender state
-pub enum State {
+pub enum Status {
     /// Sender is ready for transmitting
     Idle,
     /// Transmitting
@@ -12,54 +12,54 @@ pub enum State {
 }
 
 pub struct PulsedataSender {
-    pub ptb: PulsedataBuffer,
-    index: usize,
-    pub(crate) state: State,
+    pub(crate) ptb: PulsedataBuffer,
+    pos: usize,
+    pub(crate) status: Status,
     ts_lastedge: u32,
 }
 
 impl PulsedataSender {
-    pub fn new(samplerate: u32) -> Self {
-        let ptb = PulsedataBuffer::with_samplerate(samplerate);
+    pub fn new() -> Self {
+        let ptb = PulsedataBuffer::new();
         Self {
             ptb,
-            index: 0,
-            state: State::Idle,
+            pos: 0,
+            status: Status::Idle,
             ts_lastedge: 0,
         }
     }
 
     pub fn reset(&mut self) {
-        self.index = 0;
+        self.pos = 0;
         self.ts_lastedge = 0;
-        self.state = State::Idle;
+        self.status = Status::Idle;
         self.ptb.reset();
     }
 
     /// Load command into internal buffer
-    pub fn load_command(&mut self, c: &impl ToPulsedata) {
+    pub fn load_command<Proto: InfraredSender>(&mut self, state: &Proto::State, c: &Proto::Cmd) {
         self.reset();
-        self.ptb.load(c);
+        self.ptb.load::<Proto>(state, c);
     }
 
-    pub fn tick(&mut self, ts: u32) -> State {
-        if let Some(dist) = self.ptb.get(self.index) {
+    pub fn tick(&mut self, ts: u32) -> Status {
+        if let Some(dist) = self.ptb.get(self.pos) {
             let delta_ts = ts.wrapping_sub(self.ts_lastedge);
             if delta_ts >= u32::from(dist) {
-                let newstate = match self.state {
-                    State::Idle | State::Transmit(false) => State::Transmit(true),
-                    _ => State::Transmit(false),
+                let newstate = match self.status {
+                    Status::Idle | Status::Transmit(false) => Status::Transmit(true),
+                    _ => Status::Transmit(false),
                 };
 
-                self.state = newstate;
-                self.index += 1;
+                self.status = newstate;
+                self.pos += 1;
                 self.ts_lastedge = ts;
             }
         } else {
-            self.state = State::Idle;
+            self.status = Status::Idle;
         }
 
-        self.state
+        self.status
     }
 
     pub fn buffer(&self) -> &[u16] {

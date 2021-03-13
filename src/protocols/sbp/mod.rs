@@ -9,22 +9,50 @@
 
 use core::convert::TryInto;
 
-use crate::{
-    protocols::utils::PulseWidthRange,
-    recv::{Error, InfraredReceiver, State},
-    ProtocolId,
-};
+use crate::protocol::InfraredProtocol;
+use crate::protocols::utils::InfraRange4;
+use crate::recv::InfraredReceiverState;
 #[cfg(feature = "remotes")]
 use crate::remotecontrol::AsButton;
+use crate::{
+    recv::{Error, InfraredReceiver, Status},
+    ProtocolId,
+};
 
-#[derive(Debug)]
+pub struct Sbp;
+
+impl InfraredProtocol for Sbp {
+    type Cmd = SbpCommand;
+}
+
 /// Samsung Blu-ray protocol
-pub struct Sbp {
-    state: SbpState,
+pub struct SbpReceiverState {
+    state: SbpStatus,
     address: u16,
     command: u32,
     since_rising: u32,
-    ranges: PulseWidthRange<SbpPulse>,
+    ranges: InfraRange4,
+}
+
+impl InfraredReceiverState for SbpReceiverState {
+    fn create(samplerate: u32) -> Self {
+        let nsamples = nsamples_from_timing(&TIMING);
+        let ranges = InfraRange4::new(&nsamples, samplerate);
+
+        SbpReceiverState {
+            state: SbpStatus::Init,
+            address: 0,
+            command: 0,
+            since_rising: 0,
+            ranges,
+        }
+    }
+
+    fn reset(&mut self) {
+        self.state = SbpStatus::Init;
+        self.address = 0;
+        self.command = 0;
+    }
 }
 
 #[derive(Debug)]
@@ -35,7 +63,7 @@ pub struct SbpCommand {
 }
 
 impl SbpCommand {
-    pub fn from_receiver(address: u16, mut command: u32) -> Self {
+    pub fn unpack(address: u16, mut command: u32) -> Self {
         // Discard the 4 unknown bits
         command >>= 4;
 
@@ -75,7 +103,7 @@ impl AsButton for SbpCommand {
 
 #[derive(Debug, Copy, Clone)]
 // Internal receiver state
-pub enum SbpState {
+pub enum SbpStatus {
     // Waiting for first pulse
     Init,
     // Receiving address
@@ -91,103 +119,60 @@ pub enum SbpState {
 }
 
 impl InfraredReceiver for Sbp {
-    type Cmd = SbpCommand;
-    type InternalState = SbpState;
-
-    fn create() -> Self {
-        Self::default()
-    }
+    type ReceiverState = SbpReceiverState;
+    type InternalStatus = SbpStatus;
 
     #[rustfmt::skip]
-    fn event(&mut self, rising: bool, dt: u32) -> SbpState {
+    fn event(state: &mut Self::ReceiverState, rising: bool, dt: u32) -> SbpStatus {
         use SbpPulse::*;
-        use SbpState::*;
+        use SbpStatus::*;
 
         if rising {
-            let dt = self.since_rising + dt;
-            let pulsewidth = self.ranges.pulsewidth(dt);
+            let dt = state.since_rising + dt;
+            let pulsewidth = state.ranges.find::<SbpPulse>(dt).unwrap_or(SbpPulse::NotAPulseWidth);
 
-            self.state = match (self.state, pulsewidth) {
-                (Init, Sync) => Address(0),
-                (Init, _) => Init,
+            state.state = match (state.state, pulsewidth) {
+                (Init,          Sync)   => Address(0),
+                (Init,          _)      => Init,
 
-                (Address(15), One) => {
-                    self.address |= 1 << 15;
-                    Divider
-                }
-                (Address(15), Zero) => Divider,
-                (Address(bit), One) => {
-                    self.address |= 1 << bit;
-                    Address(bit + 1)
-                }
-                (Address(bit), Zero) => Address(bit + 1),
-                (Address(_), _) => Err(Error::Address),
+                (Address(15),   One)    => { state.address |= 1 << 15; Divider }
+                (Address(15),   Zero)   => Divider,
+                (Address(bit),  One)    => { state.address |= 1 << bit; Address(bit + 1) }
+                (Address(bit),  Zero)   => Address(bit + 1),
+                (Address(_),    _)      => Err(Error::Address),
 
-                (Divider, Paus) => Command(0),
-                (Divider, _) => Err(Error::Data),
+                (Divider,       Paus)   => Command(0),
+                (Divider,       _)      => Err(Error::Data),
 
-                (Command(19), One) => {
-                    self.command |= 1 << 19;
-                    Done
-                }
-                (Command(19), Zero) => Done,
-                (Command(bit), One) => {
-                    self.command |= 1 << bit;
-                    Command(bit + 1)
-                }
-                (Command(bit), Zero) => Command(bit + 1),
-                (Command(_), _) => Err(Error::Data),
+                (Command(19),   One)    => { state.command |= 1 << 19; Done }
+                (Command(19),   Zero)   => Done,
+                (Command(bit),  One)    => { state.command |= 1 << bit; Command(bit + 1) }
+                (Command(bit),  Zero)   => Command(bit + 1),
+                (Command(_),    _)      => Err(Error::Data),
 
-                (Done, _) => Done,
-                (Err(err), _) => Err(err),
+                (Done,          _)      => Done,
+                (Err(err),      _)      => Err(err),
             };
         } else {
-            self.since_rising = dt;
+            state.since_rising = dt;
         }
 
-        self.state
+        state.state
     }
 
-    fn command(&self) -> Option<Self::Cmd> {
-        Some(SbpCommand::from_receiver(self.address, self.command))
-    }
-
-    fn reset(&mut self) {
-        self.state = SbpState::Init;
-        self.address = 0;
-        self.command = 0;
+    fn command(state: &Self::ReceiverState) -> Option<Self::Cmd> {
+        Some(SbpCommand::unpack(state.address, state.command))
     }
 }
 
-impl Default for SbpState {
-    fn default() -> Self {
-        Self::Init
-    }
-}
-
-impl From<SbpState> for State {
-    fn from(state: SbpState) -> State {
-        use SbpState::*;
+impl From<SbpStatus> for Status {
+    fn from(state: SbpStatus) -> Status {
+        use SbpStatus::*;
         match state {
-            Init => State::Idle,
-            Done => State::Done,
-            Err(e) => State::Error(e),
-            _ => State::Receiving,
-        }
-    }
-}
-
-impl Default for Sbp {
-    fn default() -> Self {
-        let nsamples = nsamples_from_timing(&TIMING);
-        let ranges = PulseWidthRange::new(&nsamples);
-
-        Self {
-            state: SbpState::Init,
-            address: 0,
-            command: 0,
-            since_rising: 0,
-            ranges,
+            Init => Status::Idle,
+            Done => Status::Done,
+            Err(e) => Status::Error(e),
+            _ => Status::Receiving,
         }
     }
 }
@@ -195,7 +180,7 @@ impl Default for Sbp {
 const fn nsamples_from_timing(t: &SbpTiming) -> [(u32, u32); 4] {
     [
         ((t.hh + t.hl), 5),
-        ((t.data + t.paus), 5),
+        ((t.data + t.pause), 5),
         ((t.data + t.zero), 10),
         ((t.data + t.one), 10),
     ]
@@ -207,7 +192,7 @@ struct SbpTiming {
     /// Header low
     hl: u32,
     /// Repeat low
-    paus: u32,
+    pause: u32,
     /// Data high
     data: u32,
     /// Zero low
@@ -219,7 +204,7 @@ struct SbpTiming {
 const TIMING: SbpTiming = SbpTiming {
     hh: 4500,
     hl: 4500,
-    paus: 4500,
+    pause: 4500,
     data: 500,
     zero: 500,
     one: 1500,
@@ -232,12 +217,6 @@ pub enum SbpPulse {
     Zero = 2,
     One = 3,
     NotAPulseWidth = 4,
-}
-
-impl Default for SbpPulse {
-    fn default() -> Self {
-        SbpPulse::NotAPulseWidth
-    }
 }
 
 impl From<usize> for SbpPulse {

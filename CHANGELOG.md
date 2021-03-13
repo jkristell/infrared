@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.11.0] - 2021-03-13
+ - The pulse lengths, for both receiver and sender are now calculated when the state machines are created.
+ - Internal refactoring of both sender and receiver
+ - AVR: Rc5 and Rc6 Receiver verified to work
+ - AVR: There is a problem with AVR and Nec decoding. The issue is in the LLVM code generation. please use the 'avr' branch until that's resolved.
+
 ## [0.10.0] - 2021-02-02
  - Added some support for Denon 48 bit protocol
  - Reworked the BufferReceiver API

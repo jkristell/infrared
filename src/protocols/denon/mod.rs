@@ -1,7 +1,7 @@
-use crate::{
-    recv::{InfraredReceiver, State},
-    protocols::utils::PulseWidthRange,
-};
+use crate::protocol::InfraredProtocol;
+use crate::protocols::utils::InfraRange3;
+use crate::recv::InfraredReceiverState;
+use crate::recv::{InfraredReceiver, Status};
 
 #[cfg(test)]
 mod test;
@@ -12,13 +12,43 @@ const DATA_HIGH: u32 = 480;
 const ZERO_LOW: u32 = 360;
 const ONE_LOW: u32 = 1200;
 
+const PULSELENGTHS: [(u32, u32); 3] = [
+    ((HEADER_HIGH + HEADER_LOW), 5),
+    ((DATA_HIGH + ZERO_LOW), 10),
+    ((DATA_HIGH + ONE_LOW), 10),
+];
 
 /// Denon protocol
-pub struct Denon {
-    state: DenonState,
+pub struct Denon;
+
+impl InfraredProtocol for Denon {
+    type Cmd = DenonCommand;
+}
+
+pub struct DenonReceiverState {
+    state: DenonStatus,
     buf: u64,
     dt_save: u32,
-    ranges: PulseWidthRange<PulseWidth>,
+    ranges: InfraRange3,
+}
+
+impl InfraredReceiverState for DenonReceiverState {
+    fn create(samplerate: u32) -> Self {
+        let ranges = InfraRange3::new(&PULSELENGTHS, samplerate);
+
+        DenonReceiverState {
+            state: DenonStatus::Idle,
+            buf: 0,
+            dt_save: 0,
+            ranges,
+        }
+    }
+
+    fn reset(&mut self) {
+        self.state = DenonStatus::Idle;
+        self.buf = 0;
+        self.dt_save = 0;
+    }
 }
 
 #[derive(Debug)]
@@ -27,78 +57,56 @@ pub struct DenonCommand {
 }
 
 impl InfraredReceiver for Denon {
-    type Cmd = DenonCommand;
-    type InternalState = DenonState;
+    type ReceiverState = DenonReceiverState;
+    type InternalStatus = DenonStatus;
 
-    fn create() -> Self {
-
-        let ranges = PulseWidthRange::new(&nsamples());
-
-        Denon {
-            state: DenonState::Idle,
-            buf: 0,
-            dt_save: 0,
-            ranges,
-        }
-    }
-
-    fn event(&mut self, rising: bool, dt: u32) -> DenonState {
-
+    #[rustfmt::skip]
+    fn event(state: &mut Self::ReceiverState, rising: bool, dt: u32) -> DenonStatus {
         if rising {
-            let pulsewidth = self.ranges.pulsewidth(self.dt_save + dt);
+            let pulsewidth = state.ranges.find::<PulseWidth>(state.dt_save + dt)
+                .unwrap_or(PulseWidth::FAIL);
 
-            self.state = match (self.state, pulsewidth) {
-                (DenonState::Idle,      PulseWidth::SYNC)   => DenonState::Data(0),
-                (DenonState::Idle,      _)                  => DenonState::Idle,
-                (DenonState::Data(47),  PulseWidth::ZERO)   => DenonState::Done,
-                (DenonState::Data(47),  PulseWidth::ONE)    => DenonState::Done,
-                (DenonState::Data(idx), PulseWidth::ZERO)   => DenonState::Data(idx + 1),
-                (DenonState::Data(idx), PulseWidth::ONE)    => {
-                    self.buf |= 1 << idx;
-                    DenonState::Data(idx + 1)
-                },
-                (DenonState::Data(_ix), _)                  => DenonState::Idle,
-                (DenonState::Done,      _)                  => DenonState::Done,
+            state.state = match (state.state, pulsewidth) {
+                (DenonStatus::Idle,          PulseWidth::SYNC)   => DenonStatus::Data(0),
+                (DenonStatus::Idle,          _)                  => DenonStatus::Idle,
+                (DenonStatus::Data(47),      PulseWidth::ZERO)   => DenonStatus::Done,
+                (DenonStatus::Data(47),      PulseWidth::ONE)    => DenonStatus::Done,
+                (DenonStatus::Data(idx),     PulseWidth::ZERO)   => DenonStatus::Data(idx + 1),
+                (DenonStatus::Data(idx),     PulseWidth::ONE)    => { state.buf |= 1 << idx; DenonStatus::Data(idx + 1) }
+                (DenonStatus::Data(_ix),     _)                  => DenonStatus::Idle,
+                (DenonStatus::Done,          _)                  => DenonStatus::Done,
             };
 
-            self.dt_save = 0;
+            state.dt_save = 0;
         } else {
-            self.dt_save = dt;
+            state.dt_save = dt;
         }
 
-        self.state
+        state.state
     }
 
-    fn command(&self) -> Option<Self::Cmd> {
-        if self.state == DenonState::Done {
-            Some(DenonCommand {
-                bits: self.buf,
-            })
+    fn command(state: &Self::ReceiverState) -> Option<Self::Cmd> {
+        if state.state == DenonStatus::Done {
+            Some(DenonCommand { bits: state.buf })
         } else {
             None
         }
     }
-
-    fn reset(&mut self) {
-        self.state = DenonState::Idle;
-        self.buf = 0;
-        self.dt_save = 0;
-    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum DenonState {
+pub enum DenonStatus {
     Idle,
     Data(u8),
     Done,
 }
 
-impl Into<State> for DenonState {
-    fn into(self) -> State {
+impl Into<Status> for DenonStatus {
+    fn into(self) -> Status {
         match self {
-            DenonState::Idle => State::Idle,
-            DenonState::Data(_) => State::Receiving,
-            DenonState::Done => State::Done,
+            DenonStatus::Idle => Status::Idle,
+            DenonStatus::Data(_) => Status::Receiving,
+            DenonStatus::Done => Status::Done,
         }
     }
 }
@@ -111,14 +119,8 @@ enum PulseWidth {
     FAIL,
 }
 
-impl Default for PulseWidth {
-    fn default() -> Self {
-        PulseWidth::FAIL
-    }
-}
-
-impl From<usize> for PulseWidth {
-    fn from(value: usize) -> Self {
+impl From<u32> for PulseWidth {
+    fn from(value: u32) -> Self {
         match value {
             0 => PulseWidth::SYNC,
             1 => PulseWidth::ZERO,
@@ -127,19 +129,3 @@ impl From<usize> for PulseWidth {
         }
     }
 }
-
-const fn nsamples() -> [(u32, u32); 4] {
-    [
-        // SYNC
-        ((HEADER_HIGH + HEADER_LOW) , 5),
-        // ZERO
-        ((DATA_HIGH + ZERO_LOW) , 10),
-        // ONE
-        ((DATA_HIGH + ONE_LOW) , 10),
-        // Not needed. Fix when const generics arrive
-        (0xFFFFFFFF, 0),
-    ]
-}
-
-
-

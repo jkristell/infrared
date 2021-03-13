@@ -5,34 +5,38 @@ pub use buffer::*;
 mod event;
 pub use event::*;
 mod periodic;
+use crate::protocol::InfraredProtocol;
 pub use periodic::*;
 
 /// Receiver state machine
-pub trait InfraredReceiver {
-    /// The Resulting Command Type
-    type Cmd;
+pub trait InfraredReceiver: InfraredProtocol {
+    type ReceiverState: InfraredReceiverState;
     /// Internal State
-    type InternalState: Into<State>;
+    type InternalStatus: Into<Status>;
 
-    /// Create a new Receiver State machine
-    fn create() -> Self;
+    fn receiver_state(samplerate: u32) -> Self::ReceiverState {
+        Self::ReceiverState::create(samplerate)
+    }
 
     /// Add event to the state machine
     /// * `edge`: true = positive edge, false = negative edge
     /// * `dt` : Time in micro seconds since last transition
-    fn event(&mut self, edge: bool, dt: u32) -> Self::InternalState;
+    fn event(state: &mut Self::ReceiverState, edge: bool, dt: u32) -> Self::InternalStatus;
 
     /// Get the command
     /// Returns the data if State == Done, otherwise None
-    fn command(&self) -> Option<Self::Cmd>;
+    fn command(state: &Self::ReceiverState) -> Option<Self::Cmd>;
+}
 
-    /// Reset the state machine
+pub trait InfraredReceiverState {
+    fn create(samplerate: u32) -> Self;
+
     fn reset(&mut self);
 }
 
 #[derive(PartialEq, Eq, Copy, Clone)]
 /// Protocol decoder state
-pub enum State {
+pub enum Status {
     /// Idle
     Idle,
     /// Receiving data
@@ -43,9 +47,9 @@ pub enum State {
     Error(Error),
 }
 
-impl Default for State {
-    fn default() -> State {
-        State::Idle
+impl Default for Status {
+    fn default() -> Status {
+        Status::Idle
     }
 }
 

@@ -1,37 +1,34 @@
-use crate::{
-    recv::{InfraredReceiver, State}
-};
+use crate::recv::InfraredReceiverState;
+use crate::recv::{InfraredReceiver, Status};
 
 pub struct BufferReceiver<'a> {
     buf: &'a [u16],
-    scale_factor: u32,
+    samplerate: u32,
 }
 
 impl<'a> BufferReceiver<'a> {
     /// Create a new BufferReceiver with `buf` as the underlying value change buffer
     pub fn new(buf: &'a [u16], samplerate: u32) -> Self {
-        Self {
-            buf,
-            scale_factor: crate::TIMEBASE / samplerate,
-        }
+        Self { buf, samplerate }
     }
 
     /// Create an iterator over the buffer with `Prococol` as decoder
     pub fn iter<Protocol: InfraredReceiver>(&self) -> BufferIterator<'a, Protocol> {
         BufferIterator {
             buf: &self.buf,
-            scaler: self.scale_factor,
             pos: 0,
-            sm: Protocol::create(),
+            receiver_state: Protocol::receiver_state(self.samplerate),
         }
     }
 }
 
-pub struct BufferIterator<'a, Protocol> {
+pub struct BufferIterator<'a, Protocol>
+where
+    Protocol: InfraredReceiver,
+{
     buf: &'a [u16],
     pos: usize,
-    scaler: u32,
-    sm: Protocol,
+    receiver_state: Protocol::ReceiverState,
 }
 
 impl<'a, Protocol: InfraredReceiver> Iterator for BufferIterator<'a, Protocol> {
@@ -44,22 +41,22 @@ impl<'a, Protocol: InfraredReceiver> Iterator for BufferIterator<'a, Protocol> {
             }
 
             let pos_edge = self.pos & 0x1 == 0;
-            let dt_us = u32::from(self.buf[self.pos]) * self.scaler;
+            let dt_us = u32::from(self.buf[self.pos]);
             self.pos += 1;
 
-            let state: State = self.sm.event(pos_edge, dt_us).into();
+            let state: Status = Protocol::event(&mut self.receiver_state, pos_edge, dt_us).into();
 
             match state {
-                State::Idle | State::Receiving => {
+                Status::Idle | Status::Receiving => {
                     continue;
                 }
-                State::Done => {
-                    let cmd = self.sm.command();
-                    self.sm.reset();
+                Status::Done => {
+                    let cmd = Protocol::command(&self.receiver_state);
+                    self.receiver_state.reset();
                     break cmd;
                 }
-                State::Error(_) => {
-                    self.sm.reset();
+                Status::Error(_) => {
+                    self.receiver_state.reset();
                     break None;
                 }
             }

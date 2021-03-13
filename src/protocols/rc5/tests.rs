@@ -1,7 +1,7 @@
 use crate::protocols::rc5::Rc5Command;
-use crate::recv::BufferReceiver;
 use crate::protocols::Rc5;
-use crate::send::PulsedataBuffer;
+use crate::recv::{BufferReceiver};
+use crate::send::{InfraredSender, PulsedataBuffer};
 
 #[test]
 fn rc5_command() {
@@ -49,15 +49,18 @@ fn command_mixed() {
 
 #[test]
 fn all_commands() {
-    let mut ptb = PulsedataBuffer::with_samplerate(40_000);
+    const SAMPLERATE: u32 = 40_000;
+
+    let mut ptb = PulsedataBuffer::new();
+    let state = Rc5::sender_state(SAMPLERATE);
 
     for address in 0..32 {
         for cmdnum in 0..64 {
             ptb.reset();
 
             let cmd: Rc5Command = Rc5Command::new(address, cmdnum, false);
-            ptb.load(&cmd);
-            let brecv = BufferReceiver::new(&ptb.buf, 40_000);
+            ptb.load::<Rc5>(&state, &cmd);
+            let brecv = BufferReceiver::new(&ptb.buf, SAMPLERATE);
             let cmdres = brecv.iter::<Rc5>().next().unwrap();
             assert_eq!(cmd.addr, cmdres.addr);
             assert_eq!(cmd.cmd, cmdres.cmd);

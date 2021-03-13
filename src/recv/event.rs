@@ -1,12 +1,13 @@
 //! Event based Receiver
 
-use crate::recv::{Error, InfraredReceiver, State};
+use crate::recv::{Error, InfraredReceiver, InfraredReceiverState, Status};
 
 /// Event driven receiver
-pub struct EventReceiver<Protocol> {
-    pub sm: Protocol,
-    /// Receiver running at samplerate
-    precalc_multiplier: u32,
+pub struct EventReceiver<Protocol>
+where
+    Protocol: InfraredReceiver,
+{
+    pub state: Protocol::ReceiverState,
 }
 
 /// Receiver - event based
@@ -14,8 +15,7 @@ impl<Protocol: InfraredReceiver> EventReceiver<Protocol> {
     /// Create a new Receiver
     pub fn new(samplerate: u32) -> Self {
         Self {
-            sm: Protocol::create(),
-            precalc_multiplier: crate::TIMEBASE / samplerate,
+            state: Protocol::receiver_state(samplerate),
         }
     }
 
@@ -25,29 +25,27 @@ impl<Protocol: InfraredReceiver> EventReceiver<Protocol> {
         edge: bool,
         delta_samples: T,
     ) -> Result<Option<Protocol::Cmd>, Error> {
-        // Convert to micro seconds
-        let dt_us = delta_samples.into() * self.precalc_multiplier;
+        let delta = delta_samples.into();
 
         // Update state machine
-        let state: State = self.sm.event(edge, dt_us).into();
+        let state: Status = Protocol::event(&mut self.state, edge, delta).into();
 
         match state {
-            State::Done => {
-                let cmd = self.sm.command();
-                self.sm.reset();
+            Status::Done => {
+                let cmd = Protocol::command(&mut self.state);
+                self.state.reset();
                 Ok(cmd)
             }
-            State::Error(err) => {
-                self.sm.reset();
+            Status::Error(err) => {
+                self.state.reset();
                 Err(err)
             }
-            State::Idle | State::Receiving => Ok(None),
+            Status::Idle | Status::Receiving => Ok(None),
         }
     }
 
     /// Reset receiver
     pub fn reset(&mut self) {
-        self.sm.reset();
+        self.state.reset();
     }
 }
-
