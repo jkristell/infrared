@@ -5,9 +5,8 @@ use core::convert::Infallible;
 use crate::send::{InfraredSender, InfraredSenderState, PulsedataSender, Status};
 
 /// Embedded hal sender
-pub struct Sender<Protocol, PwmPin, PwmDuty>
+pub struct Sender<Protocol, PwmPin>
 where
-    PwmPin: embedded_hal::PwmPin<Duty = PwmDuty>,
     Protocol: InfraredSender,
 {
     pin: PwmPin,
@@ -16,7 +15,7 @@ where
     buffer: PulsedataSender,
 }
 
-impl<Protocol, PwmPin, PwmDuty> Sender<Protocol, PwmPin, PwmDuty>
+impl<Protocol, PwmPin, PwmDuty> Sender<Protocol, PwmPin>
 where
     PwmPin: embedded_hal::PwmPin<Duty = PwmDuty>,
     Protocol: InfraredSender,
@@ -60,17 +59,14 @@ where
 }
 
 /// Sender without a predefined Protocol.
-pub struct MultiSender<PwmPin, PwmDuty>
-where
-    PwmPin: embedded_hal::PwmPin<Duty = PwmDuty>,
-{
+pub struct MultiSender<PwmPin> {
     pin: PwmPin,
     samplerate: u32,
     buffer: PulsedataSender,
     counter: u32,
 }
 
-impl<PwmPin, PwmDuty> MultiSender<PwmPin, PwmDuty>
+impl<PwmPin, PwmDuty> MultiSender<PwmPin>
 where
     PwmPin: embedded_hal::PwmPin<Duty = PwmDuty>,
 {
@@ -83,8 +79,8 @@ where
         }
     }
 
-    pub fn create_state<ProtocolState: InfraredSenderState>(&self) -> ProtocolState {
-        ProtocolState::create(self.samplerate)
+    pub fn create_state<SenderState: InfraredSenderState>(&self) -> SenderState {
+        SenderState::create(self.samplerate)
     }
 
     pub fn load<Protocol>(&mut self, state: &mut Protocol::State, cmd: &Protocol::Cmd)
