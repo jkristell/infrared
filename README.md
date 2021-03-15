@@ -20,9 +20,6 @@ such as input capture, and be useful in host applications (such as Blipper).
 ### Examples
  - The [infrared-examples](https://github.com/jkristell/infrared-examples) repo contains various examples for receiving and transmitting infrared with the
   blue pill board
- - [Blipper](https://github.com/jkristell/blipper) - An application for working
- with transmitters and receivers from a host computer
- - [Tutorial 1](https://jott.se/blog/infrared)
   
 ## Tested with
  - Tested with bluepill board

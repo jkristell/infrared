@@ -1,8 +1,9 @@
 # Changelog
 
-## [Unreleased]
- - PeriodReciever renamed to PollReceiver
- - Add a method to get access to the pin of the EventReceiver
+## [0.12.0]
+ - Merged all the Receiver types into one.
+ - Lots of API changes
+ - Lots of refactoring
 
 ## [0.11.0] - 2021-03-13
  - The pulse lengths, for both receiver and sender are now calculated when the state machines are created.
