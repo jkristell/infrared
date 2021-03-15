@@ -6,6 +6,24 @@ use crate::recv::{self, InfraredReceiver};
 #[cfg(feature = "remotes")]
 use crate::remotecontrol::{AsButton, Button, RemoteControl};
 
+pub enum Error<PinErr> {
+    Addr,
+    Data,
+    Validation,
+    Hal(PinErr),
+}
+
+impl<PinErr> From<crate::recv::Error> for Error<PinErr> {
+    fn from(recv_err: crate::recv::Error) -> Error<PinErr> {
+        match recv_err {
+            recv::Error::Address => Error::Addr,
+            recv::Error::Data => Error::Data,
+            recv::Error::Validation => Error::Validation,
+        }
+    }
+}
+
+
 /// Event driven embedded-hal receiver
 pub struct EventReceiver<Protocol: InfraredReceiver, Pin> {
     recv: crate::recv::EventReceiver<Protocol>,
@@ -42,12 +60,12 @@ where
     /// Returns Ok(None) until a command is detected
     #[inline(always)]
     pub fn update(&mut self, dt: u32) -> Result<Option<Protocol::Cmd>, PinErr> {
-        let pinval = self.pin.is_low()?;
+        let pinval = self.pin.is_low()
+            .map_err(|err| Error::Hal(err))?;
 
-        match self.recv.update(pinval, dt) {
-            Ok(cmd) => Ok(cmd),
-            Err(_err) => Ok(None),
-        }
+        self.recv
+            .update(pinval, dt)
+            .map_err(|err| err.into())
     }
 }
 
@@ -83,21 +101,20 @@ where
         self.pin
     }
 
-    pub fn poll(&mut self) -> Result<Option<Protocol::Cmd>, PinErr> {
-        let pinval = self.pin.is_low()?;
+    pub fn poll(&mut self) -> Result<Option<Protocol::Cmd>, Error<PinErr>> {
+        let pinval = self.pin.is_low()
+            .map_err(|err| Error::Hal(err))?;
 
         self.counter = self.counter.wrapping_add(1);
 
-        match self.recv.poll(pinval, self.counter) {
-            Ok(cmd) => Ok(cmd),
-            Err(_err) => Ok(None),
-        }
+        self.recv.poll(pinval, self.counter)
+            .map_err(|err| err.into())
     }
 
     #[cfg(feature = "remotes")]
     pub fn poll_button<RC: RemoteControl<Cmd = Protocol::Cmd>>(
         &mut self,
-    ) -> Result<Option<Button>, PinErr>
+    ) -> Result<Option<Button>, Error<PinErr>>
     where
         Protocol::Cmd: AsButton,
     {

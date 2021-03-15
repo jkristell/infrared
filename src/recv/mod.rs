@@ -60,6 +60,6 @@ pub enum Error {
     Address,
     /// Error decoding data bits
     Data,
-    /// Error receiver specific error
-    Other,
+    /// Validation Error
+    Validation,
 }
