@@ -107,7 +107,8 @@ where
 
         self.counter = self.counter.wrapping_add(1);
 
-        self.recv.poll(pinval, self.counter)
+        self.recv
+            .poll(pinval, self.counter)
             .map_err(|err| err.into())
     }
 
@@ -152,8 +153,10 @@ macro_rules! multireceiver {
             self.pin
         }
 
-        pub fn poll(&mut self) -> Result<( $( Option<$P::Cmd>),*), PINERR> {
-            let pinval = self.pin.is_low()?;
+        pub fn poll(&mut self) -> Result<( $( Option<$P::Cmd>),*), Error<PINERR>> {
+            let pinval = self.pin.is_low()
+                .map_err(|err| Error::Hal(err))?;
+
             self.counter = self.counter.wrapping_add(1);
 
             Ok(($(
