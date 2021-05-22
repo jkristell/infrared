@@ -16,16 +16,14 @@ fn main() -> io::Result<()> {
 
     let mut ir_recv: EventReceiver<NecSamsung> = EventReceiver::new(resolution);
 
-
     let mut clock = 0;
-    let mut dt = 0;
 
     for vc in parser {
         let vc = vc?;
         match vc {
             vcd::Command::ChangeScalar(i, v) if i == irdata => {
                 let one = v == vcd::Value::V1;
-                match ir_recv.update(one, dt) {
+                match ir_recv.update(one, clock) {
                     Ok(Some(cmd)) => {
                         // We have a parsed command
                         println!("Got Command: {:?}", cmd);
@@ -37,9 +35,7 @@ fn main() -> io::Result<()> {
                 }
             }
             vcd::Command::Timestamp(ts) => {
-                let ts = ts as u32;
-                dt = ts - clock;
-                clock = ts;
+                clock = ts as u32;
             }
             _ => (),
         }
