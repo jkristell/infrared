@@ -19,10 +19,10 @@ where
 {
     /// Create a new EventReceiver
     /// `pin`: The Inputpin connected to the receiver,
-    /// `samplerate`: Sample rate of the receiver
-    pub fn new(pin: Pin, samplerate: u32) -> Self {
+    /// `resolution`: Resolution of the clock used
+    pub fn new(pin: Pin, resolution: u32) -> Self {
         Self {
-            recv: crate::recv::EventReceiver::new(samplerate),
+            recv: crate::recv::EventReceiver::new(resolution),
             pin,
         }
     }
@@ -41,10 +41,10 @@ where
     ///
     /// Returns Ok(None) until a command is detected
     #[inline(always)]
-    pub fn edge_event(&mut self, dt: u32) -> Result<Option<Protocol::Cmd>, PinErr> {
+    pub fn update(&mut self, dt: u32) -> Result<Option<Protocol::Cmd>, PinErr> {
         let pinval = self.pin.is_low()?;
 
-        match self.recv.edge_event(pinval, dt) {
+        match self.recv.update(pinval, dt) {
             Ok(cmd) => Ok(cmd),
             Err(_err) => Ok(None),
         }
@@ -54,26 +54,26 @@ where
 /// Periodic and polled Embedded hal Receiver
 ///
 /// The poll methods should be called periodically for this receiver to work
-pub struct PeriodicReceiver<Protocol: InfraredReceiver, PIN> {
+pub struct PollReceiver<Protocol: InfraredReceiver, PIN> {
     /// The receiver state machine
-    recv: recv::PeriodicReceiver<Protocol>,
+    recv: recv::PollReceiver<Protocol>,
     /// Input pin
     pin: PIN,
     /// Internal sample counter
     counter: u32,
 }
 
-impl<Protocol, Pin, PinErr> PeriodicReceiver<Protocol, Pin>
+impl<Protocol, Pin, PinErr> PollReceiver<Protocol, Pin>
 where
     Protocol: InfraredReceiver,
-    Pin: InputPin<Error =PinErr>,
+    Pin: InputPin<Error=PinErr>,
 {
-    /// Create a new PeriodicReceiver
+    /// Create a new PollReceiver
     /// `pin` : The gpio pin the hw is connected to
     /// `samplerate` : Rate of which you intend to call poll.
     pub fn new(pin: Pin, samplerate: u32) -> Self {
         Self {
-            recv: recv::PeriodicReceiver::new(samplerate),
+            recv: recv::PollReceiver::new(samplerate),
             pin,
             counter: 0,
         }
@@ -115,7 +115,7 @@ macro_rules! multireceiver {
     pub struct $name<$( $P: InfraredReceiver ),* , PIN> {
         pin: PIN,
         counter: u32,
-        $( $N : recv::PeriodicReceiver<$P> ),*
+        $( $N : recv::PollReceiver<$P> ),*
     }
 
     impl<PIN, PINERR, $( $P ),* > $name <$( $P ),* , PIN>
@@ -127,7 +127,7 @@ macro_rules! multireceiver {
             Self {
                 pin,
                 counter: 0,
-                $( $N: recv::PeriodicReceiver::new(samplerate)),*,
+                $( $N: recv::PollReceiver::new(samplerate)),*,
             }
         }
 

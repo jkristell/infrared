@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+ - PeriodReciever renamed to PollReceiver
  - Add a method to get access to the pin of the EventReceiver
 
 ## [0.11.0] - 2021-03-13

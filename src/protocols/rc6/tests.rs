@@ -26,7 +26,7 @@ fn newpulse() {
         edge = !edge;
 
         let s0 = recv.state.state;
-        let cmd = recv.edge_event(edge, *dist as u32);
+        let cmd = recv.update(edge, *dist as u32);
 
         println!(
             "{} ({}): {:?} -> {:?}",
