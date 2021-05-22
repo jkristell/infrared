@@ -10,22 +10,20 @@ where
     pub state: Protocol::ReceiverState,
 }
 
-/// Receiver - event based
 impl<Protocol: InfraredReceiver> EventReceiver<Protocol> {
     /// Create a new Receiver
-    pub fn new(samplerate: u32) -> Self {
+    pub fn new(resolution: u32) -> Self {
         Self {
-            state: Protocol::receiver_state(samplerate),
+            state: Protocol::receiver_state(resolution),
         }
     }
 
     /// Event happened
-    pub fn edge_event<T: Into<u32>>(
+    pub fn update(
         &mut self,
         edge: bool,
-        delta_samples: T,
+        delta: u32,
     ) -> Result<Option<Protocol::Cmd>, Error> {
-        let delta = delta_samples.into();
 
         // Update state machine
         let state: Status = Protocol::event(&mut self.state, edge, delta).into();

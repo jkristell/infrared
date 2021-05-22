@@ -32,7 +32,7 @@ impl<Protocol: InfraredReceiver> PeriodicReceiver<Protocol> {
 
         self.last = ts;
         self.edge = edge;
-        self.recv.edge_event(edge, dt)
+        self.recv.update(edge, dt)
     }
 
     pub fn reset(&mut self) {

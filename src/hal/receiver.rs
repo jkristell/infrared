@@ -19,10 +19,10 @@ where
 {
     /// Create a new EventReceiver
     /// `pin`: The Inputpin connected to the receiver,
-    /// `samplerate`: Sample rate of the receiver
-    pub fn new(pin: Pin, samplerate: u32) -> Self {
+    /// `resolution`: Resolution of the clock used
+    pub fn new(pin: Pin, resolution: u32) -> Self {
         Self {
-            recv: crate::recv::EventReceiver::new(samplerate),
+            recv: crate::recv::EventReceiver::new(resolution),
             pin,
         }
     }
@@ -41,10 +41,10 @@ where
     ///
     /// Returns Ok(None) until a command is detected
     #[inline(always)]
-    pub fn edge_event(&mut self, dt: u32) -> Result<Option<Protocol::Cmd>, PinErr> {
+    pub fn update(&mut self, dt: u32) -> Result<Option<Protocol::Cmd>, PinErr> {
         let pinval = self.pin.is_low()?;
 
-        match self.recv.edge_event(pinval, dt) {
+        match self.recv.update(pinval, dt) {
             Ok(cmd) => Ok(cmd),
             Err(_err) => Ok(None),
         }
