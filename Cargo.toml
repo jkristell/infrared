@@ -22,3 +22,6 @@ remotes = []
 [dependencies]
 embedded-hal = {version = "0.2.4", features = ["unproven"], optional = true}
 nb = "1.0.0"
+
+[dev-dependencies]
+vcd = "0.6.1"
