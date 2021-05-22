@@ -91,7 +91,7 @@ pub mod hal;
 
 #[cfg(feature = "embedded-hal")]
 #[doc(inline)]
-pub use hal::{EventReceiver, MultiSender, PeriodicReceiver, Sender};
+pub use hal::{EventReceiver, MultiSender, PollReceiver, Sender};
 
 
 #[cfg(test)]

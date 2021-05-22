@@ -3,7 +3,7 @@
 use crate::recv::{Error, EventReceiver, InfraredReceiver};
 
 /// Receiver to use with periodic polling
-pub struct PeriodicReceiver<Protocol>
+pub struct PollReceiver<Protocol>
 where
     Protocol: InfraredReceiver,
 {
@@ -14,7 +14,7 @@ where
     last: u32,
 }
 
-impl<Protocol: InfraredReceiver> PeriodicReceiver<Protocol> {
+impl<Protocol: InfraredReceiver> PollReceiver<Protocol> {
     pub fn new(samplerate: u32) -> Self {
         Self {
             recv: EventReceiver::new(samplerate),

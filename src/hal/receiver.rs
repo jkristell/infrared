@@ -54,26 +54,26 @@ where
 /// Periodic and polled Embedded hal Receiver
 ///
 /// The poll methods should be called periodically for this receiver to work
-pub struct PeriodicReceiver<Protocol: InfraredReceiver, PIN> {
+pub struct PollReceiver<Protocol: InfraredReceiver, PIN> {
     /// The receiver state machine
-    recv: recv::PeriodicReceiver<Protocol>,
+    recv: recv::PollReceiver<Protocol>,
     /// Input pin
     pin: PIN,
     /// Internal sample counter
     counter: u32,
 }
 
-impl<Protocol, Pin, PinErr> PeriodicReceiver<Protocol, Pin>
+impl<Protocol, Pin, PinErr> PollReceiver<Protocol, Pin>
 where
     Protocol: InfraredReceiver,
-    Pin: InputPin<Error =PinErr>,
+    Pin: InputPin<Error=PinErr>,
 {
     /// Create a new PeriodicReceiver
     /// `pin` : The gpio pin the hw is connected to
     /// `samplerate` : Rate of which you intend to call poll.
     pub fn new(pin: Pin, samplerate: u32) -> Self {
         Self {
-            recv: recv::PeriodicReceiver::new(samplerate),
+            recv: recv::PollReceiver::new(samplerate),
             pin,
             counter: 0,
         }
