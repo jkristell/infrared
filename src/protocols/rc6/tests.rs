@@ -18,15 +18,18 @@ fn newpulse() {
     let len = sender.offset;
 
     let mut edge = false;
+    let mut clock = 0;
+
     let mut recv: EventReceiver<Rc6> = EventReceiver::new(sample_rate);
 
     let mut res_cmd = None;
 
     for dist in &b[..len] {
         edge = !edge;
+        clock += *dist as u32;
 
         let s0 = recv.state.state;
-        let cmd = recv.update(edge, *dist as u32);
+        let cmd = recv.update(edge, clock);
 
         println!(
             "{} ({}): {:?} -> {:?}",
