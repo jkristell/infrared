@@ -1,5 +1,8 @@
 # Changelog
 
+## [Unreleased]
+ - Add a method to get access to the pin of the EventReceiver
+
 ## [0.11.0] - 2021-03-13
  - The pulse lengths, for both receiver and sender are now calculated when the state machines are created.
  - Internal refactoring of both sender and receiver

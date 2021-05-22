@@ -9,7 +9,7 @@ use crate::remotecontrol::{AsButton, Button, RemoteControl};
 /// Event driven embedded-hal receiver
 pub struct EventReceiver<Protocol: InfraredReceiver, Pin> {
     recv: crate::recv::EventReceiver<Protocol>,
-    pub pin: Pin,
+    pin: Pin,
 }
 
 impl<Protocol, Pin, PinErr> EventReceiver<Protocol, Pin>
@@ -30,6 +30,11 @@ where
     /// Destroy Receiver and hand back pin
     pub fn destroy(self) -> Pin {
         self.pin
+    }
+
+    /// Borrow pin mutable
+    pub fn pin(&mut self) -> &mut Pin {
+        &mut self.pin
     }
 
     /// Tell the receiver to read the new pin value and update the receiver state machine
