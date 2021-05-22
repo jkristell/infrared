@@ -59,12 +59,12 @@ where
     ///
     /// Returns Ok(None) until a command is detected
     #[inline(always)]
-    pub fn update(&mut self, dt: u32) -> Result<Option<Protocol::Cmd>, Error<PinErr>> {
+    pub fn update(&mut self, ts: u32) -> Result<Option<Protocol::Cmd>, Error<PinErr>> {
         let pinval = self.pin.is_low()
             .map_err(|err| Error::Hal(err))?;
 
         self.recv
-            .update(pinval, dt)
+            .update(pinval, ts)
             .map_err(|err| err.into())
     }
 }

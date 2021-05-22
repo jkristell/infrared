@@ -8,6 +8,7 @@ where
     Protocol: InfraredReceiver,
 {
     pub state: Protocol::ReceiverState,
+    timestamp: u32,
 }
 
 impl<Protocol: InfraredReceiver> EventReceiver<Protocol> {
@@ -15,6 +16,7 @@ impl<Protocol: InfraredReceiver> EventReceiver<Protocol> {
     pub fn new(resolution: u32) -> Self {
         Self {
             state: Protocol::receiver_state(resolution),
+            timestamp: 0,
         }
     }
 
@@ -22,8 +24,11 @@ impl<Protocol: InfraredReceiver> EventReceiver<Protocol> {
     pub fn update(
         &mut self,
         edge: bool,
-        delta: u32,
+        ts: u32,
     ) -> Result<Option<Protocol::Cmd>, Error> {
+
+        let delta = ts.wrapping_sub(self.timestamp);
+        self.timestamp = ts;
 
         // Update state machine
         let state: Status = Protocol::event(&mut self.state, edge, delta).into();
