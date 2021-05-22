@@ -68,7 +68,7 @@ where
     Protocol: InfraredReceiver,
     Pin: InputPin<Error=PinErr>,
 {
-    /// Create a new PeriodicReceiver
+    /// Create a new PollReceiver
     /// `pin` : The gpio pin the hw is connected to
     /// `samplerate` : Rate of which you intend to call poll.
     pub fn new(pin: Pin, samplerate: u32) -> Self {
@@ -115,7 +115,7 @@ macro_rules! multireceiver {
     pub struct $name<$( $P: InfraredReceiver ),* , PIN> {
         pin: PIN,
         counter: u32,
-        $( $N : recv::PeriodicReceiver<$P> ),*
+        $( $N : recv::PollReceiver<$P> ),*
     }
 
     impl<PIN, PINERR, $( $P ),* > $name <$( $P ),* , PIN>
@@ -127,7 +127,7 @@ macro_rules! multireceiver {
             Self {
                 pin,
                 counter: 0,
-                $( $N: recv::PeriodicReceiver::new(samplerate)),*,
+                $( $N: recv::PollReceiver::new(samplerate)),*,
             }
         }
 
