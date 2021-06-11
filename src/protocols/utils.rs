@@ -76,7 +76,7 @@ impl InfraRange6 {
 }
 
 const fn infra_range(samplerate: u32, len: u32, percent: u32) -> Range<u32> {
-    let base = (len * samplerate) / 1_000_000;
+    let base = (len * (samplerate / 100)) / 10_000;
     let tol = (base * percent) / 100;
 
     Range {
