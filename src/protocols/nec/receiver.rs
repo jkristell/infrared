@@ -3,7 +3,7 @@ use core::marker::PhantomData;
 use crate::{
     protocols::{
         nec::{NecCommand, NecCommandVariant, NecPulseDistance},
-        utils::InfraRange4,
+        utils::InfraConstRange,
         Nec,
     },
     recv::{Error, InfraredReceiver, InfraredReceiverState, Status},
@@ -15,7 +15,7 @@ pub struct NecReceiverState<C = NecCommand> {
     // Data buffer
     bitbuf: u32,
     // Timing and tolerances
-    ranges: InfraRange4,
+    ranges: InfraConstRange<4>,
     // Last command (used by repeat)
     last_cmd: u32,
     // Nec Command type
@@ -27,7 +27,7 @@ pub struct NecReceiverState<C = NecCommand> {
 impl<C: NecCommandVariant> InfraredReceiverState for NecReceiverState<C> {
     fn create(samplerate: u32) -> Self {
         let tols = tolerances(C::PULSE_DISTANCE);
-        let ranges = InfraRange4::new(&tols, samplerate);
+        let ranges = InfraConstRange::new(&tols, samplerate);
 
         NecReceiverState {
             status: InternalStatus::Init,
@@ -140,8 +140,8 @@ pub enum PulseWidth {
     NotAPulseWidth = 4,
 }
 
-impl From<usize> for PulseWidth {
-    fn from(v: usize) -> Self {
+impl From<u32> for PulseWidth {
+    fn from(v: u32) -> Self {
         match v {
             0 => PulseWidth::Sync,
             1 => PulseWidth::Repeat,

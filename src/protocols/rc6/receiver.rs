@@ -1,5 +1,5 @@
 use crate::protocols::rc6::Rc6Command;
-use crate::protocols::utils::InfraRange6;
+use crate::protocols::utils::InfraConstRange;
 use crate::protocols::Rc6;
 use crate::recv::{Error, InfraredReceiver, InfraredReceiverState, Status};
 
@@ -20,7 +20,7 @@ pub struct Rc6ReceiverState {
     headerdata: u16,
     toggle: bool,
     clock: u32,
-    ranges: InfraRange6,
+    ranges: InfraConstRange<6>,
 }
 
 impl InfraredReceiverState for Rc6ReceiverState {
@@ -31,7 +31,7 @@ impl InfraredReceiverState for Rc6ReceiverState {
             headerdata: 0,
             toggle: false,
             clock: 0,
-            ranges: InfraRange6::new(UNITS_AND_TOLERANCE, samplerate),
+            ranges: InfraConstRange::new(UNITS_AND_TOLERANCE, samplerate),
         }
     }
 

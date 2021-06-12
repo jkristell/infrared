@@ -1,5 +1,5 @@
 use crate::protocol::InfraredProtocol;
-use crate::protocols::utils::InfraRange3;
+use crate::protocols::utils::InfraConstRange;
 use crate::recv::InfraredReceiverState;
 use crate::recv::{InfraredReceiver, Status};
 
@@ -29,12 +29,12 @@ pub struct DenonReceiverState {
     state: DenonStatus,
     buf: u64,
     dt_save: u32,
-    ranges: InfraRange3,
+    ranges: InfraConstRange<3>,
 }
 
 impl InfraredReceiverState for DenonReceiverState {
     fn create(samplerate: u32) -> Self {
-        let ranges = InfraRange3::new(&PULSELENGTHS, samplerate);
+        let ranges = InfraConstRange::new(&PULSELENGTHS, samplerate);
 
         DenonReceiverState {
             state: DenonStatus::Idle,
