@@ -1,4 +1,4 @@
-use crate::protocols::utils::InfraRange2;
+use crate::protocols::utils::{InfraConstRange};
 use crate::protocols::Rc5;
 use crate::recv::InfraredReceiverState;
 use crate::{
@@ -12,7 +12,7 @@ pub struct Rc5ReceiverState {
     pub(crate) status: Rc5Status,
     bitbuf: u16,
     pub(crate) clock: u32,
-    pub(crate) ranges: InfraRange2,
+    pub(crate) ranges: InfraConstRange<2>,
 }
 
 impl InfraredReceiverState for Rc5ReceiverState {
@@ -21,7 +21,7 @@ impl InfraredReceiverState for Rc5ReceiverState {
             status: Rc5Status::Idle,
             bitbuf: 0,
             clock: 0,
-            ranges: InfraRange2::new(&[(RC5_BASE_TIME, 10), (RC5_BASE_TIME * 2, 10)], samplerate),
+            ranges: InfraConstRange::new(&[(RC5_BASE_TIME, 10), (RC5_BASE_TIME * 2, 10)], samplerate),
         }
     }
 

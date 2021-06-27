@@ -10,7 +10,6 @@
 use core::convert::TryInto;
 
 use crate::protocol::InfraredProtocol;
-use crate::protocols::utils::InfraRange4;
 use crate::recv::InfraredReceiverState;
 #[cfg(feature = "remotes")]
 use crate::remotecontrol::AsButton;
@@ -18,6 +17,8 @@ use crate::{
     recv::{Error, InfraredReceiver, Status},
     ProtocolId,
 };
+
+use super::utils::InfraConstRange;
 
 pub struct Sbp;
 
@@ -31,13 +32,13 @@ pub struct SbpReceiverState {
     address: u16,
     command: u32,
     since_rising: u32,
-    ranges: InfraRange4,
+    ranges: InfraConstRange<4>,
 }
 
 impl InfraredReceiverState for SbpReceiverState {
     fn create(samplerate: u32) -> Self {
         let nsamples = nsamples_from_timing(&TIMING);
-        let ranges = InfraRange4::new(&nsamples, samplerate);
+        let ranges = InfraConstRange::new(&nsamples, samplerate);
 
         SbpReceiverState {
             state: SbpStatus::Init,
@@ -219,8 +220,8 @@ pub enum SbpPulse {
     NotAPulseWidth = 4,
 }
 
-impl From<usize> for SbpPulse {
-    fn from(v: usize) -> Self {
+impl From<u32> for SbpPulse {
+    fn from(v: u32) -> Self {
         match v {
             0 => SbpPulse::Sync,
             1 => SbpPulse::Paus,
