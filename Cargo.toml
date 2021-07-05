@@ -1,6 +1,6 @@
 [package]
 name = "infrared"
-version = "0.11.0"
+version = "0.12.0"
 authors = ["Johan Kristell <johan@jott.se>"]
 edition = "2018"
 description = "Infrared remote control library"
@@ -11,7 +11,7 @@ categories = ["no-std", "embedded"]
 license = "MIT OR Apache-2.0"
 
 [features]
-default = ["nec", "rc5", "rc6", "sbp", "denon","embedded-hal", "remotes"]
+default = ["nec", "rc5", "rc6", "sbp", "denon", "remotes", "embedded-hal"]
 nec = []
 rc5 = []
 rc6 = []
@@ -21,4 +21,7 @@ remotes = []
 
 [dependencies]
 embedded-hal = {version = "0.2.4", features = ["unproven"], optional = true}
-nb = "1.0.0"
+
+[dev-dependencies]
+vcd = "0.6.1"
+dummy-pin = "0.1.1"
