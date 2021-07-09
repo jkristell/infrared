@@ -15,8 +15,6 @@ pub struct NecReceiverState<C = NecCommand> {
     status: InternalStatus,
     // Data buffer
     bitbuf: u32,
-    // Last command (used by repeat)
-    last_cmd: u32,
     // Nec Command type
     cmd_type: PhantomData<C>,
     // Saved dt
@@ -25,16 +23,7 @@ pub struct NecReceiverState<C = NecCommand> {
 
 impl<C: NecCommandVariant> DecoderState for NecReceiverState<C> {
     fn reset(&mut self) {
-        // Check if a command was successfully received
-        let done = self.status == InternalStatus::Done;
-
-        // Save the bitbuf as last cmd. This is used by the repeat logic
-        if self.bitbuf != 0 && done {
-            self.last_cmd = self.bitbuf;
-        }
-
         self.status = InternalStatus::Init;
-        self.bitbuf = 0;
         self.dt_save = 0;
     }
 }
@@ -78,7 +67,6 @@ where
         NecReceiverState {
             status: InternalStatus::Init,
             bitbuf: 0,
-            last_cmd: 0,
             cmd_type: Default::default(),
             dt_save: 0,
         }
@@ -97,7 +85,7 @@ where
             let pulsewidth = ranges.find::<PulseWidth>(state.dt_save + dt).unwrap_or(PulseWidth::NotAPulseWidth);
 
             state.status = match (state.status, pulsewidth) {
-                (Init,              Sync)   => Receiving(0),
+                (Init,              Sync)   => { state.bitbuf = 0; Receiving(0) },
                 (Init,              Repeat) => RepeatDone,
                 (Init,              _)      => Init,
 
@@ -124,7 +112,7 @@ where
     fn command(state: &Self::State) -> Option<Self::Cmd> {
         match state.status {
             InternalStatus::Done => Self::Cmd::unpack(state.bitbuf, false),
-            InternalStatus::RepeatDone => Self::Cmd::unpack(state.last_cmd, true),
+            InternalStatus::RepeatDone => Self::Cmd::unpack(state.bitbuf, true),
             _ => None,
         }
     }
