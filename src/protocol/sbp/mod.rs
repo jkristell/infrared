@@ -43,6 +43,7 @@ impl DecoderState for SbpReceiverState {
 }
 
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct SbpCommand {
     pub address: u16,
     pub command: u8,
@@ -89,6 +90,7 @@ impl AsButton for SbpCommand {
 }
 
 #[derive(Debug, Copy, Clone)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 // Internal receiver state
 pub enum SbpStatus {
     // Waiting for first pulse
@@ -218,6 +220,7 @@ const TIMING: SbpTiming = SbpTiming {
 };
 
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum SbpPulse {
     Sync = 0,
     Paus = 1,

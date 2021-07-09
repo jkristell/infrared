@@ -120,6 +120,7 @@ impl DecoderState for Rc6ReceiverState {
 }
 
 #[derive(Clone, Copy, Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Rc6Status {
     Idle,
     Leading,

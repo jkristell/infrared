@@ -40,6 +40,7 @@ pub trait Protocol {
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[repr(u8)]
 #[non_exhaustive]
 /// Protocol id

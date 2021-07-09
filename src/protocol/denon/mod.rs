@@ -39,6 +39,7 @@ impl DecoderState for DenonReceiverState {
 }
 
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct DenonCommand {
     pub bits: u64,
 }
@@ -99,6 +100,7 @@ impl<const R: usize> ConstDecodeStateMachine<R> for Denon {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum DenonStatus {
     Idle,
     Data(u8),
@@ -116,6 +118,7 @@ impl From<DenonStatus> for Status {
 }
 
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 enum PulseWidth {
     Sync,
     Zero,

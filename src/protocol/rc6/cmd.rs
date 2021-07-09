@@ -5,6 +5,7 @@ use crate::ProtocolId;
 use core::convert::TryInto;
 
 #[derive(Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Rc6Command {
     pub addr: u8,
     pub cmd: u8,

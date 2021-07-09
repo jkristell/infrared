@@ -1,6 +1,7 @@
 use crate::sender::{ProtocolEncoder, PulsedataBuffer};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 /// Sender state
 pub enum Status {
     /// Sender is ready for transmitting

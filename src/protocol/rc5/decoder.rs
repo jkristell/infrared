@@ -85,6 +85,7 @@ impl DecoderState for Rc5ReceiverState {
 }
 
 #[derive(Clone, Copy, Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Rc5Status {
     Idle,
     Data(u8),

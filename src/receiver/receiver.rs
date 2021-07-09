@@ -138,12 +138,27 @@ where
         let ranges = SM::ranges(resolution);
         let data = MD::default();
 
+        debug!("Creating receiver");
+
+        #[cfg(feature = "defmt")]
+        {
+            defmt::info!("{:?}", defmt::Debug2Format(&ranges));
+        }
+        #[cfg(feature = "log")]
+       {
+            log::info!("{:?}", &ranges);
+       }
+
         Receiver {
             state,
             ranges,
             data,
             input,
         }
+    }
+
+    pub fn ranges(&self) -> &SM::RangeData {
+        &self.ranges
     }
 
     pub fn generic_event(
@@ -153,6 +168,8 @@ where
     ) -> Result<Option<SM::Cmd>, DecodingError> {
         // Update state machine
         let state: Status = SM::event_full(&mut self.state, &self.ranges, edge, dt).into();
+
+        trace!("dt: {}, edge: {} s: {:?}", dt, edge, state);
 
         match state {
             Status::Done => {
