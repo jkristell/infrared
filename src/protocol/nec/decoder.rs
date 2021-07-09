@@ -60,7 +60,7 @@ where
     Cmd: NecCommandVariant,
 {
     type State = NecReceiverState<Cmd>;
-    type RangeData = InfraConstRange<6>;
+    type RangeData = InfraConstRange<4>;
     type InternalStatus = InternalStatus;
 
     fn state() -> Self::State {
