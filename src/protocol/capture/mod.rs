@@ -1,4 +1,4 @@
-use crate::receiver::{DecoderState, DecoderStateMachine, Status};
+use crate::receiver::{DecoderState, DecoderStateMachine, Status, ConstDecodeStateMachine};
 use crate::Protocol;
 
 pub struct Capture;
@@ -52,4 +52,8 @@ impl DecoderStateMachine for Capture {
     fn command(state: &Self::State) -> Option<Self::Cmd> {
         Some(state.ts)
     }
+}
+
+impl<const R: usize> ConstDecodeStateMachine<R> for Capture {
+    const RANGES: Self::RangeData = ();
 }
