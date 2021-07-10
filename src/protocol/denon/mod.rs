@@ -1,7 +1,6 @@
 use crate::protocol::utils::InfraConstRange;
 use crate::protocol::Protocol;
-use crate::receiver::DecoderState;
-use crate::receiver::{DecoderStateMachine, Status};
+use crate::receiver::{DecoderStateMachine, Status, DecoderState, ConstDecodeStateMachine};
 
 #[cfg(test)]
 mod test;
@@ -93,6 +92,10 @@ impl DecoderStateMachine for Denon {
             None
         }
     }
+}
+
+impl<const R: usize> ConstDecodeStateMachine<R> for Denon {
+    const RANGES: Self::RangeData = InfraConstRange::<3>::new(&PULSELENGTHS, R);
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

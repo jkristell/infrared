@@ -11,7 +11,7 @@ use core::convert::TryInto;
 
 use crate::protocol::utils::InfraConstRange;
 use crate::protocol::Protocol;
-use crate::receiver::DecoderState;
+use crate::receiver::{DecoderState, ConstDecodeStateMachine};
 #[cfg(feature = "remotes")]
 use crate::remotecontrol::AsButton;
 use crate::{
@@ -166,6 +166,11 @@ impl DecoderStateMachine for Sbp {
         Some(SbpCommand::unpack(state.address, state.command))
     }
 }
+
+impl<const R: usize> ConstDecodeStateMachine<R> for Sbp {
+    const RANGES: Self::RangeData = InfraConstRange::new(&nsamples_from_timing(&TIMING), R);
+}
+
 
 impl From<SbpStatus> for Status {
     fn from(state: SbpStatus) -> Status {
