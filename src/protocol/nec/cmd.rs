@@ -12,6 +12,7 @@ use crate::ProtocolId;
  */
 
 #[derive(Debug, Copy, Clone, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct NecCommand {
     pub addr: u8,
     pub cmd: u8,
@@ -69,6 +70,7 @@ impl AsButton for NecCommand {
  */
 
 #[derive(Debug, Copy, Clone, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 /// Nec Command with 16 bit address
 pub struct Nec16Command {
     pub addr: u16,
@@ -104,6 +106,7 @@ impl NecCommandVariant for Nec16Command {
  */
 
 #[derive(Debug, Copy, Clone, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct NecSamsungCommand {
     pub addr: u8,
     pub cmd: u8,
@@ -160,6 +163,7 @@ impl AsButton for NecSamsungCommand {
  */
 
 #[derive(Debug, Copy, Clone, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct NecAppleCommand {
     pub command_page: u8,
     pub command: u8,
@@ -234,6 +238,7 @@ impl AsButton for NecAppleCommand {
  */
 
 #[derive(Debug, Copy, Clone, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 /// Nec Command without parsing of bit meaning
 pub struct NecRawCommand {
     pub bits: u32,

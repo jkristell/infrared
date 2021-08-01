@@ -31,6 +31,7 @@ impl Protocol for Rc5 {
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Rc5Command {
     pub addr: u8,
     pub cmd: u8,

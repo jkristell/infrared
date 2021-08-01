@@ -29,6 +29,7 @@ impl<C: NecCommandVariant> DecoderState for NecReceiverState<C> {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 // Internal receiver state
 pub enum InternalStatus {
     // Waiting for first pulse
@@ -84,7 +85,7 @@ where
         if rising {
             let pulsewidth = ranges.find::<PulseWidth>(state.dt_save + dt).unwrap_or(PulseWidth::NotAPulseWidth);
 
-            state.status = match (state.status, pulsewidth) {
+            let status = match (state.status, pulsewidth) {
                 (Init,              Sync)   => { state.bitbuf = 0; Receiving(0) },
                 (Init,              Repeat) => RepeatDone,
                 (Init,              _)      => Init,
@@ -99,6 +100,15 @@ where
                 (RepeatDone,        _)      => RepeatDone,
                 (Err(err),          _)      => Err(err),
             };
+
+            trace!(
+                "State(prev, new): ({:?}, {:?}) pulsewidth: {:?}",
+                state.status,
+                status,
+                pulsewidth
+            );
+
+            state.status = status;
 
             state.dt_save = 0;
         } else {
@@ -123,6 +133,7 @@ impl<Cmd: NecCommandVariant, const R: usize> ConstDecodeStateMachine<R> for Nec<
 }
 
 #[derive(Debug, Copy, Clone)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum PulseWidth {
     Sync = 0,
     Repeat = 1,

@@ -1,12 +1,14 @@
 use crate::receiver::DecodingError;
 use crate::Protocol;
+use core::fmt::Debug;
 
 /// Protocol decode state machine
 pub trait DecoderStateMachine: Protocol {
     /// Decoder state
     type State: DecoderState;
     /// The pulsewidth ranges
-    type RangeData;
+    type RangeData: Debug;
+
     /// Internal State
     type InternalStatus: Into<Status>;
 
@@ -44,7 +46,8 @@ pub trait DecoderState {
     fn reset(&mut self);
 }
 
-#[derive(PartialEq, Eq, Copy, Clone)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 /// Protocol decoder status
 pub enum Status {
     /// Idle

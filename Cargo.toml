@@ -19,8 +19,17 @@ sbp = []
 denon = []
 remotes = []
 
+defmt-default = []
+defmt-trace = []
+defmt-debug = []
+defmt-info = []
+defmt-warn = []
+defmt-error = []
+
 [dependencies]
 embedded-hal = {version = "0.2.4", features = ["unproven"], optional = true}
+defmt = { version = "0.2.0", optional = true }
+log = { version = "0.4.11", optional = true }
 
 [dev-dependencies]
 vcd = "0.6.1"

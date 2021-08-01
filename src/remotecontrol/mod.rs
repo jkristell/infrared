@@ -48,6 +48,7 @@ pub trait RemoteControl {
 }
 
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 /// Device type that the remote control controls
 pub enum DeviceType {
     Generic,
@@ -71,6 +72,7 @@ pub trait AsButton: Sized {
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[non_exhaustive]
 /// Extensive list of all buttons ever found on a remote control ;-)
 pub enum Button {

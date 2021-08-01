@@ -16,6 +16,8 @@
 
 #![no_std]
 
+pub(crate) mod fmt;
+
 pub mod protocol;
 pub mod receiver;
 pub mod sender;
