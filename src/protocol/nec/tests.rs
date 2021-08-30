@@ -1,10 +1,11 @@
-use crate::protocol::nec::{
-    Nec16Command, NecAppleCommand, NecCommand, NecCommandVariant, NecSamsungCommand,
+use crate::{
+    protocol::{
+        nec::{Nec16Command, NecAppleCommand, NecCommand, NecCommandVariant, NecSamsungCommand},
+        Nec,
+    },
+    receiver::Builder,
+    sender::PulsedataBuffer,
 };
-use crate::protocol::{Nec, NecApple};
-use crate::receiver::Builder;
-use crate::sender::PulsedataBuffer;
-use crate::Receiver;
 
 #[test]
 #[rustfmt::skip]
@@ -23,7 +24,7 @@ fn standard_nec() {
         24, 21, 24, 21, 24, 21, 24, 65, 25, 65, 24, 21, 24, 21, 24, 66, 24, 65, 25, 65, 24, 66, 24,
     ];
 
-    let mut brecv = Receiver::builder()
+    let mut brecv = Builder::new()
         .nec()
         .resolution(40_000)
         .buffer(&dists)
@@ -56,7 +57,8 @@ fn apple_rem() {
         596, 555, 568, 1662, 575, 549, 574, 1657, 569, 555, 578, 1651, 544, 1686, 571, 569, 575,
     ];
 
-    let mut brecv = Builder::<NecApple>::new()
+    let mut brecv = Builder::new()
+        .nec_apple()
         .resolution(1_000_000)
         .buffer(&dists)
         .build();
@@ -142,7 +144,8 @@ fn all_nec_commands() {
                 repeat: false,
             };
             ptb.load::<Nec, FREQUENCY>(&cmd);
-            let mut brecv = Builder::<Nec>::new()
+            let mut brecv = Builder::new()
+                .nec()
                 .resolution(40_000)
                 .buffer(ptb.buffer())
                 .build();
@@ -173,7 +176,8 @@ fn one_freq<const F: usize>() {
 
     println!("{:?}", &ptb.buf);
 
-    let mut receiver = Builder::<Nec>::new()
+    let mut receiver = Builder::new()
+        .nec()
         .resolution(F)
         .buffer(ptb.buffer())
         .build();
@@ -213,30 +217,20 @@ fn cmd_apple2009() {
 
 #[test]
 fn repeat() {
-
     let data = [
         // Command
-        0, 9130, 4532, 571, 562, 571, 562, 571, 562, 570, 563, 572, 562, 571, 562,
-        570, 562, 571, 562, 571, 1699, 570, 1697, 571, 1697, 571, 1698, 572, 1697, 570,
-        1699, 570, 1698, 571, 1698, 571, 562, 571, 563, 569, 564, 571, 1697, 571, 1698,
-        571, 562, 572, 562, 571, 562, 571, 1697, 571, 1697, 571, 1698, 570, 563, 571, 562,
-        569, 1698, 571, 1698, 570, 1699, 571,
-
+        0, 9130, 4532, 571, 562, 571, 562, 571, 562, 570, 563, 572, 562, 571, 562, 570, 562, 571,
+        562, 571, 1699, 570, 1697, 571, 1697, 571, 1698, 572, 1697, 570, 1699, 570, 1698, 571,
+        1698, 571, 562, 571, 563, 569, 564, 571, 1697, 571, 1698, 571, 562, 572, 562, 571, 562,
+        571, 1697, 571, 1697, 571, 1698, 570, 563, 571, 562, 569, 1698, 571, 1698, 570, 1699, 571,
         // Repeats
-        40648, 9124, 2260, 571,
-        97387, 9123, 2259, 571,
-        97385, 9125, 2260, 571,
-        97398, 9126, 2260, 571,
-        97380, 9120, 2258, 571,
-        97373, 9124, 2259, 572,
-        97409, 9124, 2258, 571,
-        97387];
+        40648, 9124, 2260, 571, 97387, 9123, 2259, 571, 97385, 9125, 2260, 571, 97398, 9126, 2260,
+        571, 97380, 9120, 2258, 571, 97373, 9124, 2259, 572, 97409, 9124, 2258, 571, 97387,
+    ];
 
-    let mut receiver = Builder::<Nec>::new()
-        .buffer(&data)
-        .build();
+    let mut receiver = Builder::new().nec().buffer(&data).build();
 
-    let mut iter = receiver.iter();
+    let iter = receiver.iter();
 
     let cmds = iter.collect::<std::vec::Vec<_>>();
 

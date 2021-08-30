@@ -1,12 +1,13 @@
-use crate::protocol::capture::Capture;
-
-use crate::receiver::iter::BufferIterator;
-use crate::receiver::{
-    BufferInput, Builder, DecoderState, DecoderStateMachine, DecodingError, DefaultInput, Error,
-    Event, PinInput, Poll, Status,
+use crate::protocol::Nec;
+use crate::receiver::Builder;
+use crate::{
+    receiver::{
+        iter::BufferIterator, BufferInput, DecoderState, DecoderStateMachine, DecodingError,
+        DefaultInput, Error, Event, PinInput, Poll, Status,
+    },
+    Protocol,
 };
-#[cfg(feature = "remotes")]
-use crate::remotecontrol::{AsButton, Button, RemoteControl};
+use core::marker::PhantomData;
 #[cfg(feature = "embedded-hal")]
 use embedded_hal::digital::v2::InputPin;
 
@@ -16,9 +17,10 @@ use embedded_hal::digital::v2::InputPin;
 ///
 /// Example:
 /// ```
-/// use infrared::{Receiver};
-///
-/// use embedded_hal::digital::v2::InputPin;
+/// use infrared::{Receiver,
+///     receiver::Builder, remotecontrol::rc5::CdPlayer, cmd::AddressCommand,
+///     protocol::Rc5Command,
+/// };
 /// use dummy_pin::DummyPin;
 ///
 /// // -------------------------------------------
@@ -33,6 +35,7 @@ use embedded_hal::digital::v2::InputPin;
 ///
 /// let mut receiver = Receiver::builder()
 ///     .rc5()
+///     .remotecontrol(CdPlayer)
 ///     .event_driven()
 ///     .resolution(RESOLUTION)
 ///     .pin(input_pin)
@@ -44,8 +47,13 @@ use embedded_hal::digital::v2::InputPin;
 ///
 /// let dt = 0; // Time since last pin flip
 ///
-/// if let Ok(Some(cmd)) = receiver.event(dt) {
-///     println!("{} {}", cmd.addr, cmd.cmd);
+/// if let Ok(Some(button)) = receiver.event(dt) {
+///     // Get the command associated with this button
+///     let cmd = button.command();
+///     println!(
+///         "Action: {:?} - (Address, Command) = ({}, {})",
+///         button.action(), cmd.address(), cmd.command()
+///     );
 /// }
 ///
 /// ```
@@ -64,7 +72,7 @@ use embedded_hal::digital::v2::InputPin;
 ///
 /// #### Polled example
 /// ```
-/// use infrared::{Receiver};
+/// use infrared::{Receiver, receiver::Builder};
 /// use embedded_hal::digital::v2::InputPin;
 /// use dummy_pin::DummyPin;
 ///
@@ -99,7 +107,7 @@ use embedded_hal::digital::v2::InputPin;
 /// ```
 ///    use infrared::{
 ///        Receiver,
-///        receiver::{Event, Poll, DefaultInput, PinInput, BufferInput},
+///        receiver::{Event, Poll, DefaultInput, PinInput, BufferInput, Builder},
 ///        protocol::{Rc6, Nec},
 ///    };
 ///    use dummy_pin::DummyPin;
@@ -117,43 +125,72 @@ use embedded_hal::digital::v2::InputPin;
 ///    let cmd_iter = r3.iter();
 ///
 /// ```
-pub struct Receiver<SM: DecoderStateMachine = Capture, MD = Event, IN = DefaultInput> {
+pub struct Receiver<
+    SM: DecoderStateMachine,
+    MD = Event,
+    IN = DefaultInput,
+    C: From<<SM as Protocol>::Cmd> = <SM as Protocol>::Cmd,
+> {
     /// Decoder data
     pub(crate) state: SM::State,
     /// Precalculated decoder ranges
     pub(crate) ranges: SM::RangeData,
     /// The Receiver Method and data
-    data: MD,
+    pub(crate) data: MD,
     /// Input
     pub(crate) input: IN,
+    /// Type of the final command output
+    pub(crate) output: PhantomData<C>,
 }
 
-impl<SM, MD, IN> Receiver<SM, MD, IN>
+impl Receiver<Nec, Event, DefaultInput> {
+    pub fn builder() -> Builder {
+        Builder::new()
+    }
+}
+
+impl<SM, MD, C> Receiver<SM, MD, DefaultInput, C>
 where
     SM: DecoderStateMachine,
     MD: Default,
+    C: From<<SM as Protocol>::Cmd>,
 {
-    pub fn new(resolution: usize, input: IN) -> Self {
+    pub fn new(resolution: usize) -> Receiver<SM, MD, DefaultInput, C> {
         let state = SM::state();
         let ranges = SM::ranges(resolution);
         let data = MD::default();
 
         debug!("Creating receiver");
 
-        #[cfg(feature = "defmt")]
-        {
-            defmt::info!("{:?}", defmt::Debug2Format(&ranges));
+        Receiver {
+            state,
+            ranges,
+            data,
+            input: DefaultInput {},
+            output: PhantomData::default(),
         }
-        #[cfg(feature = "log")]
-       {
-            log::info!("{:?}", &ranges);
-       }
+    }
+}
+
+impl<SM, MD, IN, C> Receiver<SM, MD, IN, C>
+where
+    SM: DecoderStateMachine,
+    MD: Default,
+    C: From<<SM as Protocol>::Cmd>,
+{
+    pub fn with_input(resolution: usize, input: IN) -> Self {
+        let state = SM::state();
+        let ranges = SM::ranges(resolution);
+        let data = MD::default();
+
+        debug!("Creating receiver");
 
         Receiver {
             state,
             ranges,
             data,
             input,
+            output: PhantomData::default(),
         }
     }
 
@@ -186,37 +223,48 @@ where
     }
 }
 
+impl<'a, SM, MD, C> Receiver<SM, MD, BufferInput<'a>, C>
+where
+    SM: DecoderStateMachine,
+    MD: Default,
+    C: From<<SM as Protocol>::Cmd>,
+{
+    /// Create a Receiver with `buf` as input
+    pub fn with_buffer(resolution: usize, buf: &'a [usize]) -> Self {
+        Self::with_input(resolution, BufferInput(buf))
+    }
+}
+
 #[cfg(feature = "embedded-hal")]
-impl<SM, MD, PIN> Receiver<SM, MD, PinInput<PIN>>
+impl<SM, MD, PIN, C> Receiver<SM, MD, PinInput<PIN>, C>
 where
     SM: DecoderStateMachine,
     MD: Default,
     PIN: InputPin,
+    C: From<<SM as Protocol>::Cmd>,
 {
-    pub fn with_pin(resolution: usize, pin: PIN) -> Receiver<SM, MD, PinInput<PIN>> {
-        Self::new(resolution, PinInput(pin))
+    /// Create a `Receiver` with `pin` as input
+    pub fn with_pin(resolution: usize, pin: PIN) -> Self {
+        Self::with_input(resolution, PinInput(pin))
     }
 }
 
-impl Receiver<Capture, Event, DefaultInput> {
-    pub fn builder() -> Builder<Capture, Event, DefaultInput> {
-        Builder {
-            proto: Default::default(),
-            input: DefaultInput,
-            method: Default::default(),
-            resolution: 1_000_000,
-        }
+impl<SM, C> Receiver<SM, Event, DefaultInput, C>
+where
+    SM: DecoderStateMachine,
+    C: From<<SM as Protocol>::Cmd>,
+{
+    pub fn event(&mut self, dt: usize, edge: bool) -> Result<Option<C>, DecodingError> {
+        Ok(self.generic_event(dt, edge)?.map(Into::into))
     }
 }
 
-impl<SM: DecoderStateMachine> Receiver<SM, Event, DefaultInput> {
-    pub fn event(&mut self, dt: usize, edge: bool) -> Result<Option<SM::Cmd>, DecodingError> {
-        self.generic_event(dt, edge)
-    }
-}
-
-impl<'a, SM: DecoderStateMachine> Receiver<SM, Event, BufferInput<'a>> {
-    pub fn iter(&'a mut self) -> BufferIterator<SM> {
+impl<'a, SM, C> Receiver<SM, Event, BufferInput<'a>, C>
+where
+    SM: DecoderStateMachine,
+    C: From<<SM as Protocol>::Cmd>,
+{
+    pub fn iter(&'a mut self) -> BufferIterator<SM, C> {
         BufferIterator {
             pos: 0,
             receiver: self,
@@ -229,22 +277,15 @@ impl<'a, SM: DecoderStateMachine> Receiver<SM, Event, BufferInput<'a>> {
 }
 
 #[cfg(feature = "embedded-hal")]
-impl<SM: DecoderStateMachine, P: InputPin> Receiver<SM, Event, PinInput<P>> {
-    pub fn event(&mut self, dt: usize) -> Result<Option<SM::Cmd>, Error<P::Error>> {
+impl<SM, P, C> Receiver<SM, Event, PinInput<P>, C>
+where
+    SM: DecoderStateMachine,
+    P: InputPin,
+    C: From<<SM as Protocol>::Cmd>,
+{
+    pub fn event(&mut self, dt: usize) -> Result<Option<C>, Error<P::Error>> {
         let edge = self.input.0.is_low().map_err(Error::Hal)?;
-
-        self.generic_event(dt, edge).map_err(Into::into)
-    }
-
-    #[cfg(feature = "remotes")]
-    pub fn event_remotecontrol<RC: RemoteControl<Cmd = SM::Cmd>>(
-        &mut self,
-        dt: usize,
-    ) -> Result<Option<Button>, Error<P::Error>>
-    where
-        SM::Cmd: AsButton,
-    {
-        self.event(dt).map(|cmd| cmd.as_ref().and_then(RC::decode))
+        Ok(self.generic_event(dt, edge)?.map(Into::into))
     }
 
     pub fn pin(&mut self) -> &mut P {
@@ -257,8 +298,13 @@ impl<SM: DecoderStateMachine, P: InputPin> Receiver<SM, Event, PinInput<P>> {
 }
 
 #[cfg(feature = "embedded-hal")]
-impl<SM: DecoderStateMachine, P: InputPin> Receiver<SM, Poll, PinInput<P>> {
-    pub fn poll(&mut self) -> Result<Option<SM::Cmd>, Error<P::Error>> {
+impl<SM, P, C> Receiver<SM, Poll, PinInput<P>, C>
+where
+    SM: DecoderStateMachine,
+    P: InputPin,
+    C: From<<SM as Protocol>::Cmd>,
+{
+    pub fn poll(&mut self) -> Result<Option<C>, Error<P::Error>> {
         let edge = self.input.0.is_low().map_err(Error::Hal)?;
 
         self.data.clock = self.data.clock.wrapping_add(1);
@@ -271,16 +317,6 @@ impl<SM: DecoderStateMachine, P: InputPin> Receiver<SM, Poll, PinInput<P>> {
         self.data.edge = edge;
         self.data.last_edge = self.data.clock;
 
-        self.generic_event(ds, edge).map_err(Into::into)
-    }
-
-    #[cfg(feature = "remotes")]
-    pub fn poll_remotecontrol<RC: RemoteControl<Cmd = SM::Cmd>>(
-        &mut self,
-    ) -> Result<Option<Button>, Error<P::Error>>
-    where
-        SM::Cmd: AsButton,
-    {
-        self.poll().map(|cmd| cmd.as_ref().and_then(RC::decode))
+        Ok(self.generic_event(ds, edge)?.map(Into::into))
     }
 }

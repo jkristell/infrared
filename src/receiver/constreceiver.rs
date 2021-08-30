@@ -9,10 +9,10 @@ use embedded_hal::digital::v2::InputPin;
 ///
 ///```
 /// use infrared::{
-///     Receiver,
+///     receiver::Builder,
 /// };
 ///
-/// let recv = Receiver::builder()
+/// let recv = Builder::new()
 ///     .rc6()
 ///     .event_driven()
 ///     .build_const::<40_000>();

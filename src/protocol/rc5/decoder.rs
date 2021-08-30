@@ -1,9 +1,6 @@
-use crate::protocol::utils::InfraConstRange;
-use crate::protocol::Rc5;
-use crate::receiver::{ConstDecodeStateMachine, DecoderState};
 use crate::{
-    protocol::rc5::Rc5Command,
-    receiver::{DecoderStateMachine, DecodingError, Status},
+    protocol::{rc5::Rc5Command, utils::InfraConstRange, Rc5},
+    receiver::{ConstDecodeStateMachine, DecoderState, DecoderStateMachine, DecodingError, Status},
 };
 
 const RC5_BASE_TIME: usize = 889;

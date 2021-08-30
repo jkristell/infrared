@@ -1,13 +1,12 @@
 //! Philips Rc5
 
-use crate::ProtocolId;
 use core::convert::TryInto;
 
-#[cfg(feature = "remotes")]
-use crate::remotecontrol::AsButton;
-
 pub mod decoder;
-use crate::protocol::Protocol;
+use crate::{
+    cmd::{AddressCommand, Command},
+    protocol::Protocol,
+};
 
 pub mod encoder;
 
@@ -71,18 +70,19 @@ impl Rc5Command {
     }
 }
 
-#[cfg(feature = "remotes")]
-impl AsButton for Rc5Command {
+impl Command for Rc5Command {
+    fn is_repeat(&self) -> bool {
+        self.toggle
+    }
+}
+
+impl AddressCommand for Rc5Command {
     fn address(&self) -> u32 {
         self.addr.into()
     }
 
     fn command(&self) -> u32 {
         self.cmd.into()
-    }
-
-    fn protocol(&self) -> ProtocolId {
-        ProtocolId::Rc5
     }
 
     fn create(addr: u32, cmd: u32) -> Option<Rc5Command> {

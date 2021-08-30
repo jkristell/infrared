@@ -1,9 +1,7 @@
-use crate::protocol::nec::{
-    NecCommandVariant, NecPulseDistance, NEC_SAMSUNG_TIMING, NEC_STANDARD_TIMING,
+use crate::{
+    cmd::{AddressCommand, Command},
+    protocol::nec::{NecCommandVariant, NecPulseDistance, NEC_SAMSUNG_TIMING, NEC_STANDARD_TIMING},
 };
-#[cfg(feature = "remotes")]
-use crate::remotecontrol::AsButton;
-use crate::ProtocolId;
 
 /*
  * -------------------------------------------------------------------------
@@ -40,18 +38,19 @@ impl NecCommandVariant for NecCommand {
     }
 }
 
-#[cfg(feature = "remotes")]
-impl AsButton for NecCommand {
+impl Command for NecCommand {
+    fn is_repeat(&self) -> bool {
+        self.repeat
+    }
+}
+
+impl AddressCommand for NecCommand {
     fn address(&self) -> u32 {
         self.addr.into()
     }
 
     fn command(&self) -> u32 {
         self.cmd.into()
-    }
-
-    fn protocol(&self) -> crate::ProtocolId {
-        crate::ProtocolId::Nec
     }
 
     fn create(addr: u32, cmd: u32) -> Option<Self> {
@@ -133,18 +132,19 @@ impl NecCommandVariant for NecSamsungCommand {
     }
 }
 
-#[cfg(feature = "remotes")]
-impl AsButton for NecSamsungCommand {
+impl Command for NecSamsungCommand {
+    fn is_repeat(&self) -> bool {
+        self.repeat
+    }
+}
+
+impl AddressCommand for NecSamsungCommand {
     fn address(&self) -> u32 {
         self.addr.into()
     }
 
     fn command(&self) -> u32 {
         self.cmd.into()
-    }
-
-    fn protocol(&self) -> ProtocolId {
-        ProtocolId::NecSamsung
     }
 
     fn create(addr: u32, cmd: u32) -> Option<Self> {
@@ -212,18 +212,19 @@ impl NecCommandVariant for NecAppleCommand {
     }
 }
 
-#[cfg(feature = "remotes")]
-impl AsButton for NecAppleCommand {
+impl Command for NecAppleCommand {
+    fn is_repeat(&self) -> bool {
+        self.repeat
+    }
+}
+
+impl AddressCommand for NecAppleCommand {
     fn address(&self) -> u32 {
         0
     }
 
     fn command(&self) -> u32 {
         u32::from(self.command_page << 7 | self.command)
-    }
-
-    fn protocol(&self) -> ProtocolId {
-        ProtocolId::NecApple
     }
 
     fn create(_addr: u32, _cmd: u32) -> Option<Self> {

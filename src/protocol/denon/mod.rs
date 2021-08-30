@@ -1,6 +1,7 @@
-use crate::protocol::utils::InfraConstRange;
-use crate::protocol::Protocol;
-use crate::receiver::{DecoderStateMachine, Status, DecoderState, ConstDecodeStateMachine};
+use crate::{
+    protocol::{utils::InfraConstRange, Protocol},
+    receiver::{ConstDecodeStateMachine, DecoderState, DecoderStateMachine, Status},
+};
 
 #[cfg(test)]
 mod test;

@@ -39,6 +39,12 @@ pub trait Protocol {
     type Cmd;
 }
 
+pub struct DummyProtocol {}
+
+impl Protocol for DummyProtocol {
+    type Cmd = ();
+}
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[repr(u8)]

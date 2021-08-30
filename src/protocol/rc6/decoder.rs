@@ -1,8 +1,6 @@
-use crate::protocol::rc6::Rc6Command;
-use crate::protocol::utils::InfraConstRange;
-use crate::protocol::Rc6;
-use crate::receiver::{
-    ConstDecodeStateMachine, DecoderState, DecoderStateMachine, DecodingError, Status,
+use crate::{
+    protocol::{rc6::Rc6Command, utils::InfraConstRange, Rc6},
+    receiver::{ConstDecodeStateMachine, DecoderState, DecoderStateMachine, DecodingError, Status},
 };
 
 const RC6_TIME_UNIT: usize = 444;

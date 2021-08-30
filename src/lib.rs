@@ -18,6 +18,7 @@
 
 pub(crate) mod fmt;
 
+pub mod cmd;
 pub mod protocol;
 pub mod receiver;
 pub mod sender;

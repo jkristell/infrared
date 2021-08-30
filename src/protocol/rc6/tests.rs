@@ -1,7 +1,8 @@
-use crate::protocol::rc6::Rc6Command;
-use crate::protocol::Rc6;
-use crate::receiver::Receiver;
-use crate::sender::PulsedataBuffer;
+use crate::{
+    protocol::{rc6::Rc6Command, Rc6},
+    receiver::Builder,
+    sender::PulsedataBuffer,
+};
 
 #[test]
 fn newpulse() {
@@ -18,7 +19,7 @@ fn newpulse() {
 
     let mut edge = false;
 
-    let mut recv = Receiver::builder().rc6().resolution(SAMPLE_RATE).build();
+    let mut recv = Builder::new().rc6().resolution(SAMPLE_RATE).build();
 
     let mut res_cmd = None;
 
@@ -60,7 +61,7 @@ fn basic() {
 
     ];
 
-    let mut recv = Receiver::builder()
+    let mut recv = Builder::new()
         .rc6()
         .resolution(40_000)
         .buffer(&dists)
@@ -88,7 +89,7 @@ fn all_commands() {
             let cmd = Rc6Command::new(address, cmdnum);
             ptb.load::<Rc6, SAMPLE_RATE>(&cmd);
 
-            let mut recv = Receiver::builder()
+            let mut recv = Builder::new()
                 .rc6()
                 .resolution(SAMPLE_RATE)
                 .buffer(&ptb.buf)

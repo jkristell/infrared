@@ -1,15 +1,23 @@
-use crate::receiver::{BufferInput, DecoderState, DecoderStateMachine, Event, Receiver, Status};
+use crate::{
+    receiver::{BufferInput, DecoderState, DecoderStateMachine, Event, Receiver, Status},
+    Protocol,
+};
 
-pub struct BufferIterator<'a, SM>
+pub struct BufferIterator<'a, SM, C>
 where
     SM: DecoderStateMachine,
+    C: From<<SM as Protocol>::Cmd>,
 {
     pub(crate) pos: usize,
-    pub(crate) receiver: &'a mut Receiver<SM, Event, BufferInput<'a>>,
+    pub(crate) receiver: &'a mut Receiver<SM, Event, BufferInput<'a>, C>,
 }
 
-impl<'a, Protocol: DecoderStateMachine> Iterator for BufferIterator<'a, Protocol> {
-    type Item = Protocol::Cmd;
+impl<'a, SM, C> Iterator for BufferIterator<'a, SM, C>
+where
+    SM: DecoderStateMachine,
+    C: From<<SM as Protocol>::Cmd>,
+{
+    type Item = C;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -21,7 +29,7 @@ impl<'a, Protocol: DecoderStateMachine> Iterator for BufferIterator<'a, Protocol
             let dt_us = self.receiver.input.0[self.pos];
             self.pos += 1;
 
-            let state: Status = Protocol::event_full(
+            let state: Status = SM::event_full(
                 &mut self.receiver.state,
                 &self.receiver.ranges,
                 pos_edge,
@@ -34,9 +42,9 @@ impl<'a, Protocol: DecoderStateMachine> Iterator for BufferIterator<'a, Protocol
                     continue;
                 }
                 Status::Done => {
-                    let cmd = Protocol::command(&self.receiver.state);
+                    let cmd = SM::command(&self.receiver.state);
                     self.receiver.state.reset();
-                    break cmd;
+                    break cmd.map(|r| r.into());
                 }
                 Status::Error(_) => {
                     self.receiver.state.reset();

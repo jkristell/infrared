@@ -1,17 +1,21 @@
-use crate::protocol::Rc5Command;
-use crate::remotecontrol::{Button, DeviceType, RemoteControl};
-use crate::ProtocolId;
-use Button::*;
+use crate::{
+    protocol::Rc5Command,
+    remotecontrol::{Action, DeviceType, RemoteControlModel},
+    ProtocolId,
+};
+use Action::*;
 
+#[derive(Debug, Default)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct CdPlayer;
 
-impl RemoteControl for CdPlayer {
+impl RemoteControlModel for CdPlayer {
     const MODEL: &'static str = "CD Player (Rc5)";
     const DEVTYPE: DeviceType = DeviceType::CDPlayer;
     const PROTOCOL: ProtocolId = ProtocolId::Rc5;
     const ADDRESS: u32 = 20;
     type Cmd = Rc5Command;
-    const BUTTONS: &'static [(u32, Button)] = &[
+    const BUTTONS: &'static [(u32, Action)] = &[
         (1, One),
         (2, Two),
         (3, Three),

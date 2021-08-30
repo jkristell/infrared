@@ -19,135 +19,128 @@ use crate::protocol::Rc6;
 #[cfg(feature = "sbp")]
 use crate::protocol::Sbp;
 
+use crate::{
+    protocol::DummyProtocol,
+    remotecontrol::{Button, RemoteControlModel},
+    Protocol,
+};
+
 /// Receiver Builder
-pub struct Builder<SM, S = Event, IN = DefaultInput> {
+pub struct Builder<
+    SM: Protocol = DummyProtocol,
+    S = Event,
+    IN = DefaultInput,
+    C = <SM as Protocol>::Cmd,
+> {
     pub(crate) proto: PhantomData<SM>,
     pub(crate) input: IN,
     pub(crate) method: PhantomData<S>,
     pub(crate) resolution: usize,
+    pub(crate) output: PhantomData<C>,
 }
 
-impl<SM, S, IN> Builder<SM, S, IN>
-where
-    S: Default,
-    SM: DecoderStateMachine,
-{
-    pub fn new() -> Builder<SM, Event, DefaultInput> {
+impl Builder<DummyProtocol, Event, DefaultInput, ()> {
+    pub fn new() -> Builder<DummyProtocol, Event, DefaultInput> {
         Builder {
-            proto: PhantomData::default(),
+            proto: PhantomData,
             input: DefaultInput {},
-            method: Default::default(),
+            method: PhantomData,
             resolution: 1_000_000,
+            output: PhantomData,
         }
     }
+}
 
-    pub fn protocol<Proto>(self) -> Builder<Proto, S, IN> {
+impl<SM, S, IN, C> Builder<SM, S, IN, C>
+where
+    S: Default,
+    SM: Protocol,
+    C: From<<SM as Protocol>::Cmd>,
+{
+    pub fn protocol<Proto: Protocol>(self) -> Builder<Proto, S, IN> {
         Builder {
             resolution: self.resolution,
-            proto: PhantomData::default(),
+            proto: PhantomData,
             input: self.input,
-            method: self.method,
+            method: PhantomData,
+            output: PhantomData,
         }
     }
 
     #[cfg(feature = "nec")]
     pub fn nec(self) -> Builder<Nec, S, IN> {
-        Builder {
-            resolution: self.resolution,
-            proto: PhantomData::default(),
-            input: self.input,
-            method: self.method,
-        }
+        self.protocol()
     }
 
     #[cfg(feature = "nec")]
     pub fn nec16(self) -> Builder<Nec16, S, IN> {
-        Builder {
-            resolution: self.resolution,
-            proto: PhantomData::default(),
-            input: self.input,
-            method: self.method,
-        }
+        self.protocol()
     }
 
     #[cfg(feature = "nec")]
     pub fn nec_samsung(self) -> Builder<NecSamsung, S, IN> {
-        Builder {
-            resolution: self.resolution,
-            proto: PhantomData::default(),
-            input: self.input,
-            method: self.method,
-        }
+        self.protocol()
     }
 
     #[cfg(feature = "nec")]
     pub fn nec_apple(self) -> Builder<NecApple, S, IN> {
-        Builder {
-            resolution: self.resolution,
-            proto: PhantomData::default(),
-            input: self.input,
-            method: self.method,
-        }
+        self.protocol()
     }
 
     #[cfg(feature = "rc5")]
     pub fn rc5(self) -> Builder<Rc5, S, IN> {
-        Builder {
-            resolution: self.resolution,
-            proto: PhantomData::default(),
-            input: self.input,
-            method: self.method,
-        }
+        self.protocol()
     }
 
     #[cfg(feature = "rc6")]
     pub fn rc6(self) -> Builder<Rc6, S, IN> {
-        Builder {
-            resolution: self.resolution,
-            proto: PhantomData::default(),
-            input: self.input,
-            method: self.method,
-        }
+        self.protocol()
     }
 
     #[cfg(feature = "sbp")]
     pub fn samsung_bluray(self) -> Builder<Sbp, S, IN> {
-        Builder {
-            resolution: self.resolution,
-            proto: PhantomData::default(),
-            input: self.input,
-            method: self.method,
-        }
+        self.protocol()
     }
 
     #[cfg(feature = "denon")]
     pub fn denon(self) -> Builder<Denon, S, IN> {
+        self.protocol()
+    }
+
+    /// Use Remotecontrol
+    pub fn remotecontrol<Remote>(self, _: Remote) -> Builder<SM, S, IN, Button<Remote>>
+    where
+        Remote: RemoteControlModel,
+    {
         Builder {
             resolution: self.resolution,
-            proto: PhantomData::default(),
+            proto: PhantomData,
             input: self.input,
-            method: self.method,
+            method: PhantomData,
+            output: PhantomData,
         }
     }
 
     #[cfg(feature = "embedded-hal")]
     /// The Receiver use `pin` as input
-    pub fn pin<PIN: InputPin>(self, pin: PIN) -> Builder<SM, S, PinInput<PIN>> {
+    pub fn pin<PIN: InputPin>(self, pin: PIN) -> Builder<SM, S, PinInput<PIN>, C> {
         Builder {
             resolution: self.resolution,
-            proto: self.proto,
+            proto: PhantomData,
             input: PinInput(pin),
-            method: Default::default(),
+            method: PhantomData,
+            output: PhantomData,
         }
     }
 
     /// The Receiver should read the data from a data buffer
-    pub fn buffer(self, buf: &[usize]) -> Builder<SM, Event, BufferInput<'_>> {
+    pub fn buffer(self, buf: &[usize]) -> Builder<SM, Event, BufferInput<'_>, C> {
         Builder {
-            proto: self.proto,
-            input: BufferInput(buf),
-            method: Default::default(),
             resolution: self.resolution,
+            proto: PhantomData,
+            input: BufferInput(buf),
+            method: PhantomData,
+            output: PhantomData,
         }
     }
 
@@ -157,22 +150,24 @@ where
     }
 
     /// Periodic Polled
-    pub fn polled(self) -> Builder<SM, Poll, IN> {
+    pub fn polled(self) -> Builder<SM, Poll, IN, C> {
         Builder {
             resolution: self.resolution,
-            proto: self.proto,
+            proto: PhantomData,
             input: self.input,
-            method: Default::default(),
+            method: PhantomData,
+            output: PhantomData,
         }
     }
 
     /// Event driven
-    pub fn event_driven(self) -> Builder<SM, Event, IN> {
+    pub fn event_driven(self) -> Builder<SM, Event, IN, C> {
         Builder {
             resolution: self.resolution,
-            proto: self.proto,
+            proto: PhantomData,
             input: self.input,
-            method: Default::default(),
+            method: PhantomData,
+            output: PhantomData,
         }
     }
 
@@ -185,11 +180,10 @@ where
     }
 
     /// Create the Receiver
-    pub fn build(self) -> Receiver<SM, S, IN>
+    pub fn build(self) -> Receiver<SM, S, IN, C>
     where
         SM: DecoderStateMachine,
-        S: Default,
     {
-        Receiver::new(self.resolution, self.input)
+        Receiver::with_input(self.resolution, self.input)
     }
 }

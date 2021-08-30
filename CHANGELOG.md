@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+ - Add the ability to specify a remote control with a Receiver
+ - Button renamed to Action
+ - New Button type is a wrapper around a Command and an Action
+
 ## [0.12.0]
  - Merged all the Receiver types into one.
  - Lots of API changes

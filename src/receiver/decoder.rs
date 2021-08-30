@@ -1,5 +1,4 @@
-use crate::receiver::DecodingError;
-use crate::Protocol;
+use crate::{receiver::DecodingError, Protocol};
 use core::fmt::Debug;
 
 /// Protocol decode state machine

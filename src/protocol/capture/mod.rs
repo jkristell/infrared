@@ -1,5 +1,7 @@
-use crate::receiver::{DecoderState, DecoderStateMachine, Status, ConstDecodeStateMachine};
-use crate::Protocol;
+use crate::{
+    receiver::{ConstDecodeStateMachine, DecoderState, DecoderStateMachine, Status},
+    Protocol,
+};
 
 pub struct Capture;
 
