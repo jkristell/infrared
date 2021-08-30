@@ -18,6 +18,7 @@
 
 pub(crate) mod fmt;
 
+pub mod cmd;
 pub mod protocol;
 pub mod receiver;
 pub mod sender;
@@ -26,6 +27,11 @@ pub mod sender;
 pub mod remotecontrol;
 
 pub use receiver::{ConstReceiver, Receiver};
+
+/// Create a Receiver builder
+pub fn builder() -> receiver::Builder {
+    receiver::Builder::new()
+}
 
 #[doc(inline)]
 pub use protocol::{Protocol, ProtocolId};

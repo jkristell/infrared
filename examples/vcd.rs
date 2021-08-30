@@ -4,14 +4,14 @@ use std::{
     path::Path,
 };
 
-use infrared::Receiver;
+use infrared::receiver::Builder;
 
 fn main() -> io::Result<()> {
     let (parser, resolution, irdata) = vcd_ir_parser("examples/samsung-tv.vcd", "ir")?;
 
     println!("samplerate: {:?}", resolution);
 
-    let mut ir_recv = Receiver::builder().nec_samsung().event_driven().build();
+    let mut ir_recv = Builder::new().nec_samsung().event_driven().build();
 
     let mut clock = 0;
 

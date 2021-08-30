@@ -1,6 +1,4 @@
-#[cfg(feature = "remotes")]
-use crate::remotecontrol::AsButton;
-use crate::ProtocolId;
+use crate::cmd::{AddressCommand, Command};
 
 use core::convert::TryInto;
 
@@ -28,18 +26,19 @@ impl Rc6Command {
     }
 }
 
-#[cfg(feature = "remotes")]
-impl AsButton for Rc6Command {
+impl Command for Rc6Command {
+    fn is_repeat(&self) -> bool {
+        self.toggle
+    }
+}
+
+impl AddressCommand for Rc6Command {
     fn address(&self) -> u32 {
         self.addr.into()
     }
 
     fn command(&self) -> u32 {
         self.cmd.into()
-    }
-
-    fn protocol(&self) -> ProtocolId {
-        ProtocolId::Rc6
     }
 
     fn create(addr: u32, cmd: u32) -> Option<Self> {

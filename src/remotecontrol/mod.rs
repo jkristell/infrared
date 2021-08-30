@@ -1,5 +1,7 @@
 //! Library with some example remote controls
 
+pub mod mapper;
+
 #[cfg(feature = "nec")]
 pub mod nec;
 #[cfg(feature = "rc5")]
@@ -9,10 +11,12 @@ pub mod rc6;
 #[cfg(feature = "sbp")]
 pub mod sbp;
 
-use crate::ProtocolId;
+use crate::{cmd::AddressCommand, ProtocolId};
+
+pub use mapper::Button;
 
 /// A trait describing a Remote Control
-pub trait RemoteControl {
+pub trait RemoteControlModel {
     /// Remote control model
     const MODEL: &'static str = "<NONAME>";
     /// Type of device that this remote controls
@@ -22,12 +26,12 @@ pub trait RemoteControl {
     /// Device address
     const ADDRESS: u32;
     /// The type of command
-    type Cmd: AsButton;
-    /// command byte to standardbutton mapping
-    const BUTTONS: &'static [(u32, Button)] = &[];
+    type Cmd: AddressCommand;
+    /// command byte to action mapping
+    const BUTTONS: &'static [(u32, Action)] = &[];
 
-    /// Try to map a command into an Button for this remote
-    fn decode(cmd: &Self::Cmd) -> Option<Button> {
+    /// Try to map a command into a Action for this remote
+    fn decode(cmd: &Self::Cmd) -> Option<Action> {
         // Check address
         if Self::ADDRESS != cmd.address() {
             return None;
@@ -39,7 +43,7 @@ pub trait RemoteControl {
     }
 
     /// Encode a button into a command
-    fn encode(button: &Button) -> Option<Self::Cmd> {
+    fn encode(button: &Action) -> Option<Self::Cmd> {
         Self::BUTTONS
             .iter()
             .find(|(_, b)| b == button)
@@ -58,24 +62,12 @@ pub enum DeviceType {
     BluRayPlayer,
 }
 
-/// Trait that is implemented by all Commands that fit into the basic remote control button model
-pub trait AsButton: Sized {
-    /// Address
-    fn address(&self) -> u32;
-    /// Command
-    fn command(&self) -> u32;
-    /// Protocol
-    fn protocol(&self) -> ProtocolId;
-    /// Create a Command from this Button for Self
-    fn create(addr: u32, cmd: u32) -> Option<Self>;
-}
-
 #[allow(non_camel_case_types)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[non_exhaustive]
-/// Extensive list of all buttons ever found on a remote control ;-)
-pub enum Button {
+/// Remote control actions
+pub enum Action {
     Power,
     Source,
     One,

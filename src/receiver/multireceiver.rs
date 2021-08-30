@@ -111,11 +111,11 @@ where
 {
     pub fn new(resolution: usize, input: IN) -> Self {
         MultiReceiver5 {
-            r1: Receiver::new(resolution, DefaultInput),
-            r2: Receiver::new(resolution, DefaultInput),
-            r3: Receiver::new(resolution, DefaultInput),
-            r4: Receiver::new(resolution, DefaultInput),
-            r5: Receiver::new(resolution, DefaultInput),
+            r1: Receiver::with_input(resolution, DefaultInput),
+            r2: Receiver::with_input(resolution, DefaultInput),
+            r3: Receiver::with_input(resolution, DefaultInput),
+            r4: Receiver::with_input(resolution, DefaultInput),
+            r5: Receiver::with_input(resolution, DefaultInput),
             data: MD::default(),
             input,
         }

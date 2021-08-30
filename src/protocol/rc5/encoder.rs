@@ -1,5 +1,4 @@
-use crate::protocol::Rc5;
-use crate::sender::ProtocolEncoder;
+use crate::{protocol::Rc5, sender::ProtocolEncoder};
 
 //TODO: Check Overflow
 const fn calc_freq(f: usize) -> usize {

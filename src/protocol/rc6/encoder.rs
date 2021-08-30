@@ -1,5 +1,4 @@
-use crate::protocol::Rc6;
-use crate::sender::ProtocolEncoder;
+use crate::{protocol::Rc6, sender::ProtocolEncoder};
 
 impl<const F: usize> ProtocolEncoder<F> for Rc6 {
     type EncoderData = [usize; 1];

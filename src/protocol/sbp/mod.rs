@@ -9,14 +9,12 @@
 
 use core::convert::TryInto;
 
-use crate::protocol::utils::InfraConstRange;
-use crate::protocol::Protocol;
-use crate::receiver::{DecoderState, ConstDecodeStateMachine};
 #[cfg(feature = "remotes")]
-use crate::remotecontrol::AsButton;
+use crate::receiver::{DecoderStateMachine, DecodingError, Status};
 use crate::{
-    receiver::{DecoderStateMachine, DecodingError, Status},
-    ProtocolId,
+    cmd::{AddressCommand, Command},
+    protocol::{utils::InfraConstRange, Protocol},
+    receiver::{ConstDecodeStateMachine, DecoderState},
 };
 
 /// Samsung BluRay player protocol
@@ -66,18 +64,19 @@ impl SbpCommand {
     }
 }
 
-#[cfg(feature = "remotes")]
-impl AsButton for SbpCommand {
+impl Command for SbpCommand {
+    fn is_repeat(&self) -> bool {
+        false
+    }
+}
+
+impl AddressCommand for SbpCommand {
     fn address(&self) -> u32 {
         self.address.into()
     }
 
     fn command(&self) -> u32 {
         self.command.into()
-    }
-
-    fn protocol(&self) -> ProtocolId {
-        ProtocolId::Sbp
     }
 
     fn create(address: u32, command: u32) -> Option<Self> {
@@ -172,7 +171,6 @@ impl DecoderStateMachine for Sbp {
 impl<const R: usize> ConstDecodeStateMachine<R> for Sbp {
     const RANGES: Self::RangeData = InfraConstRange::new(&nsamples_from_timing(&TIMING), R);
 }
-
 
 impl From<SbpStatus> for Status {
     fn from(state: SbpStatus) -> Status {

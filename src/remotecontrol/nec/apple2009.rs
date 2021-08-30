@@ -1,13 +1,17 @@
-use crate::protocol::NecAppleCommand;
-use crate::remotecontrol::{Button, DeviceType, RemoteControl};
-use crate::ProtocolId;
-use Button::*;
+use crate::{
+    protocol::NecAppleCommand,
+    remotecontrol::{Action, DeviceType, RemoteControlModel},
+    ProtocolId,
+};
+use Action::*;
 
+#[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 /// Apple Remote
 pub struct Apple2009;
 
 // (page, cmd) -> Button
-const BUTTONS: &[((u8, u8), Button)] = &[
+const BUTTONS: &[((u8, u8), Action)] = &[
     ((0x0E, 0x01), Menu),
     ((0x0E, 0x02), Play_Pause), // This is sent in combination with Enter (0x2E) and Play/Pause (0x2F)
     ((0x0E, 0x03), Right),
@@ -20,14 +24,14 @@ const BUTTONS: &[((u8, u8), Button)] = &[
     ((0x00, 0x07), BatteryLow),
 ];
 
-impl RemoteControl for Apple2009 {
+impl RemoteControlModel for Apple2009 {
     const MODEL: &'static str = "Apple Remote";
     const DEVTYPE: DeviceType = DeviceType::Generic;
     const PROTOCOL: ProtocolId = ProtocolId::NecApple;
     const ADDRESS: u32 = 0;
     type Cmd = NecAppleCommand;
 
-    fn decode(cmd: &NecAppleCommand) -> Option<Button> {
+    fn decode(cmd: &NecAppleCommand) -> Option<Action> {
         BUTTONS
             .iter()
             .find(|(c, _b)| c == &(cmd.command_page, cmd.command))

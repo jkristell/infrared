@@ -1,13 +1,12 @@
 use core::marker::PhantomData;
 
-use crate::protocol::utils::InfraConstRange;
-use crate::receiver::ConstDecodeStateMachine;
 use crate::{
     protocol::{
         nec::{NecCommand, NecCommandVariant, NecPulseDistance},
+        utils::InfraConstRange,
         Nec,
     },
-    receiver::{DecoderState, DecoderStateMachine, DecodingError, Status},
+    receiver::{ConstDecodeStateMachine, DecoderState, DecoderStateMachine, DecodingError, Status},
 };
 
 pub struct NecReceiverState<C = NecCommand> {
