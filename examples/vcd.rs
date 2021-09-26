@@ -4,26 +4,32 @@ use std::{
     path::Path,
 };
 
-use infrared::receiver::Builder;
+use infrared::Receiver;
 
 fn main() -> io::Result<()> {
     let (parser, resolution, irdata) = vcd_ir_parser("examples/samsung-tv.vcd", "ir")?;
 
-    println!("samplerate: {:?}", resolution);
+    println!("Samples captured at: {:?} Hz", resolution);
 
-    let mut ir_recv = Builder::new().nec_samsung().event_driven().build();
+    let mut ir_recv = Receiver::builder()
+        .resolution(resolution)
+        .nec_samsung()
+        // Uncomment this to parse the command as a remote control button
+        //.remotecontrol(infrared::remotecontrol::nec::SamsungTv)
+        .build();
 
     let mut clock = 0;
+    let mut dt = 0;
 
     for vc in parser {
         let vc = vc?;
         match vc {
             vcd::Command::ChangeScalar(i, v) if i == irdata => {
-                let one = v == vcd::Value::V1;
-                match ir_recv.event(clock, one) {
+                let edge = v == vcd::Value::V1;
+                match ir_recv.event(dt as usize, edge) {
                     Ok(Some(cmd)) => {
-                        // We have a parsed command
-                        println!("Got Command: {:?}", cmd);
+                        // Found something
+                        println!("Cmd: {:?}", cmd);
                     }
                     Ok(None) => {}
                     Err(err) => {
@@ -32,7 +38,8 @@ fn main() -> io::Result<()> {
                 }
             }
             vcd::Command::Timestamp(ts) => {
-                clock = ts as usize;
+                dt = ts - clock;
+                clock = ts;
             }
             _ => (),
         }
