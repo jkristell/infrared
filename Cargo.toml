@@ -10,6 +10,10 @@ keywords = ["infrared", "remote", "rc5", "rc6", "nec"]
 categories = ["no-std", "embedded"]
 license = "MIT OR Apache-2.0"
 
+[workspace]
+members = ["examples/vcd-parser"]
+exclude = ["examples/bluepill"]
+
 [features]
 default = ["nec", "rc5", "rc6", "sbp", "denon", "remotes", "embedded-hal"]
 nec = []
@@ -32,5 +36,4 @@ defmt = { version = "0.2.0", optional = true }
 log = { version = "0.4.11", optional = true }
 
 [dev-dependencies]
-vcd = "0.6.1"
 dummy-pin = "0.1.1"
