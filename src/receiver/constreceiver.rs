@@ -57,16 +57,6 @@ where
     }
 }
 
-impl<SM, MD, const R: usize> ConstReceiver<SM, MD, DefaultInput, R>
-where
-    SM: ConstDecodeStateMachine<R>,
-    MD: Default,
-{
-    pub fn new() -> Self {
-        Self::with_input(DefaultInput)
-    }
-}
-
 #[cfg(feature = "embedded-hal")]
 impl<SM, PIN, const R: usize> ConstReceiver<SM, Event, PinInput<PIN>, R>
 where
@@ -80,7 +70,7 @@ where
 
         match state {
             Status::Done => {
-                let cmd = SM::command(&mut self.state);
+                let cmd = SM::command(&self.state);
                 self.state.reset();
                 Ok(cmd)
             }

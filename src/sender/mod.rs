@@ -5,12 +5,12 @@ use crate::protocol::Protocol;
 mod buffer;
 #[cfg(feature = "embedded-hal")]
 mod hal;
-mod sender;
+mod senders;
 
 pub use buffer::*;
 #[cfg(feature = "embedded-hal")]
 pub use hal::*;
-pub use sender::*;
+pub use senders::*;
 
 pub trait ProtocolEncoder<const FREQ: usize>: Protocol {
     type EncoderData;

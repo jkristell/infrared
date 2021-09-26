@@ -1,17 +1,5 @@
 use crate::sender::{ProtocolEncoder, PulsedataBuffer};
 
-#[derive(Debug, PartialEq, Copy, Clone)]
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
-/// Sender state
-pub enum Status {
-    /// Sender is ready for transmitting
-    Idle,
-    /// Transmitting
-    Transmit(bool),
-    /// Error
-    Error,
-}
-
 pub struct PulsedataSender<const S: usize> {
     pub(crate) ptb: PulsedataBuffer<S>,
     pos: usize,
@@ -19,6 +7,7 @@ pub struct PulsedataSender<const S: usize> {
     ts_lastedge: usize,
 }
 
+#[allow(clippy::new_without_default)]
 impl<const S: usize> PulsedataSender<S> {
     pub fn new() -> Self {
         let ptb = PulsedataBuffer::new();
@@ -66,4 +55,16 @@ impl<const S: usize> PulsedataSender<S> {
     pub fn buffer(&self) -> &[usize] {
         self.ptb.buffer()
     }
+}
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+/// Sender state
+pub enum Status {
+    /// Sender is ready for transmitting
+    Idle,
+    /// Transmitting
+    Transmit(bool),
+    /// Error
+    Error,
 }

@@ -107,7 +107,7 @@ where
         self.protocol()
     }
 
-    /// Use Remotecontrol
+    /// Use Remote control
     pub fn remotecontrol<Remote>(self, _: Remote) -> Builder<SM, S, IN, Button<Remote>>
     where
         Remote: RemoteControlModel,

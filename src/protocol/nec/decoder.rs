@@ -82,7 +82,7 @@ where
         use PulseWidth::*;
 
         if rising {
-            let pulsewidth = ranges.find::<PulseWidth>(state.dt_save + dt).unwrap_or(PulseWidth::NotAPulseWidth);
+            let pulsewidth = ranges.find::<PulseWidth>(state.dt_save + dt).unwrap_or(PulseWidth::Invalid);
 
             let status = match (state.status, pulsewidth) {
                 (Init,              Sync)   => { state.bitbuf = 0; Receiving(0) },
@@ -138,7 +138,7 @@ pub enum PulseWidth {
     Repeat = 1,
     Zero = 2,
     One = 3,
-    NotAPulseWidth = 4,
+    Invalid = 4,
 }
 
 impl From<usize> for PulseWidth {
@@ -148,7 +148,7 @@ impl From<usize> for PulseWidth {
             1 => PulseWidth::Repeat,
             2 => PulseWidth::Zero,
             3 => PulseWidth::One,
-            _ => PulseWidth::NotAPulseWidth,
+            _ => PulseWidth::Invalid,
         }
     }
 }

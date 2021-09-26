@@ -8,7 +8,7 @@ const RC6_TIME_UNIT: usize = 444;
 const TOLERANCE: usize = 12;
 
 const UNITS_AND_TOLERANCE: &[(usize, usize); 6] = &[
-    (RC6_TIME_UNIT * 1, TOLERANCE),
+    (RC6_TIME_UNIT, TOLERANCE),
     (RC6_TIME_UNIT * 2, TOLERANCE),
     (RC6_TIME_UNIT * 3, TOLERANCE),
     (RC6_TIME_UNIT * 4, TOLERANCE),

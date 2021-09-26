@@ -154,6 +154,7 @@ where
     P2::Cmd: Into<CmdEnum>,
     P3::Cmd: Into<CmdEnum>,
 {
+    #[allow(clippy::type_complexity)]
     type Receivers = (
         Receiver<P1, Event, DefaultInput>,
         Receiver<P2, Event, DefaultInput>,
@@ -184,6 +185,7 @@ where
     P3::Cmd: Into<CmdEnum>,
     P4::Cmd: Into<CmdEnum>,
 {
+    #[allow(clippy::type_complexity)]
     type Receivers = (
         Receiver<P1, Event, DefaultInput>,
         Receiver<P2, Event, DefaultInput>,
@@ -223,6 +225,7 @@ where
     P4::Cmd: Into<CmdEnum>,
     P5::Cmd: Into<CmdEnum>,
 {
+    #[allow(clippy::type_complexity)]
     type Receivers = (
         Receiver<P1, Event, DefaultInput>,
         Receiver<P2, Event, DefaultInput>,
@@ -267,6 +270,7 @@ where
     P5::Cmd: Into<CmdEnum>,
     P6::Cmd: Into<CmdEnum>,
 {
+    #[allow(clippy::type_complexity)]
     type Receivers = (
         Receiver<P1, Event, DefaultInput>,
         Receiver<P2, Event, DefaultInput>,

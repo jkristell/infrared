@@ -6,6 +6,7 @@ mod decoder;
 mod error;
 mod iter;
 mod multireceiver;
+#[allow(clippy::module_inception)]
 mod receiver;
 
 pub use builder::*;

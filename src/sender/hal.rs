@@ -32,7 +32,7 @@ where
     }
 
     pub fn buffer(&self) -> &[usize] {
-        &self.buffer.buffer()
+        self.buffer.buffer()
     }
 
     /// Method to be called periodically to update the pwm output
