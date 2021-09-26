@@ -16,7 +16,7 @@ use core::marker::PhantomData;
 
 pub use apple::NecAppleCommand;
 pub use nec16::Nec16Command;
-pub use raw::NecRawCommand;
+pub use raw::NecDebugCmd;
 pub use samsung::NecSamsungCommand;
 pub use standard::NecCommand;
 
@@ -40,7 +40,7 @@ pub type Nec16 = Nec<Nec16Command>;
 pub type NecApple = Nec<NecAppleCommand>;
 
 /// Nec variant without any specific bit unpacking, useful for debugging
-pub type NecDebug = Nec<NecRawCommand>;
+pub type NecDebug = Nec<NecDebugCmd>;
 
 /// Nec Command Variant
 pub trait NecCommandVariant: Sized {

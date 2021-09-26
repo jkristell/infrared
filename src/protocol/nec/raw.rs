@@ -5,11 +5,11 @@ use crate::protocol::nec::{NecCommandVariant, NecPulseDistance, NEC_STANDARD_TIM
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 /// Nec Command without parsing of bit meaning
-pub struct NecRawCommand {
+pub struct NecDebugCmd {
     pub bits: u32,
 }
 
-impl NecCommandVariant for NecRawCommand {
+impl NecCommandVariant for NecDebugCmd {
     const PULSE_DISTANCE: &'static NecPulseDistance = NEC_STANDARD_TIMING;
 
     fn validate(_bits: u32) -> bool {
@@ -17,7 +17,7 @@ impl NecCommandVariant for NecRawCommand {
     }
 
     fn unpack(bits: u32, _repeat: bool) -> Option<Self> {
-        Some(NecRawCommand { bits })
+        Some(NecDebugCmd { bits })
     }
 
     fn pack(&self) -> u32 {

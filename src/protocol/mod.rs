@@ -18,7 +18,7 @@ pub use denon::{Denon, DenonCommand};
 #[doc(inline)]
 pub use nec::{
     Nec, Nec16, Nec16Command, NecApple, NecAppleCommand, NecCommand, NecDebug, NecSamsung,
-    NecSamsungCommand,
+    NecSamsungCommand, NecDebugCmd,
 };
 #[cfg(feature = "rc5")]
 #[doc(inline)]

@@ -1,7 +1,7 @@
 use crate::{
     protocol::{
         DenonCommand, Nec16Command, NecAppleCommand, NecCommand, NecSamsungCommand, Rc5Command,
-        Rc6Command,
+        Rc6Command, NecDebugCmd,
     },
     receiver::{DecoderStateMachine, DefaultInput, Event, PinInput, Receiver},
 };
@@ -27,7 +27,7 @@ impl<Receivers: ReceiverWrapper<N>, IN, const N: usize> MultiReceiver<Receivers,
 
     pub fn event_generic_iter(&mut self, dt: usize, flank: bool) -> impl Iterator<Item = CmdEnum> {
         let arr = self.event_generic(dt, flank);
-        core::array::IntoIter::new(arr).flatten()
+        core::array::IntoIter::new(arr).flat_map(|c| c)
     }
 }
 
@@ -43,7 +43,9 @@ where
 
     pub fn event_iter(&mut self, dt: usize) -> Result<impl Iterator<Item = CmdEnum>, PIN::Error> {
         let arr = self.event(dt)?;
-        Ok(core::array::IntoIter::new(arr).flatten())
+        // Keep the actual commands we got.
+        // Clippy is suggesting that we use flatten here. but that doesn't produce the right result
+        Ok(core::array::IntoIter::new(arr).filter_map(|c| c))
     }
 
     pub fn pin(&mut self) -> &mut PIN {
@@ -62,6 +64,8 @@ pub enum CmdEnum {
     NecSamsung(NecSamsungCommand),
     #[cfg(feature = "nec")]
     NecApple(NecAppleCommand),
+    #[cfg(feature = "nec")]
+    NecDebug(NecDebugCmd),
     #[cfg(feature = "rc5")]
     Rc5(Rc5Command),
     #[cfg(feature = "rc6")]
@@ -92,6 +96,12 @@ impl From<NecSamsungCommand> for CmdEnum {
 impl From<NecAppleCommand> for CmdEnum {
     fn from(cmd: NecAppleCommand) -> CmdEnum {
         CmdEnum::NecApple(cmd)
+    }
+}
+#[cfg(feature = "nec")]
+impl From<NecDebugCmd> for CmdEnum {
+    fn from(cmd: NecDebugCmd) -> CmdEnum {
+        CmdEnum::NecDebug(cmd)
     }
 }
 #[cfg(feature = "rc5")]
