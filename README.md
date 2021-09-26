@@ -1,4 +1,4 @@
-[![crates.io version](https://meritbadge.herokuapp.com/infrared)](https://crates.io/crates/infrared)
+[![crates.io version](https://img.shields.io/crates/v/infrared)](https://crates.io/crates/infrared)
 [![docs.rs](https://docs.rs/infrared/badge.svg)](https://docs.rs/infrared)
 
 # Infrared
