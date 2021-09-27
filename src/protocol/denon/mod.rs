@@ -6,13 +6,13 @@ use crate::{
 #[cfg(test)]
 mod test;
 
-const HEADER_HIGH: usize = 3400;
-const HEADER_LOW: usize = 1600;
-const DATA_HIGH: usize = 480;
-const ZERO_LOW: usize = 360;
-const ONE_LOW: usize = 1200;
+const HEADER_HIGH: u32 = 3400;
+const HEADER_LOW: u32 = 1600;
+const DATA_HIGH: u32 = 480;
+const ZERO_LOW: u32 = 360;
+const ONE_LOW: u32 = 1200;
 
-const PULSELENGTHS: [(usize, usize); 3] = [
+const PULSELENGTHS: [(u32, u32); 3] = [
     ((HEADER_HIGH + HEADER_LOW), 5),
     ((DATA_HIGH + ZERO_LOW), 10),
     ((DATA_HIGH + ONE_LOW), 10),
@@ -28,7 +28,7 @@ impl Protocol for Denon {
 pub struct DenonReceiverState {
     state: DenonStatus,
     buf: u64,
-    dt_save: usize,
+    dt_save: u32,
 }
 
 impl DecoderState for DenonReceiverState {
@@ -58,12 +58,12 @@ impl DecoderStateMachine for Denon {
         }
     }
 
-    fn ranges(resolution: usize) -> Self::RangeData {
+    fn ranges(resolution: u32) -> Self::RangeData {
         InfraConstRange::<3>::new(&PULSELENGTHS, resolution)
     }
 
     #[rustfmt::skip]
-    fn event_full(state: &mut Self::State, ranges: &Self::RangeData, rising: bool, dt: usize) -> DenonStatus {
+    fn event_full(state: &mut Self::State, ranges: &Self::RangeData, rising: bool, dt: u32) -> DenonStatus {
         if rising {
             let pulsewidth = ranges.find::<PulseWidth>(state.dt_save + dt)
                 .unwrap_or(PulseWidth::Fail);
@@ -96,7 +96,7 @@ impl DecoderStateMachine for Denon {
     }
 }
 
-impl<const R: usize> ConstDecodeStateMachine<R> for Denon {
+impl<const R: u32> ConstDecodeStateMachine<R> for Denon {
     const RANGES: Self::RangeData = InfraConstRange::<3>::new(&PULSELENGTHS, R);
 }
 

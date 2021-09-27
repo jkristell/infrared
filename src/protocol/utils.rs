@@ -1,11 +1,11 @@
 use core::ops::Range;
 
 #[derive(Debug)]
-pub struct InfraConstRange<const N: usize>(pub [Range<usize>; N]);
+pub struct InfraConstRange<const N: usize>(pub [Range<u32>; N]);
 
 impl<const N: usize> InfraConstRange<N> {
-    pub const fn new(vals: &[(usize, usize)], resolution: usize) -> Self {
-        const EMPTY_RANGE: Range<usize> = Range { start: 0, end: 0 };
+    pub const fn new(vals: &[(u32, u32)], resolution: u32) -> Self {
+        const EMPTY_RANGE: Range<u32> = Range { start: 0, end: 0 };
         let mut r = [EMPTY_RANGE; N];
 
         let mut i = 0;
@@ -20,12 +20,12 @@ impl<const N: usize> InfraConstRange<N> {
         InfraConstRange(r)
     }
 
-    pub fn find<T: From<usize>>(&self, dt: usize) -> Option<T> {
+    pub fn find<T: From<usize>>(&self, dt: u32) -> Option<T> {
         self.0.iter().position(|r| r.contains(&dt)).map(T::from)
     }
 }
 
-const fn infra_range(samplerate: usize, plen: usize, percent: usize) -> Range<usize> {
+const fn infra_range(samplerate: u32, plen: u32, percent: u32) -> Range<u32> {
     let base = scale_with_samplerate(plen, samplerate);
     let tol = (base * percent) / 100;
 
@@ -35,7 +35,7 @@ const fn infra_range(samplerate: usize, plen: usize, percent: usize) -> Range<us
     }
 }
 
-const fn scale_with_samplerate(len: usize, mut samplerate: usize) -> usize {
+const fn scale_with_samplerate(len: u32, mut samplerate: u32) -> u32 {
     let mut div = 1_000_000;
 
     while len.checked_mul(samplerate).is_none() {
@@ -64,6 +64,6 @@ mod test {
 
     #[test]
     fn size_of_infrarange() {
-        assert_eq!(core::mem::size_of::<InfraConstRange<6>>(), 6 * 8 * 2);
+        assert_eq!(core::mem::size_of::<InfraConstRange<6>>(), 6 * 4 * 2);
     }
 }

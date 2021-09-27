@@ -3,13 +3,13 @@
 use crate::sender::{ProtocolEncoder, PulsedataSender, Status};
 
 /// Embedded hal sender
-pub struct Sender<PwmPin, const FREQ: usize, const BUFSIZE: usize> {
+pub struct Sender<PwmPin, const FREQ: u32, const BUFSIZE: usize> {
     pin: PwmPin,
-    counter: usize,
+    counter: u32,
     buffer: PulsedataSender<BUFSIZE>,
 }
 
-impl<PwmPin, PwmDuty, const F: usize, const S: usize> Sender<PwmPin, F, S>
+impl<PwmPin, PwmDuty, const F: u32, const S: usize> Sender<PwmPin, F, S>
 where
     PwmPin: embedded_hal::PwmPin<Duty = PwmDuty>,
 {
@@ -31,7 +31,7 @@ where
         }
     }
 
-    pub fn buffer(&self) -> &[usize] {
+    pub fn buffer(&self) -> &[u32] {
         self.buffer.buffer()
     }
 

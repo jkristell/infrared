@@ -31,7 +31,7 @@ use embedded_hal::digital::v2::InputPin;
 /// let input_pin = DummyPin::new_high();
 ///
 /// // Resolution of the clock used
-/// const RESOLUTION: usize = 1_000_000;
+/// const RESOLUTION: u32 = 1_000_000;
 ///
 /// let mut receiver = Receiver::builder()
 ///     .rc5()
@@ -84,7 +84,7 @@ use embedded_hal::digital::v2::InputPin;
 /// let input_pin = DummyPin::new_high();
 ///
 /// // Resolution of the timer interrupt in Hz.
-/// const RESOLUTION: usize = 20_000;
+/// const RESOLUTION: u32 = 20_000;
 ///
 /// let mut receiver = Receiver::builder()
 ///     .rc5()
@@ -155,7 +155,7 @@ where
     MD: Default,
     C: From<<SM as Protocol>::Cmd>,
 {
-    pub fn new(resolution: usize) -> Receiver<SM, MD, DefaultInput, C> {
+    pub fn new(resolution: u32) -> Receiver<SM, MD, DefaultInput, C> {
         let state = SM::state();
         let ranges = SM::ranges(resolution);
         let data = MD::default();
@@ -178,7 +178,7 @@ where
     MD: Default,
     C: From<<SM as Protocol>::Cmd>,
 {
-    pub fn with_input(resolution: usize, input: IN) -> Self {
+    pub fn with_input(resolution: u32, input: IN) -> Self {
         let state = SM::state();
         let ranges = SM::ranges(resolution);
         let data = MD::default();
@@ -198,11 +198,7 @@ where
         &self.ranges
     }
 
-    pub fn generic_event(
-        &mut self,
-        dt: usize,
-        edge: bool,
-    ) -> Result<Option<SM::Cmd>, DecodingError> {
+    pub fn generic_event(&mut self, dt: u32, edge: bool) -> Result<Option<SM::Cmd>, DecodingError> {
         // Update state machine
         let state: Status = SM::event_full(&mut self.state, &self.ranges, edge, dt).into();
 
@@ -230,7 +226,7 @@ where
     C: From<<SM as Protocol>::Cmd>,
 {
     /// Create a Receiver with `buf` as input
-    pub fn with_buffer(resolution: usize, buf: &'a [usize]) -> Self {
+    pub fn with_buffer(resolution: u32, buf: &'a [u32]) -> Self {
         Self::with_input(resolution, BufferInput(buf))
     }
 }
@@ -244,7 +240,7 @@ where
     C: From<<SM as Protocol>::Cmd>,
 {
     /// Create a `Receiver` with `pin` as input
-    pub fn with_pin(resolution: usize, pin: PIN) -> Self {
+    pub fn with_pin(resolution: u32, pin: PIN) -> Self {
         Self::with_input(resolution, PinInput(pin))
     }
 }
@@ -254,7 +250,7 @@ where
     SM: DecoderStateMachine,
     C: From<<SM as Protocol>::Cmd>,
 {
-    pub fn event(&mut self, dt: usize, edge: bool) -> Result<Option<C>, DecodingError> {
+    pub fn event(&mut self, dt: u32, edge: bool) -> Result<Option<C>, DecodingError> {
         Ok(self.generic_event(dt, edge)?.map(Into::into))
     }
 }
@@ -271,7 +267,7 @@ where
         }
     }
 
-    pub fn set_buffer(&mut self, b: &'a [usize]) {
+    pub fn set_buffer(&mut self, b: &'a [u32]) {
         self.input.0 = b
     }
 }
@@ -283,7 +279,7 @@ where
     P: InputPin,
     C: From<<SM as Protocol>::Cmd>,
 {
-    pub fn event(&mut self, dt: usize) -> Result<Option<C>, Error<P::Error>> {
+    pub fn event(&mut self, dt: u32) -> Result<Option<C>, Error<P::Error>> {
         let edge = self.input.0.is_low().map_err(Error::Hal)?;
         Ok(self.generic_event(dt, edge)?.map(Into::into))
     }

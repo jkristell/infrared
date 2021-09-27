@@ -3,7 +3,7 @@ use crate::{
     receiver::{ConstDecodeStateMachine, DecoderState, DecoderStateMachine, DecodingError, Status},
 };
 
-const RC5_BASE_TIME: usize = 889;
+const RC5_BASE_TIME: u32 = 889;
 
 impl DecoderStateMachine for Rc5 {
     type InternalStatus = Rc5Status;
@@ -14,12 +14,12 @@ impl DecoderStateMachine for Rc5 {
         Rc5ReceiverState::default()
     }
 
-    fn ranges(resolution: usize) -> Self::RangeData {
+    fn ranges(resolution: u32) -> Self::RangeData {
         InfraConstRange::new(&[(RC5_BASE_TIME, 12), (RC5_BASE_TIME * 2, 10)], resolution)
     }
 
     #[rustfmt::skip]
-    fn event_full(state: &mut Self::State, ranges: &Self::RangeData, rising: bool, dt: usize) -> Self::InternalStatus {
+    fn event_full(state: &mut Self::State, ranges: &Self::RangeData, rising: bool, dt: u32) -> Self::InternalStatus {
         use Rc5Status::*;
 
         // Find this delta t in the defined ranges
@@ -61,7 +61,7 @@ impl DecoderStateMachine for Rc5 {
     }
 }
 
-impl<const R: usize> ConstDecodeStateMachine<R> for Rc5 {
+impl<const R: u32> ConstDecodeStateMachine<R> for Rc5 {
     const RANGES: Self::RangeData =
         InfraConstRange::new(&[(RC5_BASE_TIME, 10), (RC5_BASE_TIME * 2, 10)], R);
 }

@@ -1,7 +1,7 @@
 use crate::{
     protocol::{
-        DenonCommand, Nec16Command, NecAppleCommand, NecCommand, NecSamsungCommand, Rc5Command,
-        Rc6Command, NecDebugCmd,
+        DenonCommand, Nec16Command, NecAppleCommand, NecCommand, NecDebugCmd, NecSamsungCommand,
+        Rc5Command, Rc6Command,
     },
     receiver::{DecoderStateMachine, DefaultInput, Event, PinInput, Receiver},
 };
@@ -14,18 +14,18 @@ pub struct MultiReceiver<Receivers: ReceiverWrapper<N>, IN, const N: usize> {
 }
 
 impl<Receivers: ReceiverWrapper<N>, IN, const N: usize> MultiReceiver<Receivers, IN, N> {
-    pub fn new(res: usize, input: IN) -> Self {
+    pub fn new(res: u32, input: IN) -> Self {
         MultiReceiver {
             input,
             receivers: Receivers::make(res),
         }
     }
 
-    pub fn event_generic(&mut self, dt: usize, edge: bool) -> [Option<CmdEnum>; N] {
+    pub fn event_generic(&mut self, dt: u32, edge: bool) -> [Option<CmdEnum>; N] {
         Receivers::event(&mut self.receivers, dt, edge)
     }
 
-    pub fn event_generic_iter(&mut self, dt: usize, flank: bool) -> impl Iterator<Item = CmdEnum> {
+    pub fn event_generic_iter(&mut self, dt: u32, flank: bool) -> impl Iterator<Item = CmdEnum> {
         let arr = self.event_generic(dt, flank);
         core::array::IntoIter::new(arr).flat_map(|c| c)
     }
@@ -36,12 +36,12 @@ impl<Receivers, PIN: InputPin, const N: usize> MultiReceiver<Receivers, PinInput
 where
     Receivers: ReceiverWrapper<N>,
 {
-    pub fn event(&mut self, dt: usize) -> Result<[Option<CmdEnum>; N], PIN::Error> {
+    pub fn event(&mut self, dt: u32) -> Result<[Option<CmdEnum>; N], PIN::Error> {
         let edge = self.input.0.is_low()?;
         Ok(self.event_generic(dt, edge))
     }
 
-    pub fn event_iter(&mut self, dt: usize) -> Result<impl Iterator<Item = CmdEnum>, PIN::Error> {
+    pub fn event_iter(&mut self, dt: u32) -> Result<impl Iterator<Item = CmdEnum>, PIN::Error> {
         let arr = self.event(dt)?;
         // Keep the actual commands we got.
         // Clippy is suggesting that we use flatten here. but that doesn't produce the right result
@@ -126,9 +126,9 @@ impl From<DenonCommand> for CmdEnum {
 pub trait ReceiverWrapper<const N: usize> {
     type Receivers;
 
-    fn make(res: usize) -> Self::Receivers;
+    fn make(res: u32) -> Self::Receivers;
 
-    fn event(rs: &mut Self::Receivers, dt: usize, flank: bool) -> [Option<CmdEnum>; N];
+    fn event(rs: &mut Self::Receivers, dt: u32, flank: bool) -> [Option<CmdEnum>; N];
 }
 
 impl<P1, P2> ReceiverWrapper<2> for (P1, P2)
@@ -143,11 +143,11 @@ where
         Receiver<P2, Event, DefaultInput>,
     );
 
-    fn make(res: usize) -> Self::Receivers {
+    fn make(res: u32) -> Self::Receivers {
         (Receiver::new(res), Receiver::new(res))
     }
 
-    fn event(rs: &mut Self::Receivers, dt: usize, edge: bool) -> [Option<CmdEnum>; 2] {
+    fn event(rs: &mut Self::Receivers, dt: u32, edge: bool) -> [Option<CmdEnum>; 2] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -171,11 +171,11 @@ where
         Receiver<P3, Event, DefaultInput>,
     );
 
-    fn make(res: usize) -> Self::Receivers {
+    fn make(res: u32) -> Self::Receivers {
         (Receiver::new(res), Receiver::new(res), Receiver::new(res))
     }
 
-    fn event(rs: &mut Self::Receivers, dt: usize, edge: bool) -> [Option<CmdEnum>; 3] {
+    fn event(rs: &mut Self::Receivers, dt: u32, edge: bool) -> [Option<CmdEnum>; 3] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -203,7 +203,7 @@ where
         Receiver<P4, Event, DefaultInput>,
     );
 
-    fn make(res: usize) -> Self::Receivers {
+    fn make(res: u32) -> Self::Receivers {
         (
             Receiver::new(res),
             Receiver::new(res),
@@ -212,7 +212,7 @@ where
         )
     }
 
-    fn event(rs: &mut Self::Receivers, dt: usize, edge: bool) -> [Option<CmdEnum>; 4] {
+    fn event(rs: &mut Self::Receivers, dt: u32, edge: bool) -> [Option<CmdEnum>; 4] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -244,7 +244,7 @@ where
         Receiver<P5, Event, DefaultInput>,
     );
 
-    fn make(res: usize) -> Self::Receivers {
+    fn make(res: u32) -> Self::Receivers {
         (
             Receiver::new(res),
             Receiver::new(res),
@@ -254,7 +254,7 @@ where
         )
     }
 
-    fn event(rs: &mut Self::Receivers, dt: usize, edge: bool) -> [Option<CmdEnum>; 5] {
+    fn event(rs: &mut Self::Receivers, dt: u32, edge: bool) -> [Option<CmdEnum>; 5] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -290,7 +290,7 @@ where
         Receiver<P6, Event, DefaultInput>,
     );
 
-    fn make(res: usize) -> Self::Receivers {
+    fn make(res: u32) -> Self::Receivers {
         (
             Receiver::new(res),
             Receiver::new(res),
@@ -301,7 +301,7 @@ where
         )
     }
 
-    fn event(rs: &mut Self::Receivers, dt: usize, edge: bool) -> [Option<CmdEnum>; 6] {
+    fn event(rs: &mut Self::Receivers, dt: u32, edge: bool) -> [Option<CmdEnum>; 6] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),

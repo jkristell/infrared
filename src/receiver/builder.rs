@@ -35,7 +35,7 @@ pub struct Builder<
     pub(crate) proto: PhantomData<SM>,
     pub(crate) input: IN,
     pub(crate) method: PhantomData<S>,
-    pub(crate) resolution: usize,
+    pub(crate) resolution: u32,
     pub(crate) output: PhantomData<C>,
 }
 
@@ -134,7 +134,7 @@ where
     }
 
     /// The Receiver should read the data from a data buffer
-    pub fn buffer(self, buf: &[usize]) -> Builder<SM, Event, BufferInput<'_>, C> {
+    pub fn buffer(self, buf: &[u32]) -> Builder<SM, Event, BufferInput<'_>, C> {
         Builder {
             resolution: self.resolution,
             proto: PhantomData,
@@ -144,7 +144,7 @@ where
         }
     }
 
-    pub fn resolution(mut self, hz: usize) -> Self {
+    pub fn resolution(mut self, hz: u32) -> Self {
         self.resolution = hz;
         self
     }
@@ -172,7 +172,7 @@ where
     }
 
     /// Create a Receiver with resolution known at build time
-    pub fn build_const<const R: usize>(self) -> ConstReceiver<SM, S, IN, R>
+    pub fn build_const<const R: u32>(self) -> ConstReceiver<SM, S, IN, R>
     where
         SM: ConstDecodeStateMachine<R>,
     {

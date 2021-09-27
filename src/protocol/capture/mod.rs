@@ -33,13 +33,13 @@ impl DecoderStateMachine for Capture {
         }
     }
 
-    fn ranges(_resolution: usize) -> Self::RangeData {}
+    fn ranges(_resolution: u32) -> Self::RangeData {}
 
     fn event_full(
         state: &mut Self::State,
         _: &Self::RangeData,
         _edge: bool,
-        dt: usize,
+        dt: u32,
     ) -> Self::InternalStatus {
         if state.pos >= state.ts.len() {
             return Status::Done;
@@ -56,6 +56,6 @@ impl DecoderStateMachine for Capture {
     }
 }
 
-impl<const R: usize> ConstDecodeStateMachine<R> for Capture {
+impl<const R: u32> ConstDecodeStateMachine<R> for Capture {
     const RANGES: Self::RangeData = ();
 }

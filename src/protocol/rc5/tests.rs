@@ -74,7 +74,7 @@ fn command_mixed() {
 
 #[test]
 fn all_commands() {
-    const SAMPLERATE: usize = 40_000;
+    const SAMPLERATE: u32 = 40_000;
 
     let mut ptb = PulsedataBuffer::<96>::new();
 
@@ -105,7 +105,7 @@ fn timer_resolution() {
     test_freq::<48_000_000>();
 }
 
-fn test_freq<const F: usize>() {
+fn test_freq<const F: u32>() {
     let mut ptb = PulsedataBuffer::<96>::new();
     let cmd: Rc5Command = Rc5Command::new(10, 2, false);
     ptb.load::<Rc5, F>(&cmd);

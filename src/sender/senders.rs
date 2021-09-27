@@ -4,7 +4,7 @@ pub struct PulsedataSender<const S: usize> {
     pub(crate) ptb: PulsedataBuffer<S>,
     pos: usize,
     pub(crate) status: Status,
-    ts_lastedge: usize,
+    ts_lastedge: u32,
 }
 
 #[allow(clippy::new_without_default)]
@@ -27,12 +27,12 @@ impl<const S: usize> PulsedataSender<S> {
     }
 
     /// Load command into internal buffer
-    pub fn load_command<Proto: ProtocolEncoder<F>, const F: usize>(&mut self, c: &Proto::Cmd) {
+    pub fn load_command<Proto: ProtocolEncoder<F>, const F: u32>(&mut self, c: &Proto::Cmd) {
         self.reset();
         self.ptb.load::<Proto, F>(c);
     }
 
-    pub fn tick(&mut self, ts: usize) -> Status {
+    pub fn tick(&mut self, ts: u32) -> Status {
         if let Some(dist) = self.ptb.get(self.pos) {
             let delta_ts = ts.wrapping_sub(self.ts_lastedge);
             if delta_ts >= dist {
@@ -52,7 +52,7 @@ impl<const S: usize> PulsedataSender<S> {
         self.status
     }
 
-    pub fn buffer(&self) -> &[usize] {
+    pub fn buffer(&self) -> &[u32] {
         self.ptb.buffer()
     }
 }

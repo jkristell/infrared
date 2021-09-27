@@ -18,7 +18,7 @@ use embedded_hal::digital::v2::InputPin;
 ///     .build_const::<40_000>();
 /// ```
 ///
-pub struct ConstReceiver<SM, MD, IN, const R: usize>
+pub struct ConstReceiver<SM, MD, IN, const R: u32>
 where
     SM: ConstDecodeStateMachine<R>,
 {
@@ -27,7 +27,7 @@ where
     input: IN,
 }
 
-impl<SM, MD, IN, const R: usize> ConstReceiver<SM, MD, IN, R>
+impl<SM, MD, IN, const R: u32> ConstReceiver<SM, MD, IN, R>
 where
     SM: ConstDecodeStateMachine<R>,
     MD: Default,
@@ -42,7 +42,7 @@ where
 }
 
 #[cfg(feature = "embedded-hal")]
-impl<SM, MD, PIN, const R: usize> ConstReceiver<SM, MD, PinInput<PIN>, R>
+impl<SM, MD, PIN, const R: u32> ConstReceiver<SM, MD, PinInput<PIN>, R>
 where
     SM: ConstDecodeStateMachine<R>,
     MD: Default,
@@ -58,13 +58,13 @@ where
 }
 
 #[cfg(feature = "embedded-hal")]
-impl<SM, PIN, const R: usize> ConstReceiver<SM, Event, PinInput<PIN>, R>
+impl<SM, PIN, const R: u32> ConstReceiver<SM, Event, PinInput<PIN>, R>
 where
     SM: ConstDecodeStateMachine<R>,
     PIN: InputPin,
 {
     #[inline]
-    pub fn event(&mut self, dt: usize) -> Result<Option<SM::Cmd>, Error<PIN::Error>> {
+    pub fn event(&mut self, dt: u32) -> Result<Option<SM::Cmd>, Error<PIN::Error>> {
         let edge = self.input.0.is_low().map_err(Error::Hal)?;
         let state: Status = SM::event(&mut self.state, dt, edge).into();
 
@@ -90,19 +90,19 @@ where
     }
 }
 
-impl<SM, const R: usize> ConstReceiver<SM, Event, DefaultInput, R>
+impl<SM, const R: u32> ConstReceiver<SM, Event, DefaultInput, R>
 where
     SM: ConstDecodeStateMachine<R>,
 {
     #[inline]
-    pub fn event(&mut self, dt: usize, edge: bool) -> Option<()> {
+    pub fn event(&mut self, dt: u32, edge: bool) -> Option<()> {
         SM::event(&mut self.state, dt, edge);
         None
     }
 }
 
 #[cfg(feature = "embedded-hal")]
-impl<SM, PIN, const R: usize> ConstReceiver<SM, Poll, PinInput<PIN>, R>
+impl<SM, PIN, const R: u32> ConstReceiver<SM, Poll, PinInput<PIN>, R>
 where
     SM: ConstDecodeStateMachine<R>,
     PIN: InputPin,

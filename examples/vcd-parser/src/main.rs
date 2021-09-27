@@ -26,7 +26,7 @@ fn main() -> io::Result<()> {
         match vc {
             vcd::Command::ChangeScalar(i, v) if i == irdata => {
                 let edge = v == vcd::Value::V1;
-                match ir_recv.event(dt as usize, edge) {
+                match ir_recv.event(dt as u32, edge) {
                     Ok(Some(cmd)) => {
                         // Found something
                         println!("Cmd: {:?}", cmd);
@@ -51,7 +51,7 @@ fn main() -> io::Result<()> {
 pub fn vcd_ir_parser<P: AsRef<Path>>(
     path: P,
     wire_name: &str,
-) -> io::Result<(vcd::Parser<File>, usize, vcd::IdCode)> {
+) -> io::Result<(vcd::Parser<File>, u32, vcd::IdCode)> {
     let file = File::open(path)?;
     let mut parser = vcd::Parser::new(file);
 
@@ -75,5 +75,5 @@ pub fn vcd_ir_parser<P: AsRef<Path>>(
         _ => panic!("unsupported"),
     };
 
-    Ok((parser, samplerate as usize, data))
+    Ok((parser, samplerate, data))
 }

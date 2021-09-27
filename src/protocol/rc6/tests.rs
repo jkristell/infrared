@@ -8,7 +8,7 @@ use crate::{
 fn newpulse() {
     let cmd = Rc6Command::new(70, 20);
 
-    const SAMPLE_RATE: usize = 1_000_000;
+    const SAMPLE_RATE: u32 = 1_000_000;
 
     let mut sender = PulsedataBuffer::<96>::new();
 
@@ -80,7 +80,7 @@ fn basic() {
 #[test]
 fn all_commands() {
     let mut ptb = PulsedataBuffer::<96>::new();
-    const SAMPLE_RATE: usize = 40_000;
+    const SAMPLE_RATE: u32 = 40_000;
 
     for address in 0..255 {
         for cmdnum in 0..255 {

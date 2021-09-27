@@ -3,17 +3,24 @@ use crate::{
     sender::ProtocolEncoder,
 };
 
-const fn calc_ticks(l: usize, f: usize) -> usize {
+const fn calc_ticks(l: u32, mut f: u32) -> u32 {
     //TODO: Fix overflow
-    f * l / 1_000_000
+    let mut div = 1_000_000;
+
+    if f > 1000 {
+        f /= 1000;
+        div /= 1000;
+    }
+
+    f * l / div
 }
 
-impl<Cmd, const F: usize> ProtocolEncoder<F> for Nec<Cmd>
+impl<Cmd, const F: u32> ProtocolEncoder<F> for Nec<Cmd>
 where
     Cmd: NecCommandVariant,
 {
-    type EncoderData = [usize; 6];
-    const DATA: [usize; 6] = [
+    type EncoderData = [u32; 6];
+    const DATA: [u32; 6] = [
         calc_ticks(Cmd::PULSE_DISTANCE.header_high, F),
         calc_ticks(Cmd::PULSE_DISTANCE.header_low, F),
         calc_ticks(Cmd::PULSE_DISTANCE.repeat_low, F),
@@ -22,7 +29,7 @@ where
         calc_ticks(Cmd::PULSE_DISTANCE.data_one_low, F),
     ];
 
-    fn encode(cmd: &Self::Cmd, b: &mut [usize]) -> usize {
+    fn encode(cmd: &Self::Cmd, b: &mut [u32]) -> usize {
         b[0] = 0;
         b[1] = <Self as ProtocolEncoder<F>>::DATA[0];
         b[2] = <Self as ProtocolEncoder<F>>::DATA[1];

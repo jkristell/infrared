@@ -17,7 +17,7 @@ pub struct NecReceiverState<C = NecCommand> {
     // Nec Command type
     cmd_type: PhantomData<C>,
     // Saved dt
-    dt_save: usize,
+    dt_save: u32,
 }
 
 impl<C: NecCommandVariant> DecoderState for NecReceiverState<C> {
@@ -71,13 +71,13 @@ where
             dt_save: 0,
         }
     }
-    fn ranges(resolution: usize) -> Self::RangeData {
+    fn ranges(resolution: u32) -> Self::RangeData {
         let tols = tolerances(Cmd::PULSE_DISTANCE);
         InfraConstRange::new(&tols, resolution)
     }
 
     #[rustfmt::skip]
-    fn event_full(state: &mut Self::State, ranges: &Self::RangeData, rising: bool, dt: usize) -> Self::InternalStatus {
+    fn event_full(state: &mut Self::State, ranges: &Self::RangeData, rising: bool, dt: u32) -> Self::InternalStatus {
         use InternalStatus::*;
         use PulseWidth::*;
 
@@ -127,7 +127,7 @@ where
     }
 }
 
-impl<Cmd: NecCommandVariant, const R: usize> ConstDecodeStateMachine<R> for Nec<Cmd> {
+impl<Cmd: NecCommandVariant, const R: u32> ConstDecodeStateMachine<R> for Nec<Cmd> {
     const RANGES: Self::RangeData = InfraConstRange::new(&tolerances(Cmd::PULSE_DISTANCE), R);
 }
 
@@ -153,7 +153,7 @@ impl From<usize> for PulseWidth {
     }
 }
 
-const fn tolerances(t: &NecPulseDistance) -> [(usize, usize); 4] {
+const fn tolerances(t: &NecPulseDistance) -> [(u32, u32); 4] {
     [
         ((t.header_high + t.header_low), 10),
         ((t.header_high + t.repeat_low), 10),

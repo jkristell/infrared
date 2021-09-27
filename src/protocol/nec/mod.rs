@@ -78,15 +78,15 @@ pub(crate) const NEC_SAMSUNG_TIMING: &NecPulseDistance = &NecPulseDistance {
 #[derive(Copy, Clone)]
 pub struct NecPulseDistance {
     /// Header high
-    header_high: usize,
+    header_high: u32,
     /// Header low
-    header_low: usize,
+    header_low: u32,
     /// Repeat low
-    repeat_low: usize,
+    repeat_low: u32,
     /// Data high
-    data_high: usize,
+    data_high: u32,
     /// Zero low
-    data_zero_low: usize,
+    data_zero_low: u32,
     /// One low
-    data_one_low: usize,
+    data_one_low: u32,
 }

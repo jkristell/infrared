@@ -133,7 +133,7 @@ fn cmd_nec16() {
 
 #[test]
 fn all_nec_commands() {
-    const FREQUENCY: usize = 40_000;
+    const FREQUENCY: u32 = 40_000;
     let mut ptb = PulsedataBuffer::<96>::new();
 
     for address in 0..255 {
@@ -165,7 +165,7 @@ fn clock_frequencies() {
     one_freq::<48_000_000>();
 }
 
-fn one_freq<const F: usize>() {
+fn one_freq<const F: u32>() {
     let mut ptb = PulsedataBuffer::<96>::new();
 
     let cmd: NecCommand = NecCommand {

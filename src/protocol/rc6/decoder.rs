@@ -3,11 +3,11 @@ use crate::{
     receiver::{ConstDecodeStateMachine, DecoderState, DecoderStateMachine, DecodingError, Status},
 };
 
-const RC6_TIME_UNIT: usize = 444;
+const RC6_TIME_UNIT: u32 = 444;
 
-const TOLERANCE: usize = 12;
+const TOLERANCE: u32 = 12;
 
-const UNITS_AND_TOLERANCE: &[(usize, usize); 6] = &[
+const UNITS_AND_TOLERANCE: &[(u32, u32); 6] = &[
     (RC6_TIME_UNIT, TOLERANCE),
     (RC6_TIME_UNIT * 2, TOLERANCE),
     (RC6_TIME_UNIT * 3, TOLERANCE),
@@ -31,12 +31,12 @@ impl DecoderStateMachine for Rc6 {
         }
     }
 
-    fn ranges(resolution: usize) -> Self::RangeData {
+    fn ranges(resolution: u32) -> Self::RangeData {
         InfraConstRange::new(UNITS_AND_TOLERANCE, resolution)
     }
 
     #[rustfmt::skip]
-    fn event_full(state: &mut Rc6ReceiverState, ranges: &Self::RangeData, rising: bool, dt: usize) -> Rc6Status {
+    fn event_full(state: &mut Rc6ReceiverState, ranges: &Self::RangeData, rising: bool, dt: u32) -> Rc6Status {
         use Rc6Status::*;
 
         // Find the nbr of time unit ticks the dt represents
@@ -96,7 +96,7 @@ impl DecoderStateMachine for Rc6 {
     }
 }
 
-impl<const R: usize> ConstDecodeStateMachine<R> for Rc6 {
+impl<const R: u32> ConstDecodeStateMachine<R> for Rc6 {
     const RANGES: Self::RangeData = InfraConstRange::new(UNITS_AND_TOLERANCE, R);
 }
 

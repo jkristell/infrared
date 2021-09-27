@@ -16,7 +16,7 @@ pub trait DecoderStateMachine: Protocol {
 
     /// Create the timer dependent ranges
     /// `resolution`: Timer resolution
-    fn ranges(resolution: usize) -> Self::RangeData;
+    fn ranges(resolution: u32) -> Self::RangeData;
 
     /// Notify the state machine of a new event
     /// * `edge`: true = positive edge, false = negative edge
@@ -25,7 +25,7 @@ pub trait DecoderStateMachine: Protocol {
         res: &mut Self::State,
         rd: &Self::RangeData,
         edge: bool,
-        delta_t: usize,
+        delta_t: u32,
     ) -> Self::InternalStatus;
 
     /// Get the command
@@ -33,10 +33,10 @@ pub trait DecoderStateMachine: Protocol {
     fn command(state: &Self::State) -> Option<Self::Cmd>;
 }
 
-pub trait ConstDecodeStateMachine<const R: usize>: DecoderStateMachine {
+pub trait ConstDecodeStateMachine<const R: u32>: DecoderStateMachine {
     const RANGES: Self::RangeData;
 
-    fn event(res: &mut Self::State, delta_samples: usize, edge: bool) -> Self::InternalStatus {
+    fn event(res: &mut Self::State, delta_samples: u32, edge: bool) -> Self::InternalStatus {
         Self::event_full(res, &Self::RANGES, edge, delta_samples)
     }
 }

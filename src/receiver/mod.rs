@@ -21,16 +21,16 @@ pub struct DefaultInput;
 /// Input from pin
 pub struct PinInput<P>(pub P);
 /// Input from buffer
-pub struct BufferInput<'a>(&'a [usize]);
+pub struct BufferInput<'a>(&'a [u32]);
 
 #[derive(Default)]
 /// Periodic Poll
 pub struct Poll {
-    clock: usize,
+    clock: u32,
     /// Last seen edge
     edge: bool,
     /// Seen at
-    last_edge: usize,
+    last_edge: u32,
 }
 
 #[derive(Default)]

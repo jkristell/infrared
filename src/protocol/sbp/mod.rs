@@ -29,7 +29,7 @@ pub struct SbpReceiverState {
     state: SbpStatus,
     address: u16,
     command: u32,
-    since_rising: usize,
+    since_rising: u32,
 }
 
 impl DecoderState for SbpReceiverState {
@@ -120,13 +120,13 @@ impl DecoderStateMachine for Sbp {
         }
     }
 
-    fn ranges(resolution: usize) -> Self::RangeData {
+    fn ranges(resolution: u32) -> Self::RangeData {
         let nsamples = nsamples_from_timing(&TIMING);
         InfraConstRange::<4>::new(&nsamples, resolution)
     }
 
     #[rustfmt::skip]
-    fn event_full(state: &mut Self::State, ranges: &Self::RangeData, rising: bool, dt: usize) -> SbpStatus {
+    fn event_full(state: &mut Self::State, ranges: &Self::RangeData, rising: bool, dt: u32) -> SbpStatus {
         use SbpPulse::*;
         use SbpStatus::*;
 
@@ -168,7 +168,7 @@ impl DecoderStateMachine for Sbp {
     }
 }
 
-impl<const R: usize> ConstDecodeStateMachine<R> for Sbp {
+impl<const R: u32> ConstDecodeStateMachine<R> for Sbp {
     const RANGES: Self::RangeData = InfraConstRange::new(&nsamples_from_timing(&TIMING), R);
 }
 
@@ -184,7 +184,7 @@ impl From<SbpStatus> for Status {
     }
 }
 
-const fn nsamples_from_timing(t: &SbpTiming) -> [(usize, usize); 4] {
+const fn nsamples_from_timing(t: &SbpTiming) -> [(u32, u32); 4] {
     [
         ((t.hh + t.hl), 5),
         ((t.data + t.pause), 5),
@@ -195,17 +195,17 @@ const fn nsamples_from_timing(t: &SbpTiming) -> [(usize, usize); 4] {
 
 struct SbpTiming {
     /// Header high
-    hh: usize,
+    hh: u32,
     /// Header low
-    hl: usize,
+    hl: u32,
     /// Repeat low
-    pause: usize,
+    pause: u32,
     /// Data high
-    data: usize,
+    data: u32,
     /// Zero low
-    zero: usize,
+    zero: u32,
     /// One low
-    one: usize,
+    one: u32,
 }
 
 const TIMING: SbpTiming = SbpTiming {

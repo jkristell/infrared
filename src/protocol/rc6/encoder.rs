@@ -1,10 +1,10 @@
 use crate::{protocol::Rc6, sender::ProtocolEncoder};
 
-impl<const F: usize> ProtocolEncoder<F> for Rc6 {
-    type EncoderData = [usize; 1];
+impl<const F: u32> ProtocolEncoder<F> for Rc6 {
+    type EncoderData = [u32; 1];
     const DATA: Self::EncoderData = [((444 * F) / 1_000_000)];
 
-    fn encode(cmd: &Self::Cmd, b: &mut [usize]) -> usize {
+    fn encode(cmd: &Self::Cmd, b: &mut [u32]) -> usize {
         use Level::*;
 
         let rc6len = <Self as ProtocolEncoder<F>>::DATA[0];
@@ -48,12 +48,12 @@ impl<const F: usize> ProtocolEncoder<F> for Rc6 {
 
 #[derive(Copy, Clone, PartialEq)]
 enum Level {
-    High(usize),
-    Low(usize),
+    High(u32),
+    Low(u32),
 }
 
 /// Construct the leader
-const fn leader(toggle: bool, rc6len: usize) -> [Level; 12] {
+const fn leader(toggle: bool, rc6len: u32) -> [Level; 12] {
     use Level::*;
     [
         // Leader
@@ -83,7 +83,7 @@ const fn leader(toggle: bool, rc6len: usize) -> [Level; 12] {
     ]
 }
 
-const fn payload(bits: u16, rc6len: usize) -> [Level; 32] {
+const fn payload(bits: u16, rc6len: u32) -> [Level; 32] {
     let mut lvls = [Level::Low(0); 32];
     let mut i = 0;
     let mut b = 0;
