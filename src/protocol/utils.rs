@@ -30,8 +30,8 @@ const fn infra_range(samplerate: u32, plen: u32, percent: u32) -> Range<u32> {
     let tol = (base * percent) / 100;
 
     Range {
-        start: base - tol - 2,
-        end: base + tol + 4,
+        start: base - tol,
+        end: base + tol,
     }
 }
 
