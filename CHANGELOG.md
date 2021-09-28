@@ -1,11 +1,13 @@
 # Changelog
 
-## [Unreleased]
- - Add the ability to specify a remote control with a Receiver
+## [0.13.0] - 2021-09-28
+ - Added the ability to specify a remote control with a Receiver
  - Button renamed to Action
  - New Button type is a wrapper around a Command and an Action
+ - Switched from usize to u32 as the integer type in the APIs
+ - Rewrote MultiReceiver
 
-## [0.12.0]
+## [0.12.0] - 2021-07-05
  - Merged all the Receiver types into one.
  - Lots of API changes
  - Lots of refactoring
