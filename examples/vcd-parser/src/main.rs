@@ -7,7 +7,7 @@ use std::{
 use infrared::Receiver;
 
 fn main() -> io::Result<()> {
-    let (parser, resolution, irdata) = vcd_ir_parser("examples/samsung-tv.vcd", "ir")?;
+    let (parser, resolution, irdata) = vcd_ir_parser("samsung-tv.vcd", "ir")?;
 
     println!("Samples captured at: {:?} Hz", resolution);
 
