@@ -105,11 +105,13 @@ mod app {
 
         // Run the receiver with native resolution and let embedded time to the conversion
         let ir_rx = infrared::Receiver::with_pin(1_000_000, rx_pin);
-            //.nec_apple()
-            //.resolution(1_000_000)
-            //.remote_control(IrRemote::default())
-            //.pin(rx_pin)
-            //.build();
+            //NOTE: Or use the builder:
+            // infrared::Receiver::builder()
+            //      .nec_apple()
+            //      .resolution(1_000_000)
+            //      .remote_control(IrRemote::default())
+            //      .pin(rx_pin)
+            //      .build();
 
         let mono_clock = clocks.hclk().0;
         let mono = DwtSystick::new(&mut cx.core.DCB, cx.core.DWT, cx.core.SYST, mono_clock);
@@ -191,8 +193,6 @@ mod app {
 fn send_mousereport(kbd: &HIDClass<UsbBusType>, report: MouseReport) {
     loop {
         let r = kbd.push_input(&report);
-        break
-            /*
         match r {
             Ok(_) => break,
             Err(UsbError::WouldBlock) => {
@@ -200,8 +200,6 @@ fn send_mousereport(kbd: &HIDClass<UsbBusType>, report: MouseReport) {
             }
             Err(_) => break,
         }
-
-             */
     }
 }
 
