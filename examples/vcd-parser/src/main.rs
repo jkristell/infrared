@@ -3,17 +3,18 @@ use std::{
     io::{self, ErrorKind},
     path::Path,
 };
+use infrared::protocol::Mitsubishi;
 
 use infrared::Receiver;
 
 fn main() -> io::Result<()> {
-    let (parser, resolution, irdata) = vcd_ir_parser("samsung-tv.vcd", "ir")?;
+    let (parser, resolution, irdata) = vcd_ir_parser("ac2.vcd", "D0")?;
 
     println!("Samples captured at: {:?} Hz", resolution);
 
     let mut ir_recv = Receiver::builder()
         .resolution(resolution)
-        .nec_samsung()
+        .protocol::<Mitsubishi>()
         // Uncomment this to parse the command as a remote control button
         //.remotecontrol(infrared::remotecontrol::nec::SamsungTv)
         .build();
@@ -31,7 +32,8 @@ fn main() -> io::Result<()> {
                         // Found something
                         println!("Cmd: {:?}", cmd);
                     }
-                    Ok(None) => {}
+                    Ok(None) => {
+                    }
                     Err(err) => {
                         println!("Infrared Receiver Error: {:?}", err);
                     }
@@ -58,7 +60,7 @@ pub fn vcd_ir_parser<P: AsRef<Path>>(
     // Parse the header and find the wires
     let header = parser.parse_header()?;
     let data = header
-        .find_var(&["top", wire_name])
+        .find_var(&["libsigrok", wire_name])
         .ok_or_else(|| {
             io::Error::new(
                 ErrorKind::InvalidInput,
