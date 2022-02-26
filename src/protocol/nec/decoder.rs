@@ -1,15 +1,15 @@
 use core::marker::PhantomData;
 
+use crate::receiver::time::{InfraMonotonic, PulseSpans};
 use crate::{
     protocol::{
-        nec::{NecCommand, NecCommandVariant, NecPulseDistance},
-        utils::InfraConstRange,
+        nec::{NecCommand, NecCommandVariant},
         Nec,
     },
-    receiver::{ConstDecodeStateMachine, DecoderState, DecoderStateMachine, DecodingError, Status},
+    receiver::{DecoderState, DecoderStateMachine, DecodingError, Status},
 };
 
-pub struct NecReceiverState<C = NecCommand> {
+pub struct NecReceiverState<Mono: InfraMonotonic, C = NecCommand> {
     // State
     status: InternalStatus,
     // Data buffer
@@ -17,13 +17,15 @@ pub struct NecReceiverState<C = NecCommand> {
     // Nec Command type
     cmd_type: PhantomData<C>,
     // Saved dt
-    dt_save: u32,
+    dt_save: Mono::Duration,
+    dt_int: u32,
 }
 
-impl<C: NecCommandVariant> DecoderState for NecReceiverState<C> {
+impl<C: NecCommandVariant, Mono: InfraMonotonic> DecoderState for NecReceiverState<Mono, C> {
     fn reset(&mut self) {
         self.status = InternalStatus::Init;
-        self.dt_save = 0;
+        self.dt_save = Mono::ZERO_DURATION;
+        self.dt_int = 0;
     }
 }
 
@@ -55,34 +57,55 @@ impl From<InternalStatus> for Status {
     }
 }
 
-impl<Cmd> DecoderStateMachine for Nec<Cmd>
+impl<Cmd, Time> DecoderStateMachine<Time> for Nec<Cmd>
 where
     Cmd: NecCommandVariant,
+    Time: InfraMonotonic,
 {
-    type State = NecReceiverState<Cmd>;
-    type RangeData = InfraConstRange<4>;
+    type State = NecReceiverState<Time, Cmd>;
     type InternalStatus = InternalStatus;
+
+    const PULSE_LENGTHS: [u32; 8] = [
+        Cmd::PULSE_DISTANCE.header_high + Cmd::PULSE_DISTANCE.header_low,
+        Cmd::PULSE_DISTANCE.header_high + Cmd::PULSE_DISTANCE.repeat_low,
+        Cmd::PULSE_DISTANCE.data_high + Cmd::PULSE_DISTANCE.data_zero_low,
+        Cmd::PULSE_DISTANCE.data_high + Cmd::PULSE_DISTANCE.data_one_low,
+        0,
+        0,
+        0,
+        0,
+    ];
+
+    const TOLERANCE: [u32; 8] = [7, 7, 5, 5, 0, 0, 0, 0];
 
     fn state() -> Self::State {
         NecReceiverState {
             status: InternalStatus::Init,
             bitbuf: 0,
             cmd_type: Default::default(),
-            dt_save: 0,
+            dt_save: Time::ZERO_DURATION,
+            dt_int: 0,
         }
-    }
-    fn ranges(resolution: u32) -> Self::RangeData {
-        let tols = tolerances(Cmd::PULSE_DISTANCE);
-        InfraConstRange::new(&tols, resolution)
     }
 
     #[rustfmt::skip]
-    fn event_full(state: &mut Self::State, ranges: &Self::RangeData, rising: bool, dt: u32) -> Self::InternalStatus {
+    fn new_event(
+        state: &mut Self::State,
+        spans: &PulseSpans<Time::Duration>,
+        rising: bool,
+        dur: Time::Duration,
+    ) -> Self::InternalStatus {
+
         use InternalStatus::*;
         use PulseWidth::*;
 
         if rising {
-            let pulsewidth = ranges.find::<PulseWidth>(state.dt_save + dt).unwrap_or(PulseWidth::Invalid);
+
+            let total_duration = dur + state.dt_save;
+
+            let pulsewidth = Time::find::<PulseWidth>(spans, total_duration)
+                .unwrap_or(PulseWidth::Invalid);
+
 
             let status = match (state.status, pulsewidth) {
                 (Init,              Sync)   => { state.bitbuf = 0; Receiving(0) },
@@ -109,10 +132,10 @@ where
 
             state.status = status;
 
-            state.dt_save = 0;
+            state.dt_save = Time::ZERO_DURATION;
         } else {
             // Save
-            state.dt_save = dt;
+            state.dt_save = dur;
         }
 
         state.status
@@ -125,10 +148,6 @@ where
             _ => None,
         }
     }
-}
-
-impl<Cmd: NecCommandVariant, const R: u32> ConstDecodeStateMachine<R> for Nec<Cmd> {
-    const RANGES: Self::RangeData = InfraConstRange::new(&tolerances(Cmd::PULSE_DISTANCE), R);
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -151,13 +170,4 @@ impl From<usize> for PulseWidth {
             _ => PulseWidth::Invalid,
         }
     }
-}
-
-const fn tolerances(t: &NecPulseDistance) -> [(u32, u32); 4] {
-    [
-        ((t.header_high + t.header_low), 7),
-        ((t.header_high + t.repeat_low), 7),
-        ((t.data_high + t.data_zero_low), 5),
-        ((t.data_high + t.data_one_low), 5),
-    ]
 }

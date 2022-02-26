@@ -1,29 +1,31 @@
+use crate::receiver::time::{InfraMonotonic, PulseSpans};
 use crate::{
-    protocol::{rc5::Rc5Command, utils::InfraConstRange, Rc5},
-    receiver::{ConstDecodeStateMachine, DecoderState, DecoderStateMachine, DecodingError, Status},
+    protocol::{rc5::Rc5Command, Rc5},
+    receiver::{DecoderState, DecoderStateMachine, DecodingError, Status},
 };
 
 const RC5_BASE_TIME: u32 = 889;
 
-impl DecoderStateMachine for Rc5 {
-    type InternalStatus = Rc5Status;
+impl<Time: InfraMonotonic> DecoderStateMachine<Time> for Rc5 {
     type State = Rc5ReceiverState;
-    type RangeData = InfraConstRange<2>;
+    type InternalStatus = Rc5Status;
+    const PULSE_LENGTHS: [u32; 8] = [RC5_BASE_TIME, 2 * RC5_BASE_TIME, 0, 0, 0, 0, 0, 0];
+    const TOLERANCE: [u32; 8] = [12, 10, 0, 0, 0, 0, 0, 0];
 
     fn state() -> Self::State {
         Rc5ReceiverState::default()
     }
 
-    fn ranges(resolution: u32) -> Self::RangeData {
-        InfraConstRange::new(&[(RC5_BASE_TIME, 12), (RC5_BASE_TIME * 2, 10)], resolution)
-    }
-
-    #[rustfmt::skip]
-    fn event_full(state: &mut Self::State, ranges: &Self::RangeData, rising: bool, dt: u32) -> Self::InternalStatus {
+    fn new_event(
+        state: &mut Self::State,
+        spans: &PulseSpans<Time::Duration>,
+        rising: bool,
+        delta_t: Time::Duration,
+    ) -> Self::InternalStatus {
         use Rc5Status::*;
 
         // Find this delta t in the defined ranges
-        let clock_ticks = ranges.find::<usize>(dt);
+        let clock_ticks = Time::find::<usize>(spans, delta_t);
 
         if let Some(ticks) = clock_ticks {
             state.clock += ticks + 1;
@@ -34,23 +36,29 @@ impl DecoderStateMachine for Rc5 {
         let is_odd = state.clock & 1 == 0;
 
         state.status = match (state.status, rising, clock_ticks) {
-
-            (Idle,      false,    _) => Idle,
-            (Idle,      true,     _) => {
+            (Idle, false, _) => Idle,
+            (Idle, true, _) => {
                 state.clock = 0;
-                state.bitbuf |= 1 << 13; Data(12)
+                state.bitbuf |= 1 << 13;
+                Data(12)
             }
 
-            (Data(0),   true,     Some(_)) if is_odd => { state.bitbuf |= 1; Done }
-            (Data(0),   false,    Some(_)) if is_odd => Done,
+            (Data(0), true, Some(_)) if is_odd => {
+                state.bitbuf |= 1;
+                Done
+            }
+            (Data(0), false, Some(_)) if is_odd => Done,
 
-            (Data(bit), true,     Some(_)) if is_odd => { state.bitbuf |= 1 << bit; Data(bit - 1) }
-            (Data(bit), false,    Some(_)) if is_odd => Data(bit - 1),
+            (Data(bit), true, Some(_)) if is_odd => {
+                state.bitbuf |= 1 << bit;
+                Data(bit - 1)
+            }
+            (Data(bit), false, Some(_)) if is_odd => Data(bit - 1),
 
-            (Data(bit), _,          Some(_)) => Data(bit),
-            (Data(_),   _,          None) => Err(DecodingError::Data),
-            (Done,      _,          _) => Done,
-            (Err(err),  _,          _) => Err(err),
+            (Data(bit), _, Some(_)) => Data(bit),
+            (Data(_), _, None) => Err(DecodingError::Data),
+            (Done, _, _) => Done,
+            (Err(err), _, _) => Err(err),
         };
 
         state.status
@@ -59,11 +67,6 @@ impl DecoderStateMachine for Rc5 {
     fn command(state: &Self::State) -> Option<Self::Cmd> {
         Some(Rc5Command::unpack(state.bitbuf))
     }
-}
-
-impl<const R: u32> ConstDecodeStateMachine<R> for Rc5 {
-    const RANGES: Self::RangeData =
-        InfraConstRange::new(&[(RC5_BASE_TIME, 10), (RC5_BASE_TIME * 2, 10)], R);
 }
 
 #[derive(Default)]

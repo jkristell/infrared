@@ -60,8 +60,10 @@ fn command_mixed() {
 
     let mut r = crate::Receiver::builder()
         .rc5()
+        .resolution(40_000).buffer(&dists)
+
         .remotecontrol(rc5::CdPlayer)
-        .resolution(40_000).buffer(&dists).build();
+        .build();
 
     let v: std::vec::Vec<_> = r.iter().collect();
     assert_eq!(v.len(), 3);

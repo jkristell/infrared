@@ -5,16 +5,16 @@ use crate::{
 
 pub struct BufferIterator<'a, SM, C>
 where
-    SM: DecoderStateMachine,
+    SM: DecoderStateMachine<u32>,
     C: From<<SM as Protocol>::Cmd>,
 {
     pub(crate) pos: usize,
-    pub(crate) receiver: &'a mut Receiver<SM, Event, BufferInput<'a>, C>,
+    pub(crate) receiver: &'a mut Receiver<SM, Event, BufferInput<'a>, u32, C>,
 }
 
 impl<'a, SM, C> Iterator for BufferIterator<'a, SM, C>
 where
-    SM: DecoderStateMachine,
+    SM: DecoderStateMachine<u32>,
     C: From<<SM as Protocol>::Cmd>,
 {
     type Item = C;
@@ -29,9 +29,9 @@ where
             let dt_us = self.receiver.input.0[self.pos];
             self.pos += 1;
 
-            let state: Status = SM::event_full(
+            let state: Status = SM::new_event(
                 &mut self.receiver.state,
-                &self.receiver.ranges,
+                &self.receiver.spans,
                 pos_edge,
                 dt_us,
             )

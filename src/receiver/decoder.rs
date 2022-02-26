@@ -1,44 +1,35 @@
+use crate::receiver::time::InfraMonotonic;
 use crate::{receiver::DecodingError, Protocol};
 use core::fmt::Debug;
 
+use super::time::PulseSpans;
+
 /// Protocol decode state machine
-pub trait DecoderStateMachine: Protocol {
+pub trait DecoderStateMachine<Time: InfraMonotonic>: Protocol {
     /// Decoder state
     type State: DecoderState;
-    /// The pulsewidth ranges
-    type RangeData: Debug;
-
     /// Internal State
     type InternalStatus: Into<Status>;
+
+    const PULSE_LENGTHS: [u32; 8];
+    const TOLERANCE: [u32; 8];
 
     /// Create the resources
     fn state() -> Self::State;
 
-    /// Create the timer dependent ranges
-    /// `resolution`: Timer resolution
-    fn ranges(resolution: u32) -> Self::RangeData;
-
     /// Notify the state machine of a new event
     /// * `edge`: true = positive edge, false = negative edge
     /// * `dt` : Time in micro seconds since last transition
-    fn event_full(
+    fn new_event(
         res: &mut Self::State,
-        rd: &Self::RangeData,
+        spans: &PulseSpans<Time::Duration>,
         edge: bool,
-        delta_t: u32,
+        dt: Time::Duration,
     ) -> Self::InternalStatus;
 
     /// Get the command
     /// Returns the data if State == Done, otherwise None
     fn command(state: &Self::State) -> Option<Self::Cmd>;
-}
-
-pub trait ConstDecodeStateMachine<const R: u32>: DecoderStateMachine {
-    const RANGES: Self::RangeData;
-
-    fn event(res: &mut Self::State, delta_samples: u32, edge: bool) -> Self::InternalStatus {
-        Self::event_full(res, &Self::RANGES, edge, delta_samples)
-    }
 }
 
 pub trait DecoderState {

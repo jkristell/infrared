@@ -1,3 +1,4 @@
+use crate::receiver::time::FugitMono;
 use crate::{
     protocol::{
         nec::{Nec16Command, NecAppleCommand, NecCommand, NecCommandVariant, NecSamsungCommand},
@@ -7,6 +8,7 @@ use crate::{
     sender::PulsedataBuffer,
     Receiver,
 };
+use fugit::TimerDurationU32;
 
 #[test]
 #[rustfmt::skip]
@@ -66,7 +68,7 @@ fn apple_rem() {
 
     let iter = brecv.iter();
 
-    println!("{:?}", iter.receiver.ranges);
+    println!("{:?}", iter.receiver.spans);
 
     let cmds = iter.collect::<std::vec::Vec<_>>();
     //assert_eq!(cmds.len(), 2);
@@ -241,6 +243,57 @@ fn repeat() {
     let iter = receiver.iter();
 
     let cmds = iter.collect::<std::vec::Vec<_>>();
+
+    println!("{:?}", cmds);
+
+    assert_eq!(cmds.len(), 8);
+    assert_eq!(cmds[0].repeat, false);
+    assert_eq!(cmds[1].repeat, true);
+    assert_eq!(cmds[7].repeat, true);
+}
+
+#[test]
+fn fugit() {
+    #[rustfmt::skip]
+        let data = [
+        // Command
+        0, 9130, 4532, 571, 562, 571, 562, 571, 562, 570, 563, 572, 562, 571, 562, 570, 562, 571,
+        562, 571, 1699, 570, 1697, 571, 1697, 571, 1698, 572, 1697, 570, 1699, 570, 1698, 571,
+        1698, 571, 562, 571, 563, 569, 564, 571, 1697, 571, 1698, 571, 562, 572, 562, 571, 562,
+        571, 1697, 571, 1697, 571, 1698, 570, 563, 571, 562, 569, 1698, 571, 1698, 570, 1699, 571,
+        // Repeats
+        40648, 9124, 2260, 571,
+        97387, 9123, 2259, 571,
+        97385, 9125, 2260, 571,
+        97398, 9126, 2260, 571,
+        97380, 9120, 2258, 571,
+        97373, 9124, 2259, 572,
+        97409, 9124, 2258, 571,
+        97387
+    ];
+
+    let mut receiver = Receiver::builder()
+        .nec()
+        .time_type::<FugitMono<1_000_000>>()
+        .build();
+
+    println!("{:?}", receiver.spans());
+
+    let mut cmds = std::vec::Vec::new();
+
+    let mut edge = false;
+    for dt in &data {
+        edge = !edge;
+
+        let dtf = TimerDurationU32::from_ticks(*dt);
+
+        let s = receiver.generic_event(dtf, edge);
+
+        if let Ok(Some(cmd)) = s {
+            println!("Fugit: {:?}", cmd);
+            cmds.push(cmd);
+        }
+    }
 
     assert_eq!(cmds.len(), 8);
     assert_eq!(cmds[0].repeat, false);

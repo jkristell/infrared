@@ -13,6 +13,7 @@ use infrared::{
     remotecontrol::{nec::Apple2009, Action, Button},
     Receiver,
 };
+use infrared::receiver::time::FugitMono;
 use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Edge, ExtiPin, Floating, Input},
     pac,
@@ -28,6 +29,7 @@ use usbd_hid::{
     hid_class::HIDClass,
 };
 
+
 #[rtic::app(device = stm32f1xx_hal::stm32, peripherals = true, dispatchers = [USART1])]
 mod app {
     use super::*;
@@ -38,7 +40,7 @@ mod app {
     type RxPin = PB8<Input<Floating>>;
     type IrProto = NecApple;
     type IrRemote = Apple2009;
-    type IrReceiver = Receiver<IrProto, Event, PinInput<RxPin>, Button<IrRemote>>;
+    type IrReceiver = Receiver<IrProto, Event, PinInput<RxPin>, TimerInstantU32<MONOTIMER_FREQ>, Button<IrRemote>>;
 
     #[monotonic(binds = TIM3, default = true)]
     type Monotonic = stm32f1xx_hal::timer::MonoTimer<pac::TIM3, MONOTIMER_FREQ>;
@@ -52,7 +54,6 @@ mod app {
     #[local]
     struct Local {
         ir_rx: IrReceiver,
-        last_edge_ts: TimerInstantU32<{ app::MONOTIMER_FREQ }>,
     }
 
     #[init(
@@ -120,7 +121,6 @@ mod app {
 
         let local = Local {
             ir_rx,
-            last_edge_ts: Monotonic::zero(),
         };
 
         (shared, local, init::Monotonics(mono))
@@ -134,24 +134,17 @@ mod app {
         }
     }
 
-    #[task(binds = EXTI9_5, priority = 2, local = [ir_rx, last_edge_ts])]
+    #[task(binds = EXTI9_5, priority = 2, local = [ir_rx])]
     fn ir_rx(cx: ir_rx::Context) {
-        let last_event = cx.local.last_edge_ts;
         let ir_rx = cx.local.ir_rx;
 
         let now = monotonics::Monotonic::now();
-        let dt = now
-            .checked_duration_since(*last_event)
-            .map(|v| v.to_micros());
 
-        if let Some(us) = dt {
-            if let Ok(Some(button)) = ir_rx.event(us) {
-                let _ = process_ir_cmd::spawn(button).ok();
-            }
+        if let Ok(Some(button)) = ir_rx.fugit_time(now) {
+            let _ = process_ir_cmd::spawn(button).ok();
         }
 
         ir_rx.pin().clear_interrupt_pending_bit();
-        *last_event = now;
     }
 
     #[task(

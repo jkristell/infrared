@@ -9,12 +9,13 @@
 
 use core::convert::TryInto;
 
+use crate::receiver::time::InfraMonotonic;
 #[cfg(feature = "remotes")]
 use crate::receiver::{DecoderStateMachine, DecodingError, Status};
 use crate::{
     cmd::{AddressCommand, Command},
-    protocol::{utils::InfraConstRange, Protocol},
-    receiver::{ConstDecodeStateMachine, DecoderState},
+    protocol::Protocol,
+    receiver::{time::PulseSpans, DecoderState},
 };
 
 /// Samsung BluRay player protocol
@@ -25,18 +26,19 @@ impl Protocol for Sbp {
 }
 
 /// Samsung Blu-ray protocol
-pub struct SbpReceiverState {
+pub struct SbpReceiverState<T: InfraMonotonic> {
     state: SbpStatus,
     address: u16,
     command: u32,
-    since_rising: u32,
+    since_rising: T::Duration,
 }
 
-impl DecoderState for SbpReceiverState {
+impl<T: InfraMonotonic> DecoderState for SbpReceiverState<T> {
     fn reset(&mut self) {
         self.state = SbpStatus::Init;
         self.address = 0;
         self.command = 0;
+        self.since_rising = T::ZERO_DURATION;
     }
 }
 
@@ -106,33 +108,40 @@ pub enum SbpStatus {
     Err(DecodingError),
 }
 
-impl DecoderStateMachine for Sbp {
-    type State = SbpReceiverState;
-    type RangeData = InfraConstRange<4>;
+impl<Time: InfraMonotonic> DecoderStateMachine<Time> for Sbp {
+    type State = SbpReceiverState<Time>;
     type InternalStatus = SbpStatus;
+    const PULSE_LENGTHS: [u32; 8] = [
+        (4500 + 4500),
+        (500 + 4500),
+        (500 + 500),
+        (500 + 1500),
+        0,
+        0,
+        0,
+        0,
+    ];
+    const TOLERANCE: [u32; 8] = [5, 5, 10, 10, 0, 0, 0, 0];
 
     fn state() -> Self::State {
         SbpReceiverState {
             state: SbpStatus::Init,
             address: 0,
             command: 0,
-            since_rising: 0,
+            since_rising: Time::ZERO_DURATION,
         }
     }
 
-    fn ranges(resolution: u32) -> Self::RangeData {
-        let nsamples = nsamples_from_timing(&TIMING);
-        InfraConstRange::<4>::new(&nsamples, resolution)
-    }
-
     #[rustfmt::skip]
-    fn event_full(state: &mut Self::State, ranges: &Self::RangeData, rising: bool, dt: u32) -> SbpStatus {
+    fn new_event(state: &mut Self::State, ranges: &PulseSpans<Time::Duration>, rising: bool, dt: Time::Duration)
+
+                 -> SbpStatus {
         use SbpPulse::*;
         use SbpStatus::*;
 
         if rising {
             let dt = state.since_rising + dt;
-            let pulsewidth = ranges.find::<SbpPulse>(dt).unwrap_or(SbpPulse::NotAPulseWidth);
+            let pulsewidth = Time::find::<SbpPulse>(ranges, dt).unwrap_or(SbpPulse::NotAPulseWidth);
 
             state.state = match (state.state, pulsewidth) {
                 (Init,          Sync)   => Address(0),
@@ -168,10 +177,6 @@ impl DecoderStateMachine for Sbp {
     }
 }
 
-impl<const R: u32> ConstDecodeStateMachine<R> for Sbp {
-    const RANGES: Self::RangeData = InfraConstRange::new(&nsamples_from_timing(&TIMING), R);
-}
-
 impl From<SbpStatus> for Status {
     fn from(state: SbpStatus) -> Status {
         use SbpStatus::*;
@@ -184,15 +189,7 @@ impl From<SbpStatus> for Status {
     }
 }
 
-const fn nsamples_from_timing(t: &SbpTiming) -> [(u32, u32); 4] {
-    [
-        ((t.hh + t.hl), 5),
-        ((t.data + t.pause), 5),
-        ((t.data + t.zero), 10),
-        ((t.data + t.one), 10),
-    ]
-}
-
+/*
 struct SbpTiming {
     /// Header high
     hh: u32,
@@ -216,6 +213,7 @@ const TIMING: SbpTiming = SbpTiming {
     zero: 500,
     one: 1500,
 };
+*/
 
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]

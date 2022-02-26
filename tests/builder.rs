@@ -1,31 +1,9 @@
 use embedded_hal::digital::v2::InputPin;
 use infrared::{
     protocol::{NecSamsung, Rc5},
-    receiver::{ConstReceiver, DefaultInput, Event, Poll, Receiver},
+    receiver::{DefaultInput, Event, Poll, Receiver},
     remotecontrol::{rc5::CdPlayer, Button},
 };
-
-#[test]
-fn const_embedded_hal_constreceiver() {
-    let pin = DummyEmbeddedHalPin;
-
-    let mut recv = Receiver::builder()
-        .rc5()
-        .polled()
-        .pin(pin)
-        .build_const::<1_000_000>();
-
-    recv.poll().unwrap();
-
-    let pin = DummyEmbeddedHalPin;
-    let mut recv: ConstReceiver<Rc5, Event, _, 1_000_000> = Receiver::builder()
-        .rc5()
-        .event_driven()
-        .pin(pin)
-        .build_const();
-
-    let _ = recv.event(100);
-}
 
 #[test]
 fn const_embedded_hal_receiver() {
@@ -50,11 +28,6 @@ fn const_embedded_hal_receiver() {
         .build();
 
     let _ = recv.event(204);
-
-    let _recv = Receiver::builder()
-        .protocol::<NecSamsung>()
-        .event_driven()
-        .build_const::<400_000>();
 }
 
 #[test]
@@ -95,7 +68,7 @@ fn receiver_generic() {
 fn receiver_remote() {
     use infrared::remotecontrol::rc5;
 
-    let mut r: Receiver<Rc5, Event, DefaultInput, Button<CdPlayer>> = Receiver::builder()
+    let mut r: Receiver<Rc5, Event, DefaultInput, u32, Button<CdPlayer>> = Receiver::builder()
         .event_driven()
         .rc5()
         .remotecontrol(rc5::CdPlayer)
@@ -113,11 +86,11 @@ fn receiver_remote() {
         Err(_err) => (),
     }
 
-    let _r: Receiver<Rc5, Event, DefaultInput, Button<CdPlayer>> = Receiver::new(20_000);
+    let _r: Receiver<Rc5, Event, DefaultInput, u32, Button<CdPlayer>> = Receiver::new(20_000);
 
-    let _r: Receiver<Rc5, Poll, DefaultInput, Button<CdPlayer>> = Receiver::new(20_000);
+    let _r: Receiver<Rc5, Poll, DefaultInput, u32, Button<CdPlayer>> = Receiver::new(20_000);
 
-    let _r: Receiver<Rc5, Poll, DefaultInput, Button<CdPlayer>> = Receiver::builder()
+    let _r: Receiver<Rc5, Poll, DefaultInput, u32, Button<CdPlayer>> = Receiver::builder()
         .rc5()
         .polled()
         .remotecontrol(CdPlayer)

@@ -1,5 +1,6 @@
+use crate::receiver::time::{InfraMonotonic, PulseSpans};
 use crate::{
-    receiver::{ConstDecodeStateMachine, DecoderState, DecoderStateMachine, Status},
+    receiver::{DecoderState, DecoderStateMachine, Status},
     Protocol,
 };
 
@@ -21,10 +22,11 @@ impl Protocol for Capture {
     type Cmd = [u16; 96];
 }
 
-impl DecoderStateMachine for Capture {
+impl<Time: InfraMonotonic> DecoderStateMachine<Time> for Capture {
     type State = CaptureState;
-    type RangeData = ();
     type InternalStatus = Status;
+    const PULSE_LENGTHS: [u32; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
+    const TOLERANCE: [u32; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
 
     fn state() -> Self::State {
         CaptureState {
@@ -33,19 +35,17 @@ impl DecoderStateMachine for Capture {
         }
     }
 
-    fn ranges(_resolution: u32) -> Self::RangeData {}
-
-    fn event_full(
+    fn new_event(
         state: &mut Self::State,
-        _: &Self::RangeData,
+        _: &PulseSpans<Time::Duration>,
         _edge: bool,
-        dt: u32,
+        _: Time::Duration,
     ) -> Self::InternalStatus {
         if state.pos >= state.ts.len() {
             return Status::Done;
         }
 
-        state.ts[state.pos] = dt as u16;
+        state.ts[state.pos] = 0 as u16; //TODO
         state.pos += 1;
 
         Status::Receiving
@@ -54,8 +54,4 @@ impl DecoderStateMachine for Capture {
     fn command(state: &Self::State) -> Option<Self::Cmd> {
         Some(state.ts)
     }
-}
-
-impl<const R: u32> ConstDecodeStateMachine<R> for Capture {
-    const RANGES: Self::RangeData = ();
 }

@@ -2,7 +2,7 @@
 name = "infrared"
 version = "0.13.0"
 authors = ["Johan Kristell <johan@jott.se>"]
-edition = "2018"
+edition = "2021"
 description = "Infrared remote control library"
 repository = "https://github.com/jkristell/infrared"
 readme = "README.md"
@@ -27,6 +27,7 @@ remotes = []
 embedded-hal = {version = "0.2.4", features = ["unproven"], optional = true}
 defmt = { version = "0.3", optional = true }
 log = { version = "0.4", optional = true }
+fugit = "0.3.5"
 
 [dev-dependencies]
 dummy-pin = "0.1.1"

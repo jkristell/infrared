@@ -1,25 +1,25 @@
+use crate::receiver::time::{InfraMonotonic, PulseSpans};
 use crate::{
-    protocol::{rc6::Rc6Command, utils::InfraConstRange, Rc6},
-    receiver::{ConstDecodeStateMachine, DecoderState, DecoderStateMachine, DecodingError, Status},
+    protocol::{rc6::Rc6Command, Rc6},
+    receiver::{DecoderState, DecoderStateMachine, DecodingError, Status},
 };
 
 const RC6_TIME_UNIT: u32 = 444;
 
-const TOLERANCE: u32 = 12;
-
-const UNITS_AND_TOLERANCE: &[(u32, u32); 6] = &[
-    (RC6_TIME_UNIT, TOLERANCE),
-    (RC6_TIME_UNIT * 2, TOLERANCE),
-    (RC6_TIME_UNIT * 3, TOLERANCE),
-    (RC6_TIME_UNIT * 4, TOLERANCE),
-    (RC6_TIME_UNIT * 5, TOLERANCE),
-    (RC6_TIME_UNIT * 6, TOLERANCE),
-];
-
-impl DecoderStateMachine for Rc6 {
+impl<Time: InfraMonotonic> DecoderStateMachine<Time> for Rc6 {
     type State = Rc6ReceiverState;
-    type RangeData = InfraConstRange<6>;
     type InternalStatus = Rc6Status;
+    const PULSE_LENGTHS: [u32; 8] = [
+        RC6_TIME_UNIT,
+        RC6_TIME_UNIT * 2,
+        RC6_TIME_UNIT * 3,
+        RC6_TIME_UNIT * 4,
+        RC6_TIME_UNIT * 5,
+        RC6_TIME_UNIT * 6,
+        0,
+        0,
+    ];
+    const TOLERANCE: [u32; 8] = [12, 12, 12, 12, 12, 12, 12, 12];
 
     fn state() -> Self::State {
         Self::State {
@@ -31,16 +31,14 @@ impl DecoderStateMachine for Rc6 {
         }
     }
 
-    fn ranges(resolution: u32) -> Self::RangeData {
-        InfraConstRange::new(UNITS_AND_TOLERANCE, resolution)
-    }
-
     #[rustfmt::skip]
-    fn event_full(state: &mut Rc6ReceiverState, ranges: &Self::RangeData, rising: bool, dt: u32) -> Rc6Status {
+    fn new_event(state: &mut Self::State, spans: &PulseSpans<Time::Duration>, rising: bool, dt: Time::Duration)
+                 -> Self::InternalStatus {
         use Rc6Status::*;
 
         // Find the nbr of time unit ticks the dt represents
-        let ticks = ranges.find::<usize>(dt).map(|v| (v + 1));
+        //let ticks = ranges.find::<usize>(dt).map(|v| (v + 1));
+        let ticks = Time::find::<usize>(spans, dt).map(|v| (v +1) );
 
         // Reconstruct the clock
         if let Some(ticks) = ticks {
@@ -89,6 +87,7 @@ impl DecoderStateMachine for Rc6 {
         };
 
         state.state
+
     }
 
     fn command(state: &Rc6ReceiverState) -> Option<Self::Cmd> {
@@ -96,9 +95,12 @@ impl DecoderStateMachine for Rc6 {
     }
 }
 
+/*
 impl<const R: u32> ConstDecodeStateMachine<R> for Rc6 {
     const RANGES: Self::RangeData = InfraConstRange::new(UNITS_AND_TOLERANCE, R);
 }
+
+ */
 
 pub struct Rc6ReceiverState {
     pub(crate) state: Rc6Status,

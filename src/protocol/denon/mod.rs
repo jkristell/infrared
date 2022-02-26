@@ -1,6 +1,7 @@
+use crate::receiver::time::{InfraMonotonic, PulseSpans};
 use crate::{
-    protocol::{utils::InfraConstRange, Protocol},
-    receiver::{ConstDecodeStateMachine, DecoderState, DecoderStateMachine, Status},
+    protocol::Protocol,
+    receiver::{DecoderState, DecoderStateMachine, Status},
 };
 
 #[cfg(test)]
@@ -12,12 +13,6 @@ const DATA_HIGH: u32 = 480;
 const ZERO_LOW: u32 = 360;
 const ONE_LOW: u32 = 1200;
 
-const PULSELENGTHS: [(u32, u32); 3] = [
-    ((HEADER_HIGH + HEADER_LOW), 5),
-    ((DATA_HIGH + ZERO_LOW), 10),
-    ((DATA_HIGH + ONE_LOW), 10),
-];
-
 /// Denon protocol
 pub struct Denon;
 
@@ -25,17 +20,17 @@ impl Protocol for Denon {
     type Cmd = DenonCommand;
 }
 
-pub struct DenonReceiverState {
+pub struct DenonReceiverState<T: InfraMonotonic> {
     state: DenonStatus,
     buf: u64,
-    dt_save: u32,
+    dt_save: T::Duration,
 }
 
-impl DecoderState for DenonReceiverState {
+impl<T: InfraMonotonic> DecoderState for DenonReceiverState<T> {
     fn reset(&mut self) {
         self.state = DenonStatus::Idle;
         self.buf = 0;
-        self.dt_save = 0;
+        self.dt_save = T::ZERO_DURATION;
     }
 }
 
@@ -45,27 +40,37 @@ pub struct DenonCommand {
     pub bits: u64,
 }
 
-impl DecoderStateMachine for Denon {
-    type State = DenonReceiverState;
+impl<Time: InfraMonotonic> DecoderStateMachine<Time> for Denon {
+    type State = DenonReceiverState<Time>;
     type InternalStatus = DenonStatus;
-    type RangeData = InfraConstRange<3>;
+
+    const PULSE_LENGTHS: [u32; 8] = [
+        (HEADER_HIGH + HEADER_LOW),
+        (DATA_HIGH + ZERO_LOW),
+        (DATA_HIGH + ONE_LOW),
+        0,
+        0,
+        0,
+        0,
+        0,
+    ];
+
+    const TOLERANCE: [u32; 8] = [8, 10, 10, 0, 0, 0, 0, 0];
 
     fn state() -> Self::State {
         DenonReceiverState {
             state: DenonStatus::Idle,
             buf: 0,
-            dt_save: 0,
+            dt_save: Time::ZERO_DURATION,
         }
     }
 
-    fn ranges(resolution: u32) -> Self::RangeData {
-        InfraConstRange::<3>::new(&PULSELENGTHS, resolution)
-    }
-
     #[rustfmt::skip]
-    fn event_full(state: &mut Self::State, ranges: &Self::RangeData, rising: bool, dt: u32) -> DenonStatus {
+    fn new_event(state: &mut Self::State,
+                 ranges: &PulseSpans<Time::Duration>,
+                 rising: bool, dt: Time::Duration) -> DenonStatus {
         if rising {
-            let pulsewidth = ranges.find::<PulseWidth>(state.dt_save + dt)
+            let pulsewidth = Time::find::<PulseWidth>(ranges, state.dt_save + dt)
                 .unwrap_or(PulseWidth::Fail);
 
             state.state = match (state.state, pulsewidth) {
@@ -79,14 +84,13 @@ impl DecoderStateMachine for Denon {
                 (DenonStatus::Done,          _)                  => DenonStatus::Done,
             };
 
-            state.dt_save = 0;
+            state.dt_save = Time::ZERO_DURATION;
         } else {
             state.dt_save = dt;
         }
 
         state.state
     }
-
     fn command(state: &Self::State) -> Option<Self::Cmd> {
         if state.state == DenonStatus::Done {
             Some(DenonCommand { bits: state.buf })
@@ -94,10 +98,6 @@ impl DecoderStateMachine for Denon {
             None
         }
     }
-}
-
-impl<const R: u32> ConstDecodeStateMachine<R> for Denon {
-    const RANGES: Self::RangeData = InfraConstRange::<3>::new(&PULSELENGTHS, R);
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
