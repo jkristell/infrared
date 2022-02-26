@@ -2,20 +2,17 @@
 #![no_main]
 
 use bluepill_examples as _;
-use defmt::info;
-
 use cortex_m_rt::entry;
-
-use stm32f1xx_hal::{
-    pac::{self, interrupt, TIM2, TIM4},
-    prelude::*,
-    timer::{CounterHz, Event, PwmChannel, Tim4NoRemap, Timer, C4},
-};
-
+use defmt::info;
 use infrared::{
     protocol::Rc5,
     remotecontrol::{rc5::CdPlayer, Action, RemoteControlModel},
     sender::Sender,
+};
+use stm32f1xx_hal::{
+    pac::{self, interrupt, TIM2, TIM4},
+    prelude::*,
+    timer::{CounterHz, Event, PwmChannel, Tim4NoRemap, Timer, C4},
 };
 
 type PwmPin = PwmChannel<TIM4, C4>;

@@ -2,7 +2,7 @@
 
 use crate::{
     cmd::{AddressCommand, Command},
-    protocol::nec::{NecCommandVariant, NecPulseDistance, NEC_SAMSUNG_TIMING},
+    protocol::nec::{NecCommandVariant, NecPulseLen, NEC_SAMSUNG_TIMING},
 };
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -14,7 +14,7 @@ pub struct NecSamsungCommand {
 }
 
 impl NecCommandVariant for NecSamsungCommand {
-    const PULSE_DISTANCE: &'static NecPulseDistance = NEC_SAMSUNG_TIMING;
+    const PULSE_DISTANCE: &'static NecPulseLen = NEC_SAMSUNG_TIMING;
 
     fn validate(bits: u32) -> bool {
         ((bits >> 24) ^ (bits >> 16)) & 0xFF == 0xFF && ((bits >> 8) ^ bits) & 0xFF == 0x00

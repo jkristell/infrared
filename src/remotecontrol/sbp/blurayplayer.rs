@@ -1,10 +1,10 @@
+use Action::*;
+
 use crate::{
     protocol::SbpCommand,
     remotecontrol::{Action, DeviceType, RemoteControlModel},
     ProtocolId,
 };
-
-use Action::*;
 
 #[derive(Debug, Default)]
 pub struct SamsungBluRayPlayer;

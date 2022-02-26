@@ -2,9 +2,9 @@
 #![no_main]
 
 use bluepill_examples as _;
-use defmt::{Debug2Format, info};
-
 use cortex_m_rt::entry;
+use defmt::info;
+use infrared::{protocol::*, receiver::MultiReceiver};
 use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Edge, ExtiPin, Floating, Input},
     pac,
@@ -13,14 +13,8 @@ use stm32f1xx_hal::{
     time::{Instant, MonoTimer},
 };
 
-use infrared::{
-    protocol::*,
-    receiver::{MultiReceiver, PinInput},
-};
-
 type IrPin = PB8<Input<Floating>>;
-//type IrReceiver = MultiReceiver<(Rc6, Nec, NecSamsung, Rc5, NecApple), PinInput<IrPin>, 5>;
-type IrReceiver = MultiReceiver<(NecSamsung, Rc5, Rc6, NecApple, Nec, Denon), PinInput<IrPin>, 6>;
+type IrReceiver = MultiReceiver<6, (SamsungNec, Rc5, Rc6, AppleNec, Nec, Denon), IrPin>;
 
 static mut RECEIVER: Option<IrReceiver> = None;
 static mut MONO: Option<MonoTimer> = None;
@@ -51,7 +45,7 @@ fn main() -> ! {
     let mono = MonoTimer::new(cp.DWT, cp.DCB, clocks);
     let mono_freq = mono.frequency();
 
-    let receiver = MultiReceiver::new(mono_freq.raw(), PinInput(inpin));
+    let receiver = MultiReceiver::new(mono_freq.raw(), inpin);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
@@ -83,7 +77,7 @@ fn EXTI9_5() {
     if let Some(dt) = LAST.map(|i| i.elapsed()) {
         if let Ok(cmds) = receiver.event_iter(dt) {
             for cmd in cmds {
-                info!("cmd: {:?}", Debug2Format(&cmd));
+                info!("cmd: {:?}", cmd);
             }
         }
     }

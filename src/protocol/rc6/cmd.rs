@@ -1,6 +1,6 @@
-use crate::cmd::{AddressCommand, Command};
-
 use core::convert::TryInto;
+
+use crate::cmd::{AddressCommand, Command};
 
 #[derive(Debug, PartialEq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]

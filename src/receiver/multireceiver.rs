@@ -1,4 +1,5 @@
-use crate::receiver::{DecoderStateMachine, DefaultInput, Event, PinInput, Receiver};
+#[cfg(feature = "embedded-hal")]
+use embedded_hal::digital::v2::InputPin;
 
 #[cfg(feature = "denon")]
 use crate::protocol::DenonCommand;
@@ -7,53 +8,64 @@ use crate::protocol::Rc5Command;
 #[cfg(feature = "rc6")]
 use crate::protocol::Rc6Command;
 #[cfg(feature = "nec")]
-use crate::protocol::{Nec16Command, NecAppleCommand, NecCommand, NecDebugCmd, NecSamsungCommand};
+use crate::protocol::{AppleNecCommand, Nec16Command, NecCommand, NecDebugCmd, NecSamsungCommand};
+use crate::receiver::{time::InfraMonotonic, DecoderFactory, NoPin, Receiver};
 
-#[cfg(feature = "embedded-hal")]
-use embedded_hal::digital::v2::InputPin;
-
-pub struct MultiReceiver<Receivers: ReceiverWrapper<N>, IN, const N: usize> {
+pub struct MultiReceiver<
+    const N: usize,
+    Receivers: ReceiverWrapper<N, Time>,
+    Input,
+    Time: InfraMonotonic = u32,
+> {
     receivers: Receivers::Receivers,
-    input: IN,
+    input: Input,
 }
 
-impl<Receivers: ReceiverWrapper<N>, IN, const N: usize> MultiReceiver<Receivers, IN, N> {
-    pub fn new(res: u32, input: IN) -> Self {
+impl<const N: usize, Receivers: ReceiverWrapper<N, Mono>, Input, Mono: InfraMonotonic>
+    MultiReceiver<N, Receivers, Input, Mono>
+{
+    pub fn new(res: u32, input: Input) -> Self {
         MultiReceiver {
             input,
             receivers: Receivers::make(res),
         }
     }
 
-    pub fn event_generic(&mut self, dt: u32, edge: bool) -> [Option<CmdEnum>; N] {
+    pub fn event_generic(&mut self, dt: Mono::Duration, edge: bool) -> [Option<CmdEnum>; N] {
         Receivers::event(&mut self.receivers, dt, edge)
     }
 
-    pub fn event_generic_iter(&mut self, dt: u32, flank: bool) -> impl Iterator<Item = CmdEnum> {
+    pub fn event_generic_iter(
+        &mut self,
+        dt: Mono::Duration,
+        flank: bool,
+    ) -> impl Iterator<Item = CmdEnum> {
         let arr = self.event_generic(dt, flank);
-        core::array::IntoIter::new(arr).flat_map(|c| c)
+        arr.into_iter().flatten()
     }
 }
 
 #[cfg(feature = "embedded-hal")]
-impl<Receivers, PIN: InputPin, const N: usize> MultiReceiver<Receivers, PinInput<PIN>, N>
+impl<const N: usize, Receivers, Pin: InputPin, Mono: InfraMonotonic>
+    MultiReceiver<N, Receivers, Pin, Mono>
 where
-    Receivers: ReceiverWrapper<N>,
+    Receivers: ReceiverWrapper<N, Mono>,
 {
-    pub fn event(&mut self, dt: u32) -> Result<[Option<CmdEnum>; N], PIN::Error> {
-        let edge = self.input.0.is_low()?;
+    pub fn event(&mut self, dt: Mono::Duration) -> Result<[Option<CmdEnum>; N], Pin::Error> {
+        let edge = self.input.is_low()?;
         Ok(self.event_generic(dt, edge))
     }
 
-    pub fn event_iter(&mut self, dt: u32) -> Result<impl Iterator<Item = CmdEnum>, PIN::Error> {
+    pub fn event_iter(
+        &mut self,
+        dt: Mono::Duration,
+    ) -> Result<impl Iterator<Item = CmdEnum>, Pin::Error> {
         let arr = self.event(dt)?;
-        // Keep the actual commands we got.
-        // Clippy is suggesting that we use flatten here. but that doesn't produce the right result
-        Ok(core::array::IntoIter::new(arr).filter_map(|c| c))
+        Ok(arr.into_iter().flatten())
     }
 
-    pub fn pin(&mut self) -> &mut PIN {
-        &mut self.input.0
+    pub fn pin(&mut self) -> &mut Pin {
+        &mut self.input
     }
 }
 
@@ -67,7 +79,7 @@ pub enum CmdEnum {
     #[cfg(feature = "nec")]
     NecSamsung(NecSamsungCommand),
     #[cfg(feature = "nec")]
-    NecApple(NecAppleCommand),
+    NecApple(AppleNecCommand),
     #[cfg(feature = "nec")]
     NecDebug(NecDebugCmd),
     #[cfg(feature = "rc5")]
@@ -97,8 +109,8 @@ impl From<NecSamsungCommand> for CmdEnum {
     }
 }
 #[cfg(feature = "nec")]
-impl From<NecAppleCommand> for CmdEnum {
-    fn from(cmd: NecAppleCommand) -> CmdEnum {
+impl From<AppleNecCommand> for CmdEnum {
+    fn from(cmd: AppleNecCommand) -> CmdEnum {
         CmdEnum::NecApple(cmd)
     }
 }
@@ -127,31 +139,28 @@ impl From<DenonCommand> for CmdEnum {
     }
 }
 
-pub trait ReceiverWrapper<const N: usize> {
+pub trait ReceiverWrapper<const N: usize, Mono: InfraMonotonic> {
     type Receivers;
 
     fn make(res: u32) -> Self::Receivers;
 
-    fn event(rs: &mut Self::Receivers, dt: u32, flank: bool) -> [Option<CmdEnum>; N];
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, flank: bool) -> [Option<CmdEnum>; N];
 }
 
-impl<P1, P2> ReceiverWrapper<2> for (P1, P2)
+impl<P1, P2, Mono: InfraMonotonic> ReceiverWrapper<2, Mono> for (P1, P2)
 where
-    P1: DecoderStateMachine,
-    P2: DecoderStateMachine,
+    P1: DecoderFactory<Mono>,
+    P2: DecoderFactory<Mono>,
     P1::Cmd: Into<CmdEnum>,
     P2::Cmd: Into<CmdEnum>,
 {
-    type Receivers = (
-        Receiver<P1, Event, DefaultInput>,
-        Receiver<P2, Event, DefaultInput>,
-    );
+    type Receivers = (Receiver<P1, NoPin, Mono>, Receiver<P2, NoPin, Mono>);
 
     fn make(res: u32) -> Self::Receivers {
         (Receiver::new(res), Receiver::new(res))
     }
 
-    fn event(rs: &mut Self::Receivers, dt: u32, edge: bool) -> [Option<CmdEnum>; 2] {
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<CmdEnum>; 2] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -159,27 +168,26 @@ where
     }
 }
 
-impl<P1, P2, P3> ReceiverWrapper<3> for (P1, P2, P3)
+impl<P1, P2, P3, Mono: InfraMonotonic> ReceiverWrapper<3, Mono> for (P1, P2, P3)
 where
-    P1: DecoderStateMachine,
-    P2: DecoderStateMachine,
-    P3: DecoderStateMachine,
+    P1: DecoderFactory<Mono>,
+    P2: DecoderFactory<Mono>,
+    P3: DecoderFactory<Mono>,
     P1::Cmd: Into<CmdEnum>,
     P2::Cmd: Into<CmdEnum>,
     P3::Cmd: Into<CmdEnum>,
 {
-    #[allow(clippy::type_complexity)]
     type Receivers = (
-        Receiver<P1, Event, DefaultInput>,
-        Receiver<P2, Event, DefaultInput>,
-        Receiver<P3, Event, DefaultInput>,
+        Receiver<P1, NoPin, Mono>,
+        Receiver<P2, NoPin, Mono>,
+        Receiver<P3, NoPin, Mono>,
     );
 
     fn make(res: u32) -> Self::Receivers {
         (Receiver::new(res), Receiver::new(res), Receiver::new(res))
     }
 
-    fn event(rs: &mut Self::Receivers, dt: u32, edge: bool) -> [Option<CmdEnum>; 3] {
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<CmdEnum>; 3] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -188,23 +196,22 @@ where
     }
 }
 
-impl<P1, P2, P3, P4> ReceiverWrapper<4> for (P1, P2, P3, P4)
+impl<P1, P2, P3, P4, Mono: InfraMonotonic> ReceiverWrapper<4, Mono> for (P1, P2, P3, P4)
 where
-    P1: DecoderStateMachine,
-    P2: DecoderStateMachine,
-    P3: DecoderStateMachine,
-    P4: DecoderStateMachine,
+    P1: DecoderFactory<Mono>,
+    P2: DecoderFactory<Mono>,
+    P3: DecoderFactory<Mono>,
+    P4: DecoderFactory<Mono>,
     P1::Cmd: Into<CmdEnum>,
     P2::Cmd: Into<CmdEnum>,
     P3::Cmd: Into<CmdEnum>,
     P4::Cmd: Into<CmdEnum>,
 {
-    #[allow(clippy::type_complexity)]
     type Receivers = (
-        Receiver<P1, Event, DefaultInput>,
-        Receiver<P2, Event, DefaultInput>,
-        Receiver<P3, Event, DefaultInput>,
-        Receiver<P4, Event, DefaultInput>,
+        Receiver<P1, NoPin, Mono>,
+        Receiver<P2, NoPin, Mono>,
+        Receiver<P3, NoPin, Mono>,
+        Receiver<P4, NoPin, Mono>,
     );
 
     fn make(res: u32) -> Self::Receivers {
@@ -216,7 +223,7 @@ where
         )
     }
 
-    fn event(rs: &mut Self::Receivers, dt: u32, edge: bool) -> [Option<CmdEnum>; 4] {
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<CmdEnum>; 4] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -226,26 +233,25 @@ where
     }
 }
 
-impl<P1, P2, P3, P4, P5> ReceiverWrapper<5> for (P1, P2, P3, P4, P5)
+impl<P1, P2, P3, P4, P5, Mono: InfraMonotonic> ReceiverWrapper<5, Mono> for (P1, P2, P3, P4, P5)
 where
-    P1: DecoderStateMachine,
-    P2: DecoderStateMachine,
-    P3: DecoderStateMachine,
-    P4: DecoderStateMachine,
-    P5: DecoderStateMachine,
+    P1: DecoderFactory<Mono>,
+    P2: DecoderFactory<Mono>,
+    P3: DecoderFactory<Mono>,
+    P4: DecoderFactory<Mono>,
+    P5: DecoderFactory<Mono>,
     P1::Cmd: Into<CmdEnum>,
     P2::Cmd: Into<CmdEnum>,
     P3::Cmd: Into<CmdEnum>,
     P4::Cmd: Into<CmdEnum>,
     P5::Cmd: Into<CmdEnum>,
 {
-    #[allow(clippy::type_complexity)]
     type Receivers = (
-        Receiver<P1, Event, DefaultInput>,
-        Receiver<P2, Event, DefaultInput>,
-        Receiver<P3, Event, DefaultInput>,
-        Receiver<P4, Event, DefaultInput>,
-        Receiver<P5, Event, DefaultInput>,
+        Receiver<P1, NoPin, Mono>,
+        Receiver<P2, NoPin, Mono>,
+        Receiver<P3, NoPin, Mono>,
+        Receiver<P4, NoPin, Mono>,
+        Receiver<P5, NoPin, Mono>,
     );
 
     fn make(res: u32) -> Self::Receivers {
@@ -258,7 +264,7 @@ where
         )
     }
 
-    fn event(rs: &mut Self::Receivers, dt: u32, edge: bool) -> [Option<CmdEnum>; 5] {
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<CmdEnum>; 5] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -269,14 +275,16 @@ where
     }
 }
 
-impl<P1, P2, P3, P4, P5, P6> ReceiverWrapper<6> for (P1, P2, P3, P4, P5, P6)
+impl<P1, P2, P3, P4, P5, P6, Mono: InfraMonotonic> ReceiverWrapper<6, Mono>
+    for (P1, P2, P3, P4, P5, P6)
 where
-    P1: DecoderStateMachine,
-    P2: DecoderStateMachine,
-    P3: DecoderStateMachine,
-    P4: DecoderStateMachine,
-    P5: DecoderStateMachine,
-    P6: DecoderStateMachine,
+    P1: DecoderFactory<Mono>,
+    P2: DecoderFactory<Mono>,
+    P3: DecoderFactory<Mono>,
+    P4: DecoderFactory<Mono>,
+    P5: DecoderFactory<Mono>,
+    P6: DecoderFactory<Mono>,
+
     P1::Cmd: Into<CmdEnum>,
     P2::Cmd: Into<CmdEnum>,
     P3::Cmd: Into<CmdEnum>,
@@ -284,14 +292,13 @@ where
     P5::Cmd: Into<CmdEnum>,
     P6::Cmd: Into<CmdEnum>,
 {
-    #[allow(clippy::type_complexity)]
     type Receivers = (
-        Receiver<P1, Event, DefaultInput>,
-        Receiver<P2, Event, DefaultInput>,
-        Receiver<P3, Event, DefaultInput>,
-        Receiver<P4, Event, DefaultInput>,
-        Receiver<P5, Event, DefaultInput>,
-        Receiver<P6, Event, DefaultInput>,
+        Receiver<P1, NoPin, Mono>,
+        Receiver<P2, NoPin, Mono>,
+        Receiver<P3, NoPin, Mono>,
+        Receiver<P4, NoPin, Mono>,
+        Receiver<P5, NoPin, Mono>,
+        Receiver<P6, NoPin, Mono>,
     );
 
     fn make(res: u32) -> Self::Receivers {
@@ -305,7 +312,7 @@ where
         )
     }
 
-    fn event(rs: &mut Self::Receivers, dt: u32, edge: bool) -> [Option<CmdEnum>; 6] {
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<CmdEnum>; 6] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),

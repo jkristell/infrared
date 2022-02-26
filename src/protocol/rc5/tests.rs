@@ -1,7 +1,7 @@
 use crate::{
     protocol::{rc5::Rc5Command, Rc5},
-    receiver::Builder,
-    remotecontrol::Action,
+    receiver::BufferInputReceiver,
+    remotecontrol::{Action, Button},
     sender::PulsedataBuffer,
 };
 
@@ -18,12 +18,9 @@ fn test_bufrecv() {
         72, 72, 73, 70, 72, 36, 37, 34, 36, 36, 36, 71, 73, 35, 37, 70, 37,
     ];
 
-    let mut r = Builder::new()
-        .rc5()
-        .resolution(40_000)
-        .buffer(&dists)
-        .build();
-    let v: std::vec::Vec<_> = r.iter().collect();
+    let mut r = BufferInputReceiver::<Rc5>::with_frequenzy(40_000);
+
+    let v: std::vec::Vec<_> = r.iter(&dists).collect();
     assert_eq!(v.len(), 2);
 
     for c in &v {
@@ -46,24 +43,18 @@ fn command_mixed() {
         50973, 38, 34, 73, 70, 73, 70, 74, 34, 37, 35, 37, 34, 38, 34, 37, 35, 37, 34, 38, 70, 37,
     ];
 
-    let mut r = Builder::new()
-        .rc5()
-        .resolution(40_000).buffer(&dists).build();
-    let v: std::vec::Vec<_> = r.iter().collect();
+    let mut r = BufferInputReceiver::<Rc5>::with_frequenzy(40_000);
+    let v: std::vec::Vec<_> = r.iter( &dists).collect();
     assert_eq!(v.len(), 3);
 
     for c in &v {
-        println!("{:?}", c);
         assert_eq!(c.addr, 20);
         assert_eq!(c.cmd, 1);
     }
 
-    let mut r = crate::Receiver::builder()
-        .rc5()
-        .remotecontrol(rc5::CdPlayer)
-        .resolution(40_000).buffer(&dists).build();
+    let mut r = BufferInputReceiver::<Rc5, u32, Button< rc5::CdPlayer>>::with_frequenzy(40_000);
 
-    let v: std::vec::Vec<_> = r.iter().collect();
+    let v: std::vec::Vec<_> = r.iter( &dists).collect();
     assert_eq!(v.len(), 3);
 
     for c in &v {
@@ -84,13 +75,10 @@ fn all_commands() {
 
             let cmd: Rc5Command = Rc5Command::new(address, cmdnum, false);
             ptb.load::<Rc5, SAMPLERATE>(&cmd);
-            let mut r = Builder::new()
-                .rc5()
-                .resolution(SAMPLERATE)
-                .buffer(&ptb.buf)
-                .build();
 
-            let cmdres = r.iter().next().unwrap();
+            let mut r = BufferInputReceiver::<Rc5>::with_frequenzy(SAMPLERATE);
+
+            let cmdres = r.iter(&ptb.buf).next().unwrap();
 
             assert_eq!(cmd.addr, cmdres.addr);
             assert_eq!(cmd.cmd, cmdres.cmd);
@@ -109,9 +97,10 @@ fn test_freq<const F: u32>() {
     let mut ptb = PulsedataBuffer::<96>::new();
     let cmd: Rc5Command = Rc5Command::new(10, 2, false);
     ptb.load::<Rc5, F>(&cmd);
-    let mut r = Builder::new().rc5().resolution(F).buffer(&ptb.buf).build();
+    //let mut r = Builder::new().rc5().resolution(F).buffer(&ptb.buf).build();
+    let mut r = BufferInputReceiver::<Rc5>::with_frequenzy(F);
 
-    let cmdres = r.iter().next().unwrap();
+    let cmdres = r.iter(&ptb.buf).next().unwrap();
     assert_eq!(cmd.addr, cmdres.addr);
     assert_eq!(cmd.cmd, cmdres.cmd);
 }

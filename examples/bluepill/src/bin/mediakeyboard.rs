@@ -2,22 +2,18 @@
 #![no_std]
 
 use bluepill_examples as _;
-
 use cortex_m::asm;
-
+use defmt::info;
 use infrared::{
-    protocol::NecApple,
-    receiver::{Event, PinInput},
+    protocol::AppleNec,
     remotecontrol::{nec::Apple2009, Action, Button},
     Receiver,
 };
-
-use defmt::{debug, info, Debug2Format};
-
 use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Edge, ExtiPin, Floating, Input},
     pac,
     prelude::*,
+    timer::fugit::TimerInstantU32,
     usb::{Peripheral, UsbBus, UsbBusType},
 };
 use usb_device::{bus, prelude::*};
@@ -33,7 +29,10 @@ mod app {
     const TIM_FREQ: u32 = 100_000;
 
     /// The pin connected to the infrared receiver module
-    type RxPin = PB8<Input<Floating>>;
+    type IrPin = PB8<Input<Floating>>;
+    type IrProto = AppleNec;
+    type IrRemote = Apple2009;
+    type IrReceiver = Receiver<IrProto, IrPin, TimerInstantU32<TIM_FREQ>, Button<IrRemote>>;
 
     #[monotonic(binds = TIM3, default = true)]
     type Monotonic = stm32f1xx_hal::timer::MonoTimer<pac::TIM3, TIM_FREQ>;
@@ -46,7 +45,7 @@ mod app {
 
     #[local]
     struct Local {
-        receiver: Receiver<NecApple, Event, PinInput<crate::app::RxPin>, Button<Apple2009>>,
+        receiver: IrReceiver,
     }
 
     #[init(
@@ -127,35 +126,21 @@ mod app {
         });
     }
 
-    #[task(binds = EXTI9_5, local = [last: Option<stm32f1xx_hal::timer::fugit::TimerInstantU32<TIM_FREQ> > = None, receiver])]
+    #[task(binds = EXTI9_5, local = [receiver])]
     fn ir_rx(cx: ir_rx::Context) {
         let now = monotonics::Monotonic::now();
-        let last = cx.local.last;
         let receiver = cx.local.receiver;
 
-        receiver.pin().clear_interrupt_pending_bit();
-
-        if let Some(last) = last {
-            if let Some(dt) = now.checked_duration_since(*last) {
-                let dt = dt.to_micros();
-
-                let ev = receiver.event(dt);
-                match ev {
-                    Ok(Some(button)) => {
-                        if let Some(action) = button.action() {
-                            info!("{:?}", defmt::Debug2Format(&button));
-                            let key = super::mediakey_from_action(action);
-                            info!("{:?}", defmt::Debug2Format(&key));
-                            keydown::spawn(key).unwrap();
-                        }
-                    }
-                    Ok(_) => (),
-                    Err(err) => defmt::warn!("Infrared error: {:?}", Debug2Format(&err)),
-                }
+        if let Ok(Some(button)) = receiver.event_instant(now) {
+            if let Some(action) = button.action() {
+                info!("{:?}", button);
+                let key = super::action_to_mediakey(action);
+                info!("{:?}", defmt::Debug2Format(&key));
+                keydown::spawn(key).unwrap();
             }
         }
 
-        last.replace(now);
+        receiver.pin_mut().clear_interrupt_pending_bit();
     }
 
     #[task(shared = [usb_kbd])]
@@ -197,7 +182,7 @@ fn send_keycode(kbd: &HIDClass<UsbBusType>, key: MediaKey) {
     }
 }
 
-fn mediakey_from_action(action: Action) -> MediaKey {
+fn action_to_mediakey(action: Action) -> MediaKey {
     match action {
         Action::Play_Pause => MediaKey::PlayPause,
         Action::Up => MediaKey::VolumeIncrement,

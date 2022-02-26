@@ -2,35 +2,61 @@ use core::marker::PhantomData;
 
 use crate::{
     protocol::{
-        nec::{NecCommand, NecCommandVariant, NecPulseDistance},
-        utils::InfraConstRange,
+        nec::{NecCommand, NecCommandVariant},
         Nec,
     },
-    receiver::{ConstDecodeStateMachine, DecoderState, DecoderStateMachine, DecodingError, Status},
+    receiver::{
+        time::{InfraMonotonic, PulseSpans},
+        DecoderFactory, DecodingError, ProtocolDecoder, State,
+    },
 };
 
-pub struct NecReceiverState<C = NecCommand> {
+fn pulselens<Cmd: NecCommandVariant>() -> [u32; 8] {
+    [
+        Cmd::PULSE_DISTANCE.header_high + Cmd::PULSE_DISTANCE.header_low,
+        Cmd::PULSE_DISTANCE.header_high + Cmd::PULSE_DISTANCE.repeat_low,
+        Cmd::PULSE_DISTANCE.data_high + Cmd::PULSE_DISTANCE.data_zero_low,
+        Cmd::PULSE_DISTANCE.data_high + Cmd::PULSE_DISTANCE.data_one_low,
+        0,
+        0,
+        0,
+        0,
+    ]
+}
+
+const TOL: [u32; 8] = [7, 7, 5, 5, 0, 0, 0, 0];
+
+impl<Mono: InfraMonotonic, Cmd: NecCommandVariant> DecoderFactory<Mono> for Nec<Cmd> {
+    type Decoder = NecDecoder<Mono, Cmd>;
+
+    fn decoder(freq: u32) -> Self::Decoder {
+        NecDecoder {
+            state: NecState::Init,
+            bitbuf: 0,
+            cmd_type: Default::default(),
+            dt_save: Mono::ZERO_DURATION,
+            pulsespans: PulseSpans::new(freq, &pulselens::<Cmd>(), &TOL),
+        }
+    }
+}
+
+pub struct NecDecoder<Mono: InfraMonotonic, C = NecCommand> {
     // State
-    status: InternalStatus,
+    state: NecState,
     // Data buffer
     bitbuf: u32,
     // Nec Command type
     cmd_type: PhantomData<C>,
     // Saved dt
-    dt_save: u32,
-}
+    dt_save: Mono::Duration,
 
-impl<C: NecCommandVariant> DecoderState for NecReceiverState<C> {
-    fn reset(&mut self) {
-        self.status = InternalStatus::Init;
-        self.dt_save = 0;
-    }
+    pulsespans: PulseSpans<Mono>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 // Internal receiver state
-pub enum InternalStatus {
+pub enum NecState {
     // Waiting for first pulse
     Init,
     // Receiving data
@@ -43,55 +69,48 @@ pub enum InternalStatus {
     Err(DecodingError),
 }
 
-impl From<InternalStatus> for Status {
-    fn from(ns: InternalStatus) -> Self {
-        use InternalStatus::*;
+impl From<NecState> for State {
+    fn from(ns: NecState) -> Self {
+        use NecState::*;
         match ns {
-            Init => Status::Idle,
-            Done | RepeatDone => Status::Done,
-            Err(e) => Status::Error(e),
-            _ => Status::Receiving,
+            Init => State::Idle,
+            Done | RepeatDone => State::Done,
+            Err(e) => State::Error(e),
+            _ => State::Receiving,
         }
     }
 }
 
-impl<Cmd> DecoderStateMachine for Nec<Cmd>
+impl<Mono, Cmd> ProtocolDecoder<Mono, Cmd> for NecDecoder<Mono, Cmd>
 where
+    Mono: InfraMonotonic,
     Cmd: NecCommandVariant,
 {
-    type State = NecReceiverState<Cmd>;
-    type RangeData = InfraConstRange<4>;
-    type InternalStatus = InternalStatus;
-
-    fn state() -> Self::State {
-        NecReceiverState {
-            status: InternalStatus::Init,
-            bitbuf: 0,
-            cmd_type: Default::default(),
-            dt_save: 0,
-        }
-    }
-    fn ranges(resolution: u32) -> Self::RangeData {
-        let tols = tolerances(Cmd::PULSE_DISTANCE);
-        InfraConstRange::new(&tols, resolution)
-    }
-
     #[rustfmt::skip]
-    fn event_full(state: &mut Self::State, ranges: &Self::RangeData, rising: bool, dt: u32) -> Self::InternalStatus {
-        use InternalStatus::*;
+    fn event(
+        &mut self,
+        rising: bool,
+        dur: Mono::Duration,
+    ) -> State {
+
+        use NecState::*;
         use PulseWidth::*;
 
         if rising {
-            let pulsewidth = ranges.find::<PulseWidth>(state.dt_save + dt).unwrap_or(PulseWidth::Invalid);
 
-            let status = match (state.status, pulsewidth) {
-                (Init,              Sync)   => { state.bitbuf = 0; Receiving(0) },
+            let total_duration = dur + self.dt_save;
+
+            let pulsewidth = self.pulsespans.get(total_duration)
+                .unwrap_or(PulseWidth::Invalid);
+
+            let status = match (self.state, pulsewidth) {
+                (Init,              Sync)   => { self.bitbuf = 0; Receiving(0) },
                 (Init,              Repeat) => RepeatDone,
                 (Init,              _)      => Init,
 
-                (Receiving(31),     One)    => { state.bitbuf |= 1 << 31; Done }
+                (Receiving(31),     One)    => { self.bitbuf |= 1 << 31; Done }
                 (Receiving(31),     Zero)   => Done,
-                (Receiving(bit),    One)    => { state.bitbuf |= 1 << bit; Receiving(bit + 1) }
+                (Receiving(bit),    One)    => { self.bitbuf |= 1 << bit; Receiving(bit + 1) }
                 (Receiving(bit),    Zero)   => Receiving(bit + 1),
                 (Receiving(_),      _)      => Err(DecodingError::Data),
 
@@ -102,33 +121,37 @@ where
 
             trace!(
                 "State(prev, new): ({:?}, {:?}) pulsewidth: {:?}",
-                state.status,
+                self.state,
                 status,
                 pulsewidth
             );
 
-            state.status = status;
+            self.state = status;
 
-            state.dt_save = 0;
+            self.dt_save = Mono::ZERO_DURATION;
         } else {
             // Save
-            state.dt_save = dt;
+            self.dt_save = dur;
         }
 
-        state.status
+        self.state.into()
     }
-
-    fn command(state: &Self::State) -> Option<Self::Cmd> {
-        match state.status {
-            InternalStatus::Done => Self::Cmd::unpack(state.bitbuf, false),
-            InternalStatus::RepeatDone => Self::Cmd::unpack(state.bitbuf, true),
+    fn command(&self) -> Option<Cmd> {
+        match self.state {
+            NecState::Done => Cmd::unpack(self.bitbuf, false),
+            NecState::RepeatDone => Cmd::unpack(self.bitbuf, true),
             _ => None,
         }
     }
-}
 
-impl<Cmd: NecCommandVariant, const R: u32> ConstDecodeStateMachine<R> for Nec<Cmd> {
-    const RANGES: Self::RangeData = InfraConstRange::new(&tolerances(Cmd::PULSE_DISTANCE), R);
+    fn reset(&mut self) {
+        self.state = NecState::Init;
+        self.dt_save = Mono::ZERO_DURATION;
+    }
+
+    fn spans(&self) -> &PulseSpans<Mono> {
+        &self.pulsespans
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -151,13 +174,4 @@ impl From<usize> for PulseWidth {
             _ => PulseWidth::Invalid,
         }
     }
-}
-
-const fn tolerances(t: &NecPulseDistance) -> [(u32, u32); 4] {
-    [
-        ((t.header_high + t.header_low), 7),
-        ((t.header_high + t.repeat_low), 7),
-        ((t.data_high + t.data_zero_low), 5),
-        ((t.data_high + t.data_one_low), 5),
-    ]
 }

@@ -1,9 +1,10 @@
+use Action::*;
+
 use crate::{
     protocol::NecCommand,
     remotecontrol::{Action, DeviceType, RemoteControlModel},
     ProtocolId,
 };
-use Action::*;
 
 /// Generic Mp3 used by me for testing
 #[derive(Debug, Default)]

@@ -2,9 +2,15 @@
 #![no_main]
 
 use bluepill_examples as _;
-use defmt::{Debug2Format, info};
-
 use cortex_m_rt::entry;
+use defmt::info;
+#[allow(unused_imports)]
+use infrared::{
+    protocol::{AppleNec, Nec},
+    remotecontrol::{nec::*, rc5::*},
+    remotecontrol::{Action, Button},
+    Receiver,
+};
 use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Floating, Input},
     pac,
@@ -13,22 +19,12 @@ use stm32f1xx_hal::{
     timer::{CounterHz, Event, Timer},
 };
 
-use infrared::receiver::{PinInput, Poll};
-
-#[allow(unused_imports)]
-use infrared::{
-    protocol::{Nec, NecApple},
-    remotecontrol::{nec::*, rc5::*},
-    remotecontrol::{Action, Button},
-    Receiver,
-};
-
 // Pin connected to the receiver
 type IrPin = PB8<Input<Floating>>;
-type IrReceiver = Receiver<NecApple, Poll, PinInput<IrPin>, Button<Apple2009>>;
+type IrReceiver = infrared::PeriodicPoll<AppleNec, IrPin, Button<Apple2009>>;
 
 // Samplerate
-const SAMPLERATE: u32 = 100_000;
+const SAMPLERATE: u32 = 20_000;
 // Our timer. Needs to be accessible in the interrupt handler.
 static mut TIMER: Option<CounterHz<TIM2>> = None;
 // Our Infrared receiver
@@ -58,15 +54,7 @@ fn main() -> ! {
 
     timer.listen(Event::Update);
 
-    let receiver = infrared::Receiver::with_pin(SAMPLERATE, pin);
-    /*
-       .nec_apple()
-       .remote::<Apple2009>()
-       .polled()
-       .resolution(SAMPLERATE)
-       .pin(pin)
-       .build();
-    */
+    let receiver = infrared::PeriodicPoll::with_pin(SAMPLERATE, pin);
 
     // Safe because the devices are only used from in the interrupt handler
     unsafe {
@@ -98,12 +86,12 @@ fn TIM2() {
                 match button {
                     Action::Play_Pause => info!("Play was pressed!"),
                     Action::Power => info!("Power on/off"),
-                    _ => info!("{:?}", Debug2Format(&button)),
+                    _ => info!("Button pressed: {:?}", button),
                 };
             }
         }
         Ok(None) => {}
-        Err(err) => info!("Err: {:?}", Debug2Format(&err)),
+        Err(err) => info!("Err: {:?}", err),
     }
 
     // Clear the interrupt
