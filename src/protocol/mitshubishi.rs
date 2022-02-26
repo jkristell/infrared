@@ -2,6 +2,11 @@ use crate::Protocol;
 use crate::protocol::utils::InfraConstRange;
 use crate::receiver::{DecoderState, DecoderStateMachine, Status};
 
+mod encoder;
+mod command;
+
+pub use command::MitsubishiCommand;
+
 pub struct Mitsubishi {
 
 }
@@ -11,7 +16,7 @@ pub struct MCmd {
     raw: [u8; 18],
 }
 
-impl Protocol for Mitsubishi { type Cmd = MCmd; }
+impl Protocol for Mitsubishi { type Cmd = command::MitsubishiCommand; }
 
 pub struct State {
     cmd: MCmd,
@@ -34,7 +39,7 @@ impl State {
         let bit_in_byte = self.bitindex % 8;
 
 
-        self.cmd.raw[byte_index] |= (v as u8) << (7 - bit_in_byte);
+        self.cmd.raw[byte_index] |= (v as u8) << (bit_in_byte);
 
         self.bitindex += 1;
     }
@@ -139,13 +144,16 @@ impl DecoderStateMachine for Mitsubishi {
                 }
             },
 
-            (_, _) => MStatus::Init,
+            (_, _) => {
+                res.reset();
+                MStatus::Init
+            },
         };
 
         res.status
     }
 
     fn command(state: &Self::State) -> Option<Self::Cmd> {
-        Some(state.cmd)
+        Some(MitsubishiCommand::unpack(state.cmd.raw))
     }
 }

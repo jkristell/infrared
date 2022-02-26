@@ -11,7 +11,7 @@ mod rc6;
 #[cfg(feature = "sbp")]
 mod sbp;
 
-mod mitshubishi;
+pub mod mitshubishi;
 
 #[cfg(feature = "denon")]
 #[doc(inline)]
@@ -32,7 +32,7 @@ pub use rc6::{Rc6, Rc6Command};
 #[doc(inline)]
 pub use sbp::{Sbp, SbpCommand};
 
-pub use mitshubishi::{Mitsubishi, MCmd};
+pub use mitshubishi::{Mitsubishi, MCmd, MitsubishiCommand};
 
 pub mod capture;
 

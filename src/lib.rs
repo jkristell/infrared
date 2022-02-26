@@ -14,7 +14,7 @@
 //! examples of both Event driven and poll based Receivers, with and without RTIC.
 //!
 
-//#![no_std]
+#![no_std]
 
 pub(crate) mod fmt;
 

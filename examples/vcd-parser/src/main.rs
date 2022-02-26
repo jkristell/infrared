@@ -8,7 +8,7 @@ use infrared::protocol::Mitsubishi;
 use infrared::Receiver;
 
 fn main() -> io::Result<()> {
-    let (parser, resolution, irdata) = vcd_ir_parser("ac2.vcd", "D0")?;
+    let (parser, resolution, irdata) = vcd_ir_parser("ac4.vcd", "D0")?;
 
     println!("Samples captured at: {:?} Hz", resolution);
 
@@ -41,6 +41,8 @@ fn main() -> io::Result<()> {
             }
             vcd::Command::Timestamp(ts) => {
                 dt = ts - clock;
+
+                //println!("{dt}");
                 clock = ts;
             }
             _ => (),

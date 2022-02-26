@@ -12,7 +12,7 @@ use stm32f1xx_hal::{
 };
 
 use infrared::{
-    protocol::Rc5,
+    protocol::Mitsubishi,
     remotecontrol::{rc5::CdPlayer, Action, RemoteControlModel},
     sender::Sender,
 };
@@ -23,7 +23,7 @@ const TIMER_FREQ: usize = 20_000;
 // Global timer
 static mut TIMER: Option<CountDownTimer<TIM2>> = None;
 // Transmitter
-static mut TRANSMITTER: Option<Sender<PwmPin, 20_000, 128>> = None;
+static mut TRANSMITTER: Option<Sender<PwmPin, 20_000, 1024>> = None;
 
 #[entry]
 fn main() -> ! {
@@ -95,8 +95,9 @@ fn TIM2() {
     if *COUNTER == TIMER_FREQ * 2 {
         rprintln!("Pressing button");
 
-        let cmd = CdPlayer::encode(&Action::Next).unwrap();
-        transmitter.load::<Rc5>(&cmd);
+        //let cmd = CdPlayer::encode(&Action::Next).unwrap();
+        let cmd = infrared::protocol::MitsubishiCommand::new(false);
+        transmitter.load::<Mitsubishi>(&cmd);
 
         *COUNTER = 0;
     }
