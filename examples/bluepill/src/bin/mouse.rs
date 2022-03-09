@@ -1,24 +1,27 @@
 #![no_main]
 #![no_std]
 
-use panic_rtt_target as _;
+use bluepill_examples as _;
 
-use core::convert::TryFrom;
-use dwt_systick_monotonic::DwtSystick;
-use embedded_hal::digital::v2::OutputPin;
+use defmt::{info, Debug2Format};
+use defmt_rtt as _; // global logger
+use panic_probe as _;
+
 use infrared::{
     protocol::NecApple,
     receiver::{Event, PinInput},
     remotecontrol::{nec::Apple2009, Action, Button},
     Receiver,
 };
-use rtic::time::{duration::Microseconds, Instant};
-use rtt_target::{rprintln, rtt_init_print};
 use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Edge, ExtiPin, Floating, Input},
+    pac,
     prelude::*,
     usb::{Peripheral, UsbBus, UsbBusType},
 };
+
+use stm32f1xx_hal::timer::fugit::TimerInstantU32;
+
 use usb_device::{bus, prelude::*};
 use usbd_hid::{
     descriptor::{generator_prelude::*, MouseReport},
@@ -29,7 +32,7 @@ use usbd_hid::{
 mod app {
     use super::*;
 
-    const MONOTIMER_FREQ: u32 = 48_000_000;
+    const MONOTIMER_FREQ: u32 = 100_000;
 
     /// The pin connected to the infrared receiver module
     type RxPin = PB8<Input<Floating>>;
@@ -37,8 +40,8 @@ mod app {
     type IrRemote = Apple2009;
     type IrReceiver = Receiver<IrProto, Event, PinInput<RxPin>, Button<IrRemote>>;
 
-    #[monotonic(binds = SysTick, default = true)]
-    type InfraMono = DwtSystick<{ crate::app::MONOTIMER_FREQ }>;
+    #[monotonic(binds = TIM3, default = true)]
+    type Monotonic = stm32f1xx_hal::timer::MonoTimer<pac::TIM3, MONOTIMER_FREQ>;
 
     #[shared]
     struct Shared {
@@ -49,32 +52,30 @@ mod app {
     #[local]
     struct Local {
         ir_rx: IrReceiver,
-        last_edge_ts: Instant<crate::app::InfraMono>,
+        last_edge_ts: TimerInstantU32<{ app::MONOTIMER_FREQ }>,
     }
 
     #[init(
-        local = [usb_bus: Option<bus::UsbBusAllocator<UsbBusType>> = None],
+        local = [usb_bus: Option<bus::UsbBusAllocator<UsbBusType>> = None]
     )]
-    fn init(mut cx: init::Context) -> (Shared, Local, init::Monotonics) {
-        rtt_init_print!();
-
+    fn init(cx: init::Context) -> (Shared, Local, init::Monotonics) {
         let mut flash = cx.device.FLASH.constrain();
-        let mut rcc = cx.device.RCC.constrain();
-        let mut afio = cx.device.AFIO.constrain(&mut rcc.apb2);
+        let rcc = cx.device.RCC.constrain();
+        let mut afio = cx.device.AFIO.constrain();
 
         let clocks = rcc
             .cfgr
-            .use_hse(8.mhz())
-            .sysclk(48.mhz())
-            .pclk1(24.mhz())
+            .use_hse(8.MHz())
+            .sysclk(48.MHz())
+            .pclk1(24.MHz())
             .freeze(&mut flash.acr);
 
         assert!(clocks.usbclk_valid());
 
-        let mut gpioa = cx.device.GPIOA.split(&mut rcc.apb2);
+        let mut gpioa = cx.device.GPIOA.split();
         let mut usb_dp = gpioa.pa12.into_push_pull_output(&mut gpioa.crh);
-        usb_dp.set_low().unwrap();
-        cortex_m::asm::delay(clocks.sysclk().0 / 100);
+        usb_dp.set_low();
+        cortex_m::asm::delay(clocks.sysclk().raw() / 100);
         let usb_dm = gpioa.pa11;
         let usb_dp = usb_dp.into_floating_input(&mut gpioa.crh);
         let usb = Peripheral {
@@ -95,32 +96,31 @@ mod app {
             .build();
 
         let rx_pin = {
-            let mut gpiob = cx.device.GPIOB.split(&mut rcc.apb2);
+            let mut gpiob = cx.device.GPIOB.split();
             let mut pin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
             pin.make_interrupt_source(&mut afio);
-            pin.trigger_on_edge(&cx.device.EXTI, Edge::RISING_FALLING);
+            pin.trigger_on_edge(&cx.device.EXTI, Edge::RisingFalling);
             pin.enable_interrupt(&cx.device.EXTI);
             pin
         };
 
         // Run the receiver with native resolution and let embedded time to the conversion
         let ir_rx = infrared::Receiver::with_pin(1_000_000, rx_pin);
-            //NOTE: Or use the builder:
-            // infrared::Receiver::builder()
-            //      .nec_apple()
-            //      .resolution(1_000_000)
-            //      .remote_control(IrRemote::default())
-            //      .pin(rx_pin)
-            //      .build();
+        //NOTE: Or use the builder:
+        // infrared::Receiver::builder()
+        //      .nec_apple()
+        //      .resolution(1_000_000)
+        //      .remote_control(IrRemote::default())
+        //      .pin(rx_pin)
+        //      .build();
 
-        let mono_clock = clocks.hclk().0;
-        let mono = DwtSystick::new(&mut cx.core.DCB, cx.core.DWT, cx.core.SYST, mono_clock);
+        let mono = cx.device.TIM3.monotonic(&clocks);
 
         let shared = Shared { usb_dev, usb_hid };
 
         let local = Local {
             ir_rx,
-            last_edge_ts: Instant::new(0),
+            last_edge_ts: Monotonic::zero(),
         };
 
         (shared, local, init::Monotonics(mono))
@@ -128,7 +128,7 @@ mod app {
 
     #[idle]
     fn idle(_ctx: idle::Context) -> ! {
-        rprintln!("Setup done: in idle");
+        info!("Setup done: in idle");
         loop {
             continue;
         }
@@ -139,15 +139,15 @@ mod app {
         let last_event = cx.local.last_edge_ts;
         let ir_rx = cx.local.ir_rx;
 
-        let now = monotonics::InfraMono::now();
+        let now = monotonics::Monotonic::now();
         let dt = now
-            .checked_duration_since(&last_event)
-            .and_then(|v| Microseconds::<u32>::try_from(v).ok())
-            .map(|ms| ms.0)
-            .unwrap_or_default();
+            .checked_duration_since(*last_event)
+            .map(|v| v.to_micros());
 
-        if let Ok(Some(button)) = ir_rx.event(dt) {
-            let _ = process_ir_cmd::spawn(button).ok();
+        if let Some(us) = dt {
+            if let Ok(Some(button)) = ir_rx.event(us) {
+                let _ = process_ir_cmd::spawn(button).ok();
+            }
         }
 
         ir_rx.pin().clear_interrupt_pending_bit();
@@ -166,10 +166,10 @@ mod app {
         }
         *repeats += 1;
 
-        rprintln!("Received: {:?}, repeat: {}", button, *repeats);
+        info!("Received: {:?}, repeat: {}", Debug2Format(&button), *repeats);
         if let Some(action) = button.action() {
             let report = super::button_to_mousereport(action, *repeats);
-            rprintln!("{:?}", report);
+            info!("{:?}", Debug2Format(&report));
             keydown::spawn(report).unwrap()
         }
     }
@@ -231,6 +231,6 @@ fn button_to_mousereport(action: Action, repeats: u32) -> MouseReport {
         x,
         y,
         wheel: 0,
-        pan: 0
+        pan: 0,
     }
 }
