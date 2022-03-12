@@ -1,15 +1,16 @@
 #![no_std]
 #![no_main]
 
+use bluepill_examples as _;
+use defmt::info;
+
 use cortex_m_rt::entry;
-use panic_rtt_target as _;
-use rtt_target::{rprintln, rtt_init_print};
 use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Floating, Input},
     pac,
     prelude::*,
     stm32::{interrupt, TIM2},
-    timer::{CountDownTimer, Event, Timer},
+    timer::{CounterHz, Event, Timer},
 };
 
 use infrared::{
@@ -19,38 +20,35 @@ use infrared::{
 };
 
 // Sample rate
-const TIMER_FREQ: u32 = 20_000;
+const TIMER_FREQ: u32 = 100_000;
 
 // Our receivertype
 type IrReceiver = Receiver<Rc6, Poll, PinInput<PB8<Input<Floating>>>>;
 
 // Globals
-static mut TIMER: Option<CountDownTimer<TIM2>> = None;
+static mut TIMER: Option<CounterHz<TIM2>> = None;
 static mut RECEIVER: Option<IrReceiver> = None;
 
 #[entry]
 fn main() -> ! {
-    rtt_init_print!();
-
     let _core = cortex_m::Peripherals::take().unwrap();
     let device = pac::Peripherals::take().unwrap();
 
     let mut flash = device.FLASH.constrain();
-    let mut rcc = device.RCC.constrain();
+    let rcc = device.RCC.constrain();
 
     let clocks = rcc
         .cfgr
-        .use_hse(8.mhz())
-        .sysclk(48.mhz())
-        .pclk1(24.mhz())
+        .use_hse(8.MHz())
+        .sysclk(48.MHz())
+        .pclk1(24.MHz())
         .freeze(&mut flash.acr);
 
-    let mut gpiob = device.GPIOB.split(&mut rcc.apb2);
+    let mut gpiob = device.GPIOB.split();
     let pin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
 
-    let mut timer =
-        Timer::tim2(device.TIM2, &clocks, &mut rcc.apb1).start_count_down(TIMER_FREQ.hz());
-
+    let mut timer = Timer::new(device.TIM2, &clocks).counter_hz();
+    timer.start(TIMER_FREQ.Hz()).unwrap();
     timer.listen(Event::Update);
 
     let receiver = Receiver::with_pin(TIMER_FREQ, pin);
@@ -66,7 +64,7 @@ fn main() -> ! {
         pac::NVIC::unmask(pac::Interrupt::TIM2);
     }
 
-    rprintln!("Ready!");
+    info!("Ready!");
 
     loop {
         continue;
@@ -78,10 +76,10 @@ fn TIM2() {
     let receiver = unsafe { RECEIVER.as_mut().unwrap() };
 
     if let Ok(Some(cmd)) = receiver.poll() {
-        rprintln!("Cmd: {} {}", cmd.addr, cmd.cmd);
+        info!("Cmd: {} {}", cmd.addr, cmd.cmd);
     }
 
     // Clear the interrupt
     let timer = unsafe { TIMER.as_mut().unwrap() };
-    timer.clear_update_interrupt_flag();
+    timer.clear_interrupt(Event::Update);
 }

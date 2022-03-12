@@ -1,16 +1,16 @@
 #![no_std]
 #![no_main]
 
+use bluepill_examples as _;
+use defmt::{Debug2Format, info};
+
 use cortex_m_rt::entry;
 use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Floating, Input},
     pac::{self, interrupt, TIM2},
     prelude::*,
-    timer::{CountDownTimer, Event, Timer},
+    timer::{CounterHz, Event, Timer},
 };
-
-use panic_rtt_target as _;
-use rtt_target::{rprintln, rtt_init_print};
 
 use infrared::{
     protocol::{Rc6, Rc6Command},
@@ -20,13 +20,13 @@ use infrared::{
 };
 
 // Sample rate
-const TIMER_FREQ: u32 = 20_000;
+const TIMER_FREQ: u32 = 100_000;
 
 // Our receivertype
 type IrReceiver = Receiver<Rc6, Poll, PinInput<PB8<Input<Floating>>>, Button<Rc6Tv>>;
 
 // Globals
-static mut TIMER: Option<CountDownTimer<TIM2>> = None;
+static mut TIMER: Option<CounterHz<TIM2>> = None;
 static mut RECEIVER: Option<IrReceiver> = None;
 
 #[derive(Debug, Default)]
@@ -58,27 +58,26 @@ impl RemoteControlModel for Rc6Tv {
 
 #[entry]
 fn main() -> ! {
-    rtt_init_print!();
     let _core = cortex_m::Peripherals::take().unwrap();
     let device = pac::Peripherals::take().unwrap();
 
     let mut flash = device.FLASH.constrain();
-    let mut rcc = device.RCC.constrain();
+    let rcc = device.RCC.constrain();
 
     let clocks = rcc
         .cfgr
-        .use_hse(8.mhz())
-        .sysclk(48.mhz())
-        .pclk1(24.mhz())
+        .use_hse(8.MHz())
+        .sysclk(48.MHz())
+        .pclk1(24.MHz())
         .freeze(&mut flash.acr);
 
-    let mut gpiob = device.GPIOB.split(&mut rcc.apb2);
+    let mut gpiob = device.GPIOB.split();
     let pin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
 
-    let mut timer =
-        Timer::tim2(device.TIM2, &clocks, &mut rcc.apb1).start_count_down(TIMER_FREQ.hz());
-
+    let mut timer = Timer::new(device.TIM2, &clocks).counter_hz();
+    timer.start(TIMER_FREQ.Hz()).unwrap();
     timer.listen(Event::Update);
+
     let receiver = Receiver::with_pin(TIMER_FREQ, pin);
 
     // Safe because the devices are only used in the interrupt handler
@@ -92,7 +91,7 @@ fn main() -> ! {
         pac::NVIC::unmask(pac::Interrupt::TIM2);
     }
 
-    rprintln!("Ready!");
+    info!("Ready!");
 
     loop {
         continue;
@@ -107,13 +106,13 @@ fn TIM2() {
         use Action::*;
 
         match cmd.action() {
-            Some(Teletext) => rprintln!("Teletext!"),
-            Some(Power) => rprintln!("Power on/off"),
-            _ => rprintln!("cmd: {:?}", cmd),
+            Some(Teletext) => info!("Teletext!"),
+            Some(Power) => info!("Power on/off"),
+            _ => info!("cmd: {:?}", Debug2Format(&cmd)),
         };
     }
 
     // Clear the interrupt
     let timer = unsafe { TIMER.as_mut().unwrap() };
-    timer.clear_update_interrupt_flag();
+    timer.clear_interrupt(Event::Update);
 }

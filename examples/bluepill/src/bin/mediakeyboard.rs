@@ -1,20 +1,22 @@
 #![no_main]
 #![no_std]
 
+use bluepill_examples as _;
+
 use cortex_m::asm;
-use dwt_systick_monotonic::DwtSystick;
-use embedded_hal::digital::v2::OutputPin;
+
 use infrared::{
     protocol::NecApple,
     receiver::{Event, PinInput},
     remotecontrol::{nec::Apple2009, Action, Button},
     Receiver,
 };
-use panic_rtt_target as _;
-use rtic::time::{duration::Milliseconds, Instant};
-use rtt_target::{rprintln, rtt_init_print};
+
+use defmt::{debug, info, Debug2Format};
+
 use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Edge, ExtiPin, Floating, Input},
+    pac,
     prelude::*,
     usb::{Peripheral, UsbBus, UsbBusType},
 };
@@ -28,11 +30,13 @@ use usbd_hid::{
 mod app {
     use super::*;
 
+    const TIM_FREQ: u32 = 100_000;
+
     /// The pin connected to the infrared receiver module
     type RxPin = PB8<Input<Floating>>;
 
-    #[monotonic(binds = SysTick, default = true)]
-    type InfraMono = DwtSystick<48_000_000>;
+    #[monotonic(binds = TIM3, default = true)]
+    type Monotonic = stm32f1xx_hal::timer::MonoTimer<pac::TIM3, TIM_FREQ>;
 
     #[shared]
     struct Shared {
@@ -46,29 +50,27 @@ mod app {
     }
 
     #[init(
-        local = [usb_bus: Option<bus::UsbBusAllocator<UsbBusType>> = None],
+        local = [usb_bus: Option<bus::UsbBusAllocator<UsbBusType>> = None]
     )]
-    fn init(mut cx: init::Context) -> (Shared, Local, init::Monotonics) {
-        rtt_init_print!();
-
+    fn init(cx: init::Context) -> (Shared, Local, init::Monotonics) {
         let mut flash = cx.device.FLASH.constrain();
-        let mut rcc = cx.device.RCC.constrain();
-        let mut afio = cx.device.AFIO.constrain(&mut rcc.apb2);
+        let rcc = cx.device.RCC.constrain();
+        let mut afio = cx.device.AFIO.constrain();
 
         let clocks = rcc
             .cfgr
-            .use_hse(8.mhz())
-            .sysclk(48.mhz())
-            .pclk1(24.mhz())
+            .use_hse(8.MHz())
+            .sysclk(48.MHz())
+            .pclk1(24.MHz())
             .freeze(&mut flash.acr);
 
         assert!(clocks.usbclk_valid());
 
-        let mut gpioa = cx.device.GPIOA.split(&mut rcc.apb2);
+        let mut gpioa = cx.device.GPIOA.split();
 
         let mut usb_dp = gpioa.pa12.into_push_pull_output(&mut gpioa.crh);
-        usb_dp.set_low().unwrap();
-        asm::delay(clocks.sysclk().0 / 100);
+        usb_dp.set_low();
+        asm::delay(clocks.sysclk().raw() / 100);
 
         let usb_dm = gpioa.pa11;
         let usb_dp = usb_dp.into_floating_input(&mut gpioa.crh);
@@ -91,30 +93,25 @@ mod app {
             .device_class(0x03) // HID
             .build();
 
-        let mut gpiob = cx.device.GPIOB.split(&mut rcc.apb2);
+        let mut gpiob = cx.device.GPIOB.split();
         let mut pin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
         pin.make_interrupt_source(&mut afio);
-        pin.trigger_on_edge(&cx.device.EXTI, Edge::RISING_FALLING);
+        pin.trigger_on_edge(&cx.device.EXTI, Edge::RisingFalling);
         pin.enable_interrupt(&cx.device.EXTI);
 
-        let mono_clock = clocks.hclk().0;
-        rprintln!("Mono clock: {}", mono_clock);
-
-        let resolution = 48_000_000;
-        let receiver = Receiver::with_pin(resolution, pin);
-
-        let monot = DwtSystick::new(&mut cx.core.DCB, cx.core.DWT, cx.core.SYST, mono_clock);
+        let receiver = Receiver::with_pin(1_000_000, pin);
+        let mono = cx.device.TIM3.monotonic(&clocks);
 
         (
             Shared { usb_dev, usb_kbd },
             Local { receiver },
-            init::Monotonics(monot),
+            init::Monotonics(mono),
         )
     }
 
     #[idle]
     fn idle(_ctx: idle::Context) -> ! {
-        rprintln!("Setup done. In idle");
+        info!("Setup done. In idle");
         loop {
             continue;
         }
@@ -130,23 +127,30 @@ mod app {
         });
     }
 
-    #[task(binds = EXTI9_5, local = [last: Option<Instant<InfraMono>> = None, receiver])]
+    #[task(binds = EXTI9_5, local = [last: Option<stm32f1xx_hal::timer::fugit::TimerInstantU32<TIM_FREQ> > = None, receiver])]
     fn ir_rx(cx: ir_rx::Context) {
-        let now = monotonics::InfraMono::now();
+        let now = monotonics::Monotonic::now();
         let last = cx.local.last;
         let receiver = cx.local.receiver;
 
         receiver.pin().clear_interrupt_pending_bit();
 
         if let Some(last) = last {
-            let dt = now.checked_duration_since(&last).unwrap().integer();
+            if let Some(dt) = now.checked_duration_since(*last) {
+                let dt = dt.to_micros();
 
-            if let Ok(Some(button)) = receiver.event(dt) {
-                if let Some(action) = button.action() {
-                    rprintln!("{:?}", button);
-                    let key = super::mediakey_from_action(action);
-                    rprintln!("{:?}", key);
-                    keydown::spawn(key).unwrap();
+                let ev = receiver.event(dt);
+                match ev {
+                    Ok(Some(button)) => {
+                        if let Some(action) = button.action() {
+                            info!("{:?}", defmt::Debug2Format(&button));
+                            let key = super::mediakey_from_action(action);
+                            info!("{:?}", defmt::Debug2Format(&key));
+                            keydown::spawn(key).unwrap();
+                        }
+                    }
+                    Ok(_) => (),
+                    Err(err) => defmt::warn!("Infrared error: {:?}", Debug2Format(&err)),
                 }
             }
         }
@@ -158,7 +162,7 @@ mod app {
     fn keydown(mut cx: keydown::Context, key: MediaKey) {
         cx.shared.usb_kbd.lock(|kbd| super::send_keycode(kbd, key));
 
-        keyup::spawn_after(Milliseconds(20_u32)).unwrap();
+        keyup::spawn_after(20.millis()).unwrap();
     }
 
     #[task(shared = [usb_kbd])]

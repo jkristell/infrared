@@ -1,15 +1,16 @@
 #![no_std]
 #![no_main]
 
+use bluepill_examples as _;
+use defmt::{Debug2Format, info};
+
 use cortex_m_rt::entry;
-use panic_rtt_target as _;
-use rtt_target::{rprintln, rtt_init_print};
 use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Floating, Input},
     pac,
     prelude::*,
     stm32::{interrupt, TIM2},
-    timer::{CountDownTimer, Event, Timer},
+    timer::{CounterHz, Event, Timer},
 };
 
 use infrared::receiver::{PinInput, Poll};
@@ -29,44 +30,43 @@ type IrReceiver = Receiver<NecApple, Poll, PinInput<IrPin>, Button<Apple2009>>;
 // Samplerate
 const SAMPLERATE: u32 = 100_000;
 // Our timer. Needs to be accessible in the interrupt handler.
-static mut TIMER: Option<CountDownTimer<TIM2>> = None;
+static mut TIMER: Option<CounterHz<TIM2>> = None;
 // Our Infrared receiver
 static mut RECEIVER: Option<IrReceiver> = None;
 
 #[entry]
 fn main() -> ! {
-    rtt_init_print!();
-
     let _cp = cortex_m::Peripherals::take().unwrap();
     let d = pac::Peripherals::take().unwrap();
 
     let mut flash = d.FLASH.constrain();
-    let mut rcc = d.RCC.constrain();
+    let rcc = d.RCC.constrain();
 
     let clocks = rcc
         .cfgr
-        .use_hse(8.mhz())
-        .sysclk(48.mhz())
-        .pclk1(24.mhz())
+        .use_hse(8.MHz())
+        .sysclk(48.MHz())
+        .pclk1(24.MHz())
         .freeze(&mut flash.acr);
 
-    let mut gpiob = d.GPIOB.split(&mut rcc.apb2);
+    let mut gpiob = d.GPIOB.split();
     let pin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
 
-    let mut timer =
-        Timer::tim2(d.TIM2, &clocks, &mut rcc.apb1).start_count_down((SAMPLERATE).hz());
+    let mut timer = Timer::new(d.TIM2, &clocks).counter_hz();
+
+    timer.start(SAMPLERATE.Hz()).unwrap();
 
     timer.listen(Event::Update);
 
     let receiver = infrared::Receiver::with_pin(SAMPLERATE, pin);
     /*
-        .nec_apple()
-        .remote::<Apple2009>()
-        .polled()
-        .resolution(SAMPLERATE)
-        .pin(pin)
-        .build();
-     */
+       .nec_apple()
+       .remote::<Apple2009>()
+       .polled()
+       .resolution(SAMPLERATE)
+       .pin(pin)
+       .build();
+    */
 
     // Safe because the devices are only used from in the interrupt handler
     unsafe {
@@ -79,7 +79,7 @@ fn main() -> ! {
         pac::NVIC::unmask(pac::Interrupt::TIM2);
     }
 
-    rprintln!("Init done!");
+    info!("Init done!");
 
     loop {
         continue;
@@ -96,17 +96,17 @@ fn TIM2() {
         Ok(Some(cmd)) => {
             if let Some(button) = cmd.action() {
                 match button {
-                    Action::Play_Pause => rprintln!("Play was pressed!"),
-                    Action::Power => rprintln!("Power on/off"),
-                    _ => rprintln!("{:?}", button),
+                    Action::Play_Pause => info!("Play was pressed!"),
+                    Action::Power => info!("Power on/off"),
+                    _ => info!("{:?}", Debug2Format(&button)),
                 };
             }
         }
         Ok(None) => {}
-        Err(err) => rprintln!("Err: {:?}", err),
+        Err(err) => info!("Err: {:?}", Debug2Format(&err)),
     }
 
     // Clear the interrupt
     let timer = unsafe { TIMER.as_mut().unwrap() };
-    timer.clear_update_interrupt_flag();
+    timer.clear_interrupt(Event::Update);
 }
