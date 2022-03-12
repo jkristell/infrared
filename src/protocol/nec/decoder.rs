@@ -155,8 +155,8 @@ impl From<usize> for PulseWidth {
 
 const fn tolerances(t: &NecPulseDistance) -> [(u32, u32); 4] {
     [
-        ((t.header_high + t.header_low), 10),
-        ((t.header_high + t.repeat_low), 10),
+        ((t.header_high + t.header_low), 7),
+        ((t.header_high + t.repeat_low), 7),
         ((t.data_high + t.data_zero_low), 5),
         ((t.data_high + t.data_one_low), 5),
     ]
