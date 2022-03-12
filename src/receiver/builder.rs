@@ -19,11 +19,10 @@ use crate::protocol::Rc6;
 #[cfg(feature = "sbp")]
 use crate::protocol::Sbp;
 
-use crate::{
-    protocol::DummyProtocol,
-    remotecontrol::{Button, RemoteControlModel},
-    Protocol,
-};
+use crate::{protocol::DummyProtocol, Protocol};
+
+#[cfg(feature = "remotes")]
+use crate::remotecontrol::{Button, RemoteControlModel};
 
 /// Receiver Builder
 pub struct Builder<
@@ -107,6 +106,7 @@ where
         self.protocol()
     }
 
+    #[cfg(feature = "remotes")]
     /// Use Remote control
     pub fn remotecontrol<Remote>(self, _: Remote) -> Builder<SM, S, IN, Button<Remote>>
     where

@@ -1,10 +1,14 @@
-use crate::{
-    protocol::{
-        DenonCommand, Nec16Command, NecAppleCommand, NecCommand, NecDebugCmd, NecSamsungCommand,
-        Rc5Command, Rc6Command,
-    },
-    receiver::{DecoderStateMachine, DefaultInput, Event, PinInput, Receiver},
-};
+use crate::receiver::{DecoderStateMachine, DefaultInput, Event, PinInput, Receiver};
+
+#[cfg(feature = "denon")]
+use crate::protocol::DenonCommand;
+#[cfg(feature = "rc5")]
+use crate::protocol::Rc5Command;
+#[cfg(feature = "rc6")]
+use crate::protocol::Rc6Command;
+#[cfg(feature = "nec")]
+use crate::protocol::{Nec16Command, NecAppleCommand, NecCommand, NecDebugCmd, NecSamsungCommand};
+
 #[cfg(feature = "embedded-hal")]
 use embedded_hal::digital::v2::InputPin;
 

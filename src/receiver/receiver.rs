@@ -1,4 +1,4 @@
-use crate::protocol::Nec;
+use crate::protocol::capture::Capture;
 use crate::receiver::Builder;
 use crate::{
     receiver::{
@@ -143,7 +143,7 @@ pub struct Receiver<
     pub(crate) output: PhantomData<C>,
 }
 
-impl Receiver<Nec, Event, DefaultInput> {
+impl Receiver<Capture, Event, DefaultInput> {
     pub fn builder() -> Builder {
         Builder::new()
     }
