@@ -1,5 +1,5 @@
 use crate::receiver::{
-    DecoderStateMachine, DefaultInput, PinInput, Receiver,
+    DecoderStateMachine, NoPinInput, Receiver,
 };
 use core::marker::PhantomData;
 
@@ -27,7 +27,7 @@ use crate::remotecontrol::{Button, RemoteControlModel};
 /// Receiver Builder
 pub struct Builder<
     Proto: Protocol = DummyProtocol,
-    IN = DefaultInput,
+    IN = NoPinInput,
     T: InfraMonotonic = u32,
     C = <Proto as Protocol>::Cmd,
 > {
@@ -38,11 +38,11 @@ pub struct Builder<
     pub(crate) monotonic: PhantomData<T>,
 }
 
-impl Builder<DummyProtocol, DefaultInput, u32, ()> {
-    pub fn new() -> Builder<DummyProtocol, DefaultInput> {
+impl Builder<DummyProtocol, NoPinInput, u32, ()> {
+    pub fn new() -> Builder<DummyProtocol, NoPinInput> {
         Builder {
             proto: PhantomData,
-            input: DefaultInput {},
+            input: NoPinInput {},
             resolution: 1_000_000,
             output: PhantomData,
             monotonic: PhantomData,
@@ -133,11 +133,11 @@ where
 
     #[cfg(feature = "embedded-hal")]
     /// The Receiver use `pin` as input
-    pub fn pin<PIN: InputPin>(self, pin: PIN) -> Builder<Proto, PinInput<PIN>> {
+    pub fn pin<PIN: InputPin>(self, pin: PIN) -> Builder<Proto, PIN> {
         Builder {
             resolution: self.resolution,
             proto: PhantomData,
-            input: PinInput(pin),
+            input: pin,
             monotonic: PhantomData,
             output: PhantomData,
         }

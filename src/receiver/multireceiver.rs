@@ -1,4 +1,4 @@
-use crate::receiver::{DecoderStateMachine, DefaultInput, PinInput, Receiver};
+use crate::receiver::{DecoderStateMachine, NoPinInput, Receiver};
 
 #[cfg(feature = "denon")]
 use crate::protocol::DenonCommand;
@@ -52,12 +52,12 @@ impl<const N: usize, Receivers: ReceiverWrapper<N, Time>, IN, Time: InfraMonoton
 
 #[cfg(feature = "embedded-hal")]
 impl<const N: usize, Receivers, PIN: InputPin, Time: InfraMonotonic>
-    MultiReceiver<N, Receivers, PinInput<PIN>, Time>
+    MultiReceiver<N, Receivers, PIN, Time>
 where
     Receivers: ReceiverWrapper<N, Time>,
 {
     pub fn event(&mut self, dt: Time::Duration) -> Result<[Option<CmdEnum>; N], PIN::Error> {
-        let edge = self.input.0.is_low()?;
+        let edge = self.input.is_low()?;
         Ok(self.event_generic(dt, edge))
     }
 
@@ -73,7 +73,7 @@ where
     }
 
     pub fn pin(&mut self) -> &mut PIN {
-        &mut self.input.0
+        &mut self.input
     }
 }
 
@@ -163,8 +163,8 @@ where
     P2::Cmd: Into<CmdEnum>,
 {
     type Receivers = (
-        Receiver<P1, DefaultInput, Time>,
-        Receiver<P2, DefaultInput, Time>,
+        Receiver<P1, NoPinInput, Time>,
+        Receiver<P2, NoPinInput, Time>,
     );
 
     fn make(res: u32) -> Self::Receivers {

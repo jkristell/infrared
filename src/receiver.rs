@@ -20,7 +20,5 @@ pub use receiver::*;
 pub use bufferinputreceiver::*;
 pub use ppoll::PeriodicPoll;
 
-/// Input from `poll` or `event` functions
-pub struct DefaultInput;
-/// Input from pin
-pub struct PinInput<P>(pub P);
+/// TODO: Input from `poll` or `event` functions
+pub struct NoPinInput;

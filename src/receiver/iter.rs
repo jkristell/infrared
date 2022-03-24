@@ -2,7 +2,7 @@ use crate::{
     receiver::{DecoderState, DecoderStateMachine, Receiver, Status},
     Protocol,
 };
-use crate::receiver::DefaultInput;
+use crate::receiver::NoPinInput;
 use crate::receiver::time::InfraMonotonic;
 
 pub struct BufferIterator<'a, SM, Monotonic,C>
@@ -13,7 +13,7 @@ where
 {
     pub(crate) pos: usize,
     pub(crate) buf: &'a [Monotonic::Duration],
-    pub(crate) receiver: Receiver<SM, DefaultInput, Monotonic, C>,
+    pub(crate) receiver: Receiver<SM, NoPinInput, Monotonic, C>,
 }
 
 impl<'a, SM, Monotonic, C> Iterator for BufferIterator<'a, SM, Monotonic, C>

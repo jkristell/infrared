@@ -4,7 +4,7 @@ use crate::receiver::Builder;
 use crate::{
     receiver::{
         DecoderState, DecoderStateMachine, DecodingError,
-        DefaultInput, Error, PinInput, Status,
+        NoPinInput, Error, Status,
     },
     Protocol,
 };
@@ -77,7 +77,6 @@ use super::time::PulseSpans;
 /// use embedded_hal::digital::v2::InputPin;
 /// use dummy_pin::DummyPin;
 /// use infrared::protocol::Nec;
-/// use infrared::receiver::PinInput;
 ///
 /// // -------------------------------------------
 /// // Receiver setup
@@ -89,7 +88,7 @@ use super::time::PulseSpans;
 /// // Resolution of the timer interrupt in Hz.
 /// const RESOLUTION: u32 = 20_000;
 ///
-/// let mut receiver = infrared::PeriodicPoll::<Nec, PinInput<DummyPin>>::with_pin(RESOLUTION, input_pin);
+/// let mut receiver = infrared::PeriodicPoll::<Nec, DummyPin>::with_pin(RESOLUTION, input_pin);
 ///
 /// // -------------------------------------------
 /// // Timer interrupt handler
@@ -105,7 +104,7 @@ use super::time::PulseSpans;
 /// ```
 ///    use infrared::{
 ///        Receiver,
-///        receiver::{DefaultInput, PinInput, Builder},
+///        receiver::{NoPinInput, Builder},
 ///        protocol::{Rc6, Nec},
 ///    };
 ///    use dummy_pin::DummyPin;
@@ -113,11 +112,11 @@ use super::time::PulseSpans;
 ///
 ///    // Receiver for Rc6 signals, event based with embedded-hal pin
 ///    let pin = DummyPin::new_low();
-///    let r1: Receiver<Rc6, PinInput<DummyPin>> = Receiver::with_pin(40_000, pin);
+///    let r1: Receiver<Rc6, DummyPin> = Receiver::with_pin(40_000, pin);
 ///
 ///    // Periodic polled Nec Receiver
 ///    let pin = DummyPin::new_low();
-///    let r2: infrared::PeriodicPoll<Nec, PinInput<DummyPin>> = infrared::PeriodicPoll::with_pin(40_000, pin);
+///    let r2: infrared::PeriodicPoll<Nec, DummyPin> = infrared::PeriodicPoll::with_pin(40_000, pin);
 ///
 ///    let mut r3: BufferInputReceiver<Rc6> = BufferInputReceiver::with_resolution(20_000);
 ///
@@ -127,7 +126,7 @@ use super::time::PulseSpans;
 /// ```
 pub struct Receiver<
     Proto: DecoderStateMachine<Mono>,
-    Input = DefaultInput,
+    Input = NoPinInput,
     Mono: InfraMonotonic = u32,
     C: From<<Proto as Protocol>::Cmd> = <Proto as Protocol>::Cmd,
 > {
@@ -144,24 +143,24 @@ pub struct Receiver<
     pub(crate) output: PhantomData<C>,
 }
 
-impl Receiver<Capture, DefaultInput> {
+impl Receiver<Capture, NoPinInput> {
     pub fn builder() -> Builder {
         Builder::new()
     }
 }
 
-impl<Proto, Mono, C> Receiver<Proto, DefaultInput, Mono, C>
+impl<Proto, Mono, C> Receiver<Proto, NoPinInput, Mono, C>
 where
     Proto: DecoderStateMachine<Mono>,
     Mono: InfraMonotonic,
     C: From<<Proto as Protocol>::Cmd>,
 {
-    pub fn new(resolution: u32) -> Receiver<Proto, DefaultInput, Mono, C> {
+    pub fn new(resolution: u32) -> Receiver<Proto, NoPinInput, Mono, C> {
         let state = Proto::state();
 
         Receiver {
             state,
-            input: DefaultInput {},
+            input: NoPinInput {},
             spans: Mono::create_span::<Proto>(resolution),
             prev_instant: Mono::ZERO,
             output: PhantomData::default(),
@@ -218,7 +217,7 @@ where
 
 
 #[cfg(feature = "embedded-hal")]
-impl<Proto, Pin, Mono, C> Receiver<Proto, PinInput<Pin>, Mono, C>
+impl<Proto, Pin, Mono, C> Receiver<Proto, Pin, Mono, C>
 where
     Proto: DecoderStateMachine<Mono>,
     Pin: InputPin,
@@ -227,11 +226,11 @@ where
 {
     /// Create a `Receiver` with `pin` as input
     pub fn with_pin(resolution: u32, pin: Pin) -> Self {
-        Self::with_input(resolution, PinInput(pin))
+        Self::with_input(resolution, pin)
     }
 }
 
-impl<Proto, Mono, C> Receiver<Proto, DefaultInput, Mono, C>
+impl<Proto, Mono, C> Receiver<Proto, NoPinInput, Mono, C>
 where
     Proto: DecoderStateMachine<Mono>,
     Mono: InfraMonotonic,
@@ -244,7 +243,7 @@ where
 
 
 #[cfg(feature = "embedded-hal")]
-impl<Proto, Pin, Mono, C> Receiver<Proto, PinInput<Pin>, Mono, C>
+impl<Proto, Pin, Mono, C> Receiver<Proto, Pin, Mono, C>
 where
     Proto: DecoderStateMachine<Mono>,
     Pin: InputPin,
@@ -252,12 +251,12 @@ where
     C: From<<Proto as Protocol>::Cmd>,
 {
     pub fn event(&mut self, dt: Mono::Duration) -> Result<Option<C>, Error<Pin::Error>> {
-        let edge = self.input.0.is_low().map_err(Error::Hal)?;
+        let edge = self.input.is_low().map_err(Error::Hal)?;
         Ok(self.generic_event(dt, edge)?.map(Into::into))
     }
 
     pub fn fugit_time(&mut self, t: Mono::Instant) -> Result<Option<C>, Error<Pin::Error>> {
-        let edge = self.input.0.is_low().map_err(Error::Hal)?;
+        let edge = self.input.is_low().map_err(Error::Hal)?;
 
         //let dt = t - self.prev_instant;
 
@@ -269,11 +268,11 @@ where
     }
 
     pub fn pin(&mut self) -> &mut Pin {
-        &mut self.input.0
+        &mut self.input
     }
 
     pub fn release(self) -> Pin {
-        self.input.0
+        self.input
     }
 }
 

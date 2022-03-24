@@ -1,7 +1,7 @@
 use embedded_hal::digital::v2::InputPin;
 use infrared::{
     protocol::{Rc5},
-    receiver::{DefaultInput, Receiver},
+    receiver::{NoPinInput, Receiver},
     remotecontrol::{rc5::CdPlayer, Button},
 };
 
@@ -54,7 +54,7 @@ fn receiver_generic() {
 fn receiver_remote() {
     use infrared::remotecontrol::rc5;
 
-    let mut r: Receiver<Rc5, DefaultInput, u32, Button<CdPlayer>> = Receiver::builder()
+    let mut r: Receiver<Rc5, NoPinInput, u32, Button<CdPlayer>> = Receiver::builder()
         .rc5()
         .remotecontrol(rc5::CdPlayer)
         .build();
@@ -71,7 +71,7 @@ fn receiver_remote() {
         Err(_err) => (),
     }
 
-    let _r: Receiver<Rc5, DefaultInput, u32, Button<CdPlayer>> = Receiver::new(20_000);
+    let _r: Receiver<Rc5, NoPinInput, u32, Button<CdPlayer>> = Receiver::new(20_000);
 
     //let _r: Receiver<Rc5, DefaultInput, u32, Button<CdPlayer>> = Receiver::new(20_000);
 
