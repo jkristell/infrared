@@ -1,7 +1,7 @@
 use crate::receiver::time::{InfraMonotonic, PulseSpans};
 use crate::{
     protocol::Protocol,
-    receiver::{DecoderState, DecoderStateMachine, Status},
+    receiver::{DecoderData, DecoderStateMachine, State},
 };
 
 #[cfg(test)]
@@ -20,15 +20,15 @@ impl Protocol for Denon {
     type Cmd = DenonCommand;
 }
 
-pub struct DenonReceiverState<T: InfraMonotonic> {
-    state: DenonStatus,
+pub struct DenonData<T: InfraMonotonic> {
+    state: DenonState,
     buf: u64,
     dt_save: T::Duration,
 }
 
-impl<T: InfraMonotonic> DecoderState for DenonReceiverState<T> {
+impl<T: InfraMonotonic> DecoderData for DenonData<T> {
     fn reset(&mut self) {
-        self.state = DenonStatus::Idle;
+        self.state = DenonState::Idle;
         self.buf = 0;
         self.dt_save = T::ZERO_DURATION;
     }
@@ -41,8 +41,8 @@ pub struct DenonCommand {
 }
 
 impl<Time: InfraMonotonic> DecoderStateMachine<Time> for Denon {
-    type State = DenonReceiverState<Time>;
-    type InternalStatus = DenonStatus;
+    type Data = DenonData<Time>;
+    type InternalState = DenonState;
 
     const PULSE_LENGTHS: [u32; 8] = [
         (HEADER_HIGH + HEADER_LOW),
@@ -57,31 +57,31 @@ impl<Time: InfraMonotonic> DecoderStateMachine<Time> for Denon {
 
     const TOLERANCE: [u32; 8] = [8, 10, 10, 0, 0, 0, 0, 0];
 
-    fn state() -> Self::State {
-        DenonReceiverState {
-            state: DenonStatus::Idle,
+    fn create_data() -> Self::Data {
+        DenonData {
+            state: DenonState::Idle,
             buf: 0,
             dt_save: Time::ZERO_DURATION,
         }
     }
 
     #[rustfmt::skip]
-    fn new_event(state: &mut Self::State,
+    fn new_event(state: &mut Self::Data,
                  ranges: &PulseSpans<Time::Duration>,
-                 rising: bool, dt: Time::Duration) -> DenonStatus {
+                 rising: bool, dt: Time::Duration) -> DenonState {
         if rising {
             let pulsewidth = Time::find::<PulseWidth>(ranges, state.dt_save + dt)
                 .unwrap_or(PulseWidth::Fail);
 
             state.state = match (state.state, pulsewidth) {
-                (DenonStatus::Idle,          PulseWidth::Sync)   => DenonStatus::Data(0),
-                (DenonStatus::Idle,          _)                  => DenonStatus::Idle,
-                (DenonStatus::Data(47),      PulseWidth::Zero)   => DenonStatus::Done,
-                (DenonStatus::Data(47),      PulseWidth::One)    => DenonStatus::Done,
-                (DenonStatus::Data(idx),     PulseWidth::Zero)   => DenonStatus::Data(idx + 1),
-                (DenonStatus::Data(idx),     PulseWidth::One)    => { state.buf |= 1 << idx; DenonStatus::Data(idx + 1) }
-                (DenonStatus::Data(_ix),     _)                  => DenonStatus::Idle,
-                (DenonStatus::Done,          _)                  => DenonStatus::Done,
+                (DenonState::Idle,          PulseWidth::Sync)   => DenonState::Data(0),
+                (DenonState::Idle,          _)                  => DenonState::Idle,
+                (DenonState::Data(47),      PulseWidth::Zero)   => DenonState::Done,
+                (DenonState::Data(47),      PulseWidth::One)    => DenonState::Done,
+                (DenonState::Data(idx),     PulseWidth::Zero)   => DenonState::Data(idx + 1),
+                (DenonState::Data(idx),     PulseWidth::One)    => { state.buf |= 1 << idx; DenonState::Data(idx + 1) }
+                (DenonState::Data(_ix),     _)                  => DenonState::Idle,
+                (DenonState::Done,          _)                  => DenonState::Done,
             };
 
             state.dt_save = Time::ZERO_DURATION;
@@ -91,8 +91,8 @@ impl<Time: InfraMonotonic> DecoderStateMachine<Time> for Denon {
 
         state.state
     }
-    fn command(state: &Self::State) -> Option<Self::Cmd> {
-        if state.state == DenonStatus::Done {
+    fn command(state: &Self::Data) -> Option<Self::Cmd> {
+        if state.state == DenonState::Done {
             Some(DenonCommand { bits: state.buf })
         } else {
             None
@@ -102,18 +102,18 @@ impl<Time: InfraMonotonic> DecoderStateMachine<Time> for Denon {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub enum DenonStatus {
+pub enum DenonState {
     Idle,
     Data(u8),
     Done,
 }
 
-impl From<DenonStatus> for Status {
-    fn from(status: DenonStatus) -> Self {
+impl From<DenonState> for State {
+    fn from(status: DenonState) -> Self {
         match status {
-            DenonStatus::Idle => Status::Idle,
-            DenonStatus::Data(_) => Status::Receiving,
-            DenonStatus::Done => Status::Done,
+            DenonState::Idle => State::Idle,
+            DenonState::Data(_) => State::Receiving,
+            DenonState::Done => State::Done,
         }
     }
 }

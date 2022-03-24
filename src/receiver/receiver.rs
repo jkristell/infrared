@@ -2,7 +2,7 @@ use crate::protocol::capture::Capture;
 use crate::receiver::time::InfraMonotonic;
 use crate::receiver::Builder;
 use crate::{
-    receiver::{DecoderState, DecoderStateMachine, DecodingError, Error, NoPinInput, Status},
+    receiver::{DecoderData, DecoderStateMachine, DecodingError, Error, NoPinInput, State},
     Protocol,
 };
 use core::marker::PhantomData;
@@ -128,7 +128,7 @@ pub struct Receiver<
     C: From<<Proto as Protocol>::Cmd> = <Proto as Protocol>::Cmd,
 > {
     /// Decoder data
-    pub(crate) state: Proto::State,
+    pub(crate) state: Proto::Data,
     /// Input
     pub(crate) input: Input,
 
@@ -153,7 +153,7 @@ where
     C: From<<Proto as Protocol>::Cmd>,
 {
     pub fn new(resolution: u32) -> Receiver<Proto, NoPinInput, Mono, C> {
-        let state = Proto::state();
+        let state = Proto::create_data();
 
         Receiver {
             state,
@@ -172,7 +172,7 @@ where
     C: From<<Proto as Protocol>::Cmd>,
 {
     pub fn with_input(resolution: u32, input: Input) -> Self {
-        let state = Proto::state();
+        let state = Proto::create_data();
 
         Receiver {
             state,
@@ -193,21 +193,21 @@ where
         edge: bool,
     ) -> Result<Option<Proto::Cmd>, DecodingError> {
         // Update state machine
-        let state: Status = Proto::new_event(&mut self.state, &self.spans, edge, dt).into();
+        let state: State = Proto::new_event(&mut self.state, &self.spans, edge, dt).into();
 
         trace!("dt: {:?}, edge: {} s: {:?}", dt, edge, state);
 
         match state {
-            Status::Done => {
+            State::Done => {
                 let cmd = Proto::command(&self.state);
                 self.state.reset();
                 Ok(cmd)
             }
-            Status::Error(err) => {
+            State::Error(err) => {
                 self.state.reset();
                 Err(err)
             }
-            Status::Idle | Status::Receiving => Ok(None),
+            State::Idle | State::Receiving => Ok(None),
         }
     }
 }

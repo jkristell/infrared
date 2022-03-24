@@ -1,56 +1,56 @@
 use crate::receiver::time::{InfraMonotonic, PulseSpans};
 use crate::{
     protocol::{rc5::Rc5Command, Rc5},
-    receiver::{DecoderState, DecoderStateMachine, DecodingError, Status},
+    receiver::{DecoderData, DecoderStateMachine, DecodingError, State},
 };
 
 const RC5_BASE_TIME: u32 = 889;
 
-impl<Time: InfraMonotonic> DecoderStateMachine<Time> for Rc5 {
-    type State = Rc5ReceiverState;
-    type InternalStatus = Rc5Status;
+impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Rc5 {
+    type Data = Rc5Data;
+    type InternalState = Rc5State;
     const PULSE_LENGTHS: [u32; 8] = [RC5_BASE_TIME, 2 * RC5_BASE_TIME, 0, 0, 0, 0, 0, 0];
     const TOLERANCE: [u32; 8] = [12, 10, 0, 0, 0, 0, 0, 0];
 
-    fn state() -> Self::State {
-        Rc5ReceiverState::default()
+    fn create_data() -> Self::Data {
+        Rc5Data::default()
     }
 
     fn new_event(
-        state: &mut Self::State,
-        spans: &PulseSpans<Time::Duration>,
+        data: &mut Self::Data,
+        spans: &PulseSpans<Mono::Duration>,
         rising: bool,
-        delta_t: Time::Duration,
-    ) -> Self::InternalStatus {
-        use Rc5Status::*;
+        delta_t: Mono::Duration,
+    ) -> Self::InternalState {
+        use Rc5State::*;
 
         // Find this delta t in the defined ranges
-        let clock_ticks = Time::find::<usize>(spans, delta_t);
+        let clock_ticks = Mono::find::<usize>(spans, delta_t);
 
         if let Some(ticks) = clock_ticks {
-            state.clock += ticks + 1;
+            data.clock += ticks + 1;
         } else {
-            state.reset();
+            data.reset();
         }
 
-        let is_odd = state.clock & 1 == 0;
+        let is_odd = data.clock & 1 == 0;
 
-        state.status = match (state.status, rising, clock_ticks) {
+        data.state = match (data.state, rising, clock_ticks) {
             (Idle, false, _) => Idle,
             (Idle, true, _) => {
-                state.clock = 0;
-                state.bitbuf |= 1 << 13;
+                data.clock = 0;
+                data.bitbuf |= 1 << 13;
                 Data(12)
             }
 
             (Data(0), true, Some(_)) if is_odd => {
-                state.bitbuf |= 1;
+                data.bitbuf |= 1;
                 Done
             }
             (Data(0), false, Some(_)) if is_odd => Done,
 
             (Data(bit), true, Some(_)) if is_odd => {
-                state.bitbuf |= 1 << bit;
+                data.bitbuf |= 1 << bit;
                 Data(bit - 1)
             }
             (Data(bit), false, Some(_)) if is_odd => Data(bit - 1),
@@ -61,24 +61,24 @@ impl<Time: InfraMonotonic> DecoderStateMachine<Time> for Rc5 {
             (Err(err), _, _) => Err(err),
         };
 
-        state.status
+        data.state
     }
 
-    fn command(state: &Self::State) -> Option<Self::Cmd> {
+    fn command(state: &Self::Data) -> Option<Self::Cmd> {
         Some(Rc5Command::unpack(state.bitbuf))
     }
 }
 
 #[derive(Default)]
-pub struct Rc5ReceiverState {
-    pub(crate) status: Rc5Status,
+pub struct Rc5Data {
+    pub(crate) state: Rc5State,
     bitbuf: u16,
     pub(crate) clock: usize,
 }
 
-impl DecoderState for Rc5ReceiverState {
+impl DecoderData for Rc5Data {
     fn reset(&mut self) {
-        self.status = Rc5Status::Idle;
+        self.state = Rc5State::Idle;
         self.bitbuf = 0;
         self.clock = 0;
     }
@@ -86,26 +86,26 @@ impl DecoderState for Rc5ReceiverState {
 
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub enum Rc5Status {
+pub enum Rc5State {
     Idle,
     Data(u8),
     Done,
     Err(DecodingError),
 }
 
-impl Default for Rc5Status {
+impl Default for Rc5State {
     fn default() -> Self {
-        Rc5Status::Idle
+        Rc5State::Idle
     }
 }
 
-impl From<Rc5Status> for Status {
-    fn from(rs: Rc5Status) -> Self {
+impl From<Rc5State> for State {
+    fn from(rs: Rc5State) -> Self {
         match rs {
-            Rc5Status::Idle => Status::Idle,
-            Rc5Status::Data(_) => Status::Receiving,
-            Rc5Status::Done => Status::Done,
-            Rc5Status::Err(e) => Status::Error(e),
+            Rc5State::Idle => State::Idle,
+            Rc5State::Data(_) => State::Receiving,
+            Rc5State::Done => State::Done,
+            Rc5State::Err(e) => State::Error(e),
         }
     }
 }

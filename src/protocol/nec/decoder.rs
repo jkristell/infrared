@@ -6,33 +6,31 @@ use crate::{
         nec::{NecCommand, NecCommandVariant},
         Nec,
     },
-    receiver::{DecoderState, DecoderStateMachine, DecodingError, Status},
+    receiver::{DecoderData, DecoderStateMachine, DecodingError, State},
 };
 
-pub struct NecReceiverState<Mono: InfraMonotonic, C = NecCommand> {
+pub struct NecData<Mono: InfraMonotonic, C = NecCommand> {
     // State
-    status: InternalStatus,
+    status: NecState,
     // Data buffer
     bitbuf: u32,
     // Nec Command type
     cmd_type: PhantomData<C>,
     // Saved dt
     dt_save: Mono::Duration,
-    dt_int: u32,
 }
 
-impl<C: NecCommandVariant, Mono: InfraMonotonic> DecoderState for NecReceiverState<Mono, C> {
+impl<C: NecCommandVariant, Mono: InfraMonotonic> DecoderData for NecData<Mono, C> {
     fn reset(&mut self) {
-        self.status = InternalStatus::Init;
+        self.status = NecState::Init;
         self.dt_save = Mono::ZERO_DURATION;
-        self.dt_int = 0;
     }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 // Internal receiver state
-pub enum InternalStatus {
+pub enum NecState {
     // Waiting for first pulse
     Init,
     // Receiving data
@@ -45,14 +43,14 @@ pub enum InternalStatus {
     Err(DecodingError),
 }
 
-impl From<InternalStatus> for Status {
-    fn from(ns: InternalStatus) -> Self {
-        use InternalStatus::*;
+impl From<NecState> for State {
+    fn from(ns: NecState) -> Self {
+        use NecState::*;
         match ns {
-            Init => Status::Idle,
-            Done | RepeatDone => Status::Done,
-            Err(e) => Status::Error(e),
-            _ => Status::Receiving,
+            Init => State::Idle,
+            Done | RepeatDone => State::Done,
+            Err(e) => State::Error(e),
+            _ => State::Receiving,
         }
     }
 }
@@ -62,8 +60,8 @@ where
     Cmd: NecCommandVariant,
     Time: InfraMonotonic,
 {
-    type State = NecReceiverState<Time, Cmd>;
-    type InternalStatus = InternalStatus;
+    type Data = NecData<Time, Cmd>;
+    type InternalState = NecState;
 
     const PULSE_LENGTHS: [u32; 8] = [
         Cmd::PULSE_DISTANCE.header_high + Cmd::PULSE_DISTANCE.header_low,
@@ -78,25 +76,24 @@ where
 
     const TOLERANCE: [u32; 8] = [7, 7, 5, 5, 0, 0, 0, 0];
 
-    fn state() -> Self::State {
-        NecReceiverState {
-            status: InternalStatus::Init,
+    fn create_data() -> Self::Data {
+        NecData {
+            status: NecState::Init,
             bitbuf: 0,
             cmd_type: Default::default(),
             dt_save: Time::ZERO_DURATION,
-            dt_int: 0,
         }
     }
 
     #[rustfmt::skip]
     fn new_event(
-        state: &mut Self::State,
+        state: &mut Self::Data,
         spans: &PulseSpans<Time::Duration>,
         rising: bool,
         dur: Time::Duration,
-    ) -> Self::InternalStatus {
+    ) -> Self::InternalState {
 
-        use InternalStatus::*;
+        use NecState::*;
         use PulseWidth::*;
 
         if rising {
@@ -141,10 +138,10 @@ where
         state.status
     }
 
-    fn command(state: &Self::State) -> Option<Self::Cmd> {
+    fn command(state: &Self::Data) -> Option<Self::Cmd> {
         match state.status {
-            InternalStatus::Done => Self::Cmd::unpack(state.bitbuf, false),
-            InternalStatus::RepeatDone => Self::Cmd::unpack(state.bitbuf, true),
+            NecState::Done => Self::Cmd::unpack(state.bitbuf, false),
+            NecState::RepeatDone => Self::Cmd::unpack(state.bitbuf, true),
             _ => None,
         }
     }

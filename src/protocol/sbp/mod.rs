@@ -11,11 +11,11 @@ use core::convert::TryInto;
 
 use crate::receiver::time::InfraMonotonic;
 #[cfg(feature = "remotes")]
-use crate::receiver::{DecoderStateMachine, DecodingError, Status};
+use crate::receiver::{DecoderStateMachine, DecodingError, State};
 use crate::{
     cmd::{AddressCommand, Command},
     protocol::Protocol,
-    receiver::{time::PulseSpans, DecoderState},
+    receiver::{time::PulseSpans, DecoderData},
 };
 
 /// Samsung BluRay player protocol
@@ -26,19 +26,19 @@ impl Protocol for Sbp {
 }
 
 /// Samsung Blu-ray protocol
-pub struct SbpReceiverState<T: InfraMonotonic> {
-    state: SbpStatus,
+pub struct SbpData<Mono: InfraMonotonic> {
+    state: SbpState,
     address: u16,
     command: u32,
-    since_rising: T::Duration,
+    since_rising: Mono::Duration,
 }
 
-impl<T: InfraMonotonic> DecoderState for SbpReceiverState<T> {
+impl<Mono: InfraMonotonic> DecoderData for SbpData<Mono> {
     fn reset(&mut self) {
-        self.state = SbpStatus::Init;
+        self.state = SbpState::Init;
         self.address = 0;
         self.command = 0;
-        self.since_rising = T::ZERO_DURATION;
+        self.since_rising = Mono::ZERO_DURATION;
     }
 }
 
@@ -93,7 +93,7 @@ impl AddressCommand for SbpCommand {
 #[derive(Debug, Copy, Clone)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 // Internal receiver state
-pub enum SbpStatus {
+pub enum SbpState {
     // Waiting for first pulse
     Init,
     // Receiving address
@@ -108,9 +108,9 @@ pub enum SbpStatus {
     Err(DecodingError),
 }
 
-impl<Time: InfraMonotonic> DecoderStateMachine<Time> for Sbp {
-    type State = SbpReceiverState<Time>;
-    type InternalStatus = SbpStatus;
+impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Sbp {
+    type Data = SbpData<Mono>;
+    type InternalState = SbpState;
     const PULSE_LENGTHS: [u32; 8] = [
         (4500 + 4500),
         (500 + 4500),
@@ -123,42 +123,40 @@ impl<Time: InfraMonotonic> DecoderStateMachine<Time> for Sbp {
     ];
     const TOLERANCE: [u32; 8] = [5, 5, 10, 10, 0, 0, 0, 0];
 
-    fn state() -> Self::State {
-        SbpReceiverState {
-            state: SbpStatus::Init,
+    fn create_data() -> Self::Data {
+        SbpData {
+            state: SbpState::Init,
             address: 0,
             command: 0,
-            since_rising: Time::ZERO_DURATION,
+            since_rising: Mono::ZERO_DURATION,
         }
     }
 
     #[rustfmt::skip]
-    fn new_event(state: &mut Self::State, ranges: &PulseSpans<Time::Duration>, rising: bool, dt: Time::Duration)
-
-                 -> SbpStatus {
+    fn new_event(data: &mut Self::Data, ranges: &PulseSpans<Mono::Duration>, rising: bool, dt: Mono::Duration) -> SbpState {
         use SbpPulse::*;
-        use SbpStatus::*;
+        use SbpState::*;
 
         if rising {
-            let dt = state.since_rising + dt;
-            let pulsewidth = Time::find::<SbpPulse>(ranges, dt).unwrap_or(SbpPulse::NotAPulseWidth);
+            let dt = data.since_rising + dt;
+            let pulsewidth = Mono::find::<SbpPulse>(ranges, dt).unwrap_or(SbpPulse::NotAPulseWidth);
 
-            state.state = match (state.state, pulsewidth) {
+            data.state = match (data.state, pulsewidth) {
                 (Init,          Sync)   => Address(0),
                 (Init,          _)      => Init,
 
-                (Address(15),   One)    => { state.address |= 1 << 15; Divider }
+                (Address(15),   One)    => { data.address |= 1 << 15; Divider }
                 (Address(15),   Zero)   => Divider,
-                (Address(bit),  One)    => { state.address |= 1 << bit; Address(bit + 1) }
+                (Address(bit),  One)    => { data.address |= 1 << bit; Address(bit + 1) }
                 (Address(bit),  Zero)   => Address(bit + 1),
                 (Address(_),    _)      => Err(DecodingError::Address),
 
                 (Divider,       Paus)   => Command(0),
                 (Divider,       _)      => Err(DecodingError::Data),
 
-                (Command(19),   One)    => { state.command |= 1 << 19; Done }
+                (Command(19),   One)    => { data.command |= 1 << 19; Done }
                 (Command(19),   Zero)   => Done,
-                (Command(bit),  One)    => { state.command |= 1 << bit; Command(bit + 1) }
+                (Command(bit),  One)    => { data.command |= 1 << bit; Command(bit + 1) }
                 (Command(bit),  Zero)   => Command(bit + 1),
                 (Command(_),    _)      => Err(DecodingError::Data),
 
@@ -166,25 +164,25 @@ impl<Time: InfraMonotonic> DecoderStateMachine<Time> for Sbp {
                 (Err(err),      _)      => Err(err),
             };
         } else {
-            state.since_rising = dt;
+            data.since_rising = dt;
         }
 
-        state.state
+        data.state
     }
 
-    fn command(state: &Self::State) -> Option<Self::Cmd> {
+    fn command(state: &Self::Data) -> Option<Self::Cmd> {
         Some(SbpCommand::unpack(state.address, state.command))
     }
 }
 
-impl From<SbpStatus> for Status {
-    fn from(state: SbpStatus) -> Status {
-        use SbpStatus::*;
+impl From<SbpState> for State {
+    fn from(state: SbpState) -> State {
+        use SbpState::*;
         match state {
-            Init => Status::Idle,
-            Done => Status::Done,
-            Err(e) => Status::Error(e),
-            _ => Status::Receiving,
+            Init => State::Idle,
+            Done => State::Done,
+            Err(e) => State::Error(e),
+            _ => State::Receiving,
         }
     }
 }
