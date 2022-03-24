@@ -1,4 +1,4 @@
-use crate::receiver::{DecoderStateMachine, DefaultInput, Event, PinInput, Receiver};
+use crate::receiver::{DecoderStateMachine, DefaultInput, PinInput, Receiver};
 
 #[cfg(feature = "denon")]
 use crate::protocol::DenonCommand;
@@ -163,8 +163,8 @@ where
     P2::Cmd: Into<CmdEnum>,
 {
     type Receivers = (
-        Receiver<P1, Event, DefaultInput, Time>,
-        Receiver<P2, Event, DefaultInput, Time>,
+        Receiver<P1, DefaultInput, Time>,
+        Receiver<P2, DefaultInput, Time>,
     );
 
     fn make(res: u32) -> Self::Receivers {

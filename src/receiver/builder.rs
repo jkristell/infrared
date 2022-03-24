@@ -1,5 +1,5 @@
 use crate::receiver::{
-    DecoderStateMachine, DefaultInput, Event, PinInput, Poll, Receiver,
+    DecoderStateMachine, DefaultInput, PinInput, Receiver,
 };
 use core::marker::PhantomData;
 
@@ -26,26 +26,23 @@ use crate::remotecontrol::{Button, RemoteControlModel};
 
 /// Receiver Builder
 pub struct Builder<
-    SM: Protocol = DummyProtocol,
-    S = Event,
+    Proto: Protocol = DummyProtocol,
     IN = DefaultInput,
     T: InfraMonotonic = u32,
-    C = <SM as Protocol>::Cmd,
+    C = <Proto as Protocol>::Cmd,
 > {
-    pub(crate) proto: PhantomData<SM>,
+    pub(crate) proto: PhantomData<Proto>,
     pub(crate) input: IN,
-    pub(crate) method: PhantomData<S>,
     pub(crate) resolution: u32,
     pub(crate) output: PhantomData<C>,
     pub(crate) monotonic: PhantomData<T>,
 }
 
-impl Builder<DummyProtocol, Event, DefaultInput, u32, ()> {
-    pub fn new() -> Builder<DummyProtocol, Event, DefaultInput> {
+impl Builder<DummyProtocol, DefaultInput, u32, ()> {
+    pub fn new() -> Builder<DummyProtocol, DefaultInput> {
         Builder {
             proto: PhantomData,
             input: DefaultInput {},
-            method: PhantomData,
             resolution: 1_000_000,
             output: PhantomData,
             monotonic: PhantomData,
@@ -53,78 +50,75 @@ impl Builder<DummyProtocol, Event, DefaultInput, u32, ()> {
     }
 }
 
-impl<SM, S, IN, T, C> Builder<SM, S, IN, T, C>
+impl<Proto, Input, Mono, C> Builder<Proto, Input, Mono, C>
 where
-    S: Default,
-    SM: Protocol,
-    T: InfraMonotonic,
-    C: From<<SM as Protocol>::Cmd>,
+    Proto: Protocol,
+    Mono: InfraMonotonic,
+    C: From<<Proto as Protocol>::Cmd>,
 {
-    pub fn time_type<NT: InfraMonotonic>(self) -> Builder<SM, S, IN, NT> {
+    pub fn monotonic<NewMono: InfraMonotonic>(self) -> Builder<Proto, Input, NewMono> {
         Builder {
             resolution: self.resolution,
             proto: PhantomData,
             input: self.input,
-            method: PhantomData,
             output: PhantomData,
             monotonic: PhantomData,
         }
     }
 
-    pub fn protocol<Proto: Protocol>(self) -> Builder<Proto, S, IN, T> {
+    pub fn protocol<NewProto: Protocol>(self) -> Builder<NewProto, Input, Mono> {
         Builder {
             resolution: self.resolution,
             proto: PhantomData,
             input: self.input,
-            method: PhantomData,
             output: PhantomData,
             monotonic: PhantomData,
         }
     }
 
     #[cfg(feature = "nec")]
-    pub fn nec(self) -> Builder<Nec, S, IN, T> {
+    pub fn nec(self) -> Builder<Nec, Input, Mono> {
         self.protocol()
     }
 
     #[cfg(feature = "nec")]
-    pub fn nec16(self) -> Builder<Nec16, S, IN, T> {
+    pub fn nec16(self) -> Builder<Nec16, Input, Mono> {
         self.protocol()
     }
 
     #[cfg(feature = "nec")]
-    pub fn nec_samsung(self) -> Builder<NecSamsung, S, IN, T> {
+    pub fn nec_samsung(self) -> Builder<NecSamsung, Input, Mono> {
         self.protocol()
     }
 
     #[cfg(feature = "nec")]
-    pub fn nec_apple(self) -> Builder<NecApple, S, IN, T> {
+    pub fn nec_apple(self) -> Builder<NecApple, Input, Mono> {
         self.protocol()
     }
 
     #[cfg(feature = "rc5")]
-    pub fn rc5(self) -> Builder<Rc5, S, IN, T> {
+    pub fn rc5(self) -> Builder<Rc5, Input, Mono> {
         self.protocol()
     }
 
     #[cfg(feature = "rc6")]
-    pub fn rc6(self) -> Builder<Rc6, S, IN, T> {
+    pub fn rc6(self) -> Builder<Rc6, Input, Mono> {
         self.protocol()
     }
 
     #[cfg(feature = "sbp")]
-    pub fn samsung_bluray(self) -> Builder<Sbp, S, IN, T> {
+    pub fn samsung_bluray(self) -> Builder<Sbp, Input, Mono> {
         self.protocol()
     }
 
     #[cfg(feature = "denon")]
-    pub fn denon(self) -> Builder<Denon, S, IN, T> {
+    pub fn denon(self) -> Builder<Denon, Input, Mono> {
         self.protocol()
     }
 
     #[cfg(feature = "remotes")]
     /// Use Remote control
-    pub fn remotecontrol<Remote>(self, _: Remote) -> Builder<SM, S, IN, T, Button<Remote>>
+    pub fn remotecontrol<Remote>(self, _: Remote) -> Builder<Proto, Input, Mono, Button<Remote>>
     where
         Remote: RemoteControlModel,
     {
@@ -132,7 +126,6 @@ where
             resolution: self.resolution,
             proto: PhantomData,
             input: self.input,
-            method: PhantomData,
             output: PhantomData,
             monotonic: PhantomData,
         }
@@ -140,13 +133,12 @@ where
 
     #[cfg(feature = "embedded-hal")]
     /// The Receiver use `pin` as input
-    pub fn pin<PIN: InputPin>(self, pin: PIN) -> Builder<SM, S, PinInput<PIN>> {
+    pub fn pin<PIN: InputPin>(self, pin: PIN) -> Builder<Proto, PinInput<PIN>> {
         Builder {
             resolution: self.resolution,
             proto: PhantomData,
             input: PinInput(pin),
             monotonic: PhantomData,
-            method: PhantomData,
             output: PhantomData,
         }
     }
@@ -156,34 +148,10 @@ where
         self
     }
 
-    /// Periodic Polled
-    pub fn polled(self) -> Builder<SM, Poll, IN> {
-        Builder {
-            resolution: self.resolution,
-            proto: PhantomData,
-            input: self.input,
-            method: PhantomData,
-            monotonic: PhantomData,
-            output: PhantomData,
-        }
-    }
-
-    /// Event driven
-    pub fn event_driven(self) -> Builder<SM, Event, IN> {
-        Builder {
-            resolution: self.resolution,
-            proto: PhantomData,
-            input: self.input,
-            method: PhantomData,
-            monotonic: PhantomData,
-            output: PhantomData,
-        }
-    }
-
     /// Create the Receiver
-    pub fn build(self) -> Receiver<SM, S, IN, T, C>
+    pub fn build(self) -> Receiver<Proto, Input, Mono, C>
     where
-        SM: DecoderStateMachine<T>,
+        Proto: DecoderStateMachine<Mono>,
     {
         Receiver::with_input(self.resolution, self.input)
     }

@@ -255,7 +255,7 @@ fn fugit() {
 
     let mut receiver = Receiver::builder()
         .nec()
-        .time_type::<FugitMono<1_000_000>>()
+        .monotonic::<FugitMono<1_000_000>>()
         .build();
 
     println!("{:?}", receiver.spans());

@@ -1,5 +1,5 @@
 use crate::{
-    receiver::{DecoderState, DecoderStateMachine, Event, Receiver, Status},
+    receiver::{DecoderState, DecoderStateMachine, Receiver, Status},
     Protocol,
 };
 use crate::receiver::DefaultInput;
@@ -13,7 +13,7 @@ where
 {
     pub(crate) pos: usize,
     pub(crate) buf: &'a [Monotonic::Duration],
-    pub(crate) receiver: Receiver<SM, Event, DefaultInput, Monotonic, C>,
+    pub(crate) receiver: Receiver<SM, DefaultInput, Monotonic, C>,
 }
 
 impl<'a, SM, Monotonic, C> Iterator for BufferIterator<'a, SM, Monotonic, C>

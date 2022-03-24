@@ -1,14 +1,15 @@
 use embedded_hal::digital::v2::InputPin;
 use infrared::{
     protocol::{Rc5},
-    receiver::{DefaultInput, Event, Poll, Receiver},
+    receiver::{DefaultInput, Receiver},
     remotecontrol::{rc5::CdPlayer, Button},
 };
 
 #[test]
 fn const_embedded_hal_receiver() {
-    let pin = DummyEmbeddedHalPin;
 
+    /* 
+    let pin = DummyEmbeddedHalPin;
     let mut recv: Receiver<Rc5, Poll, _> = Receiver::builder()
         .rc5()
         .polled()
@@ -17,12 +18,12 @@ fn const_embedded_hal_receiver() {
         .build();
 
     let _ = recv.poll();
+    */
 
     let pin = DummyEmbeddedHalPin;
     let mut recv = Receiver::builder()
         .rc5()
         .remotecontrol(CdPlayer)
-        .event_driven()
         .resolution(20_000)
         .pin(pin)
         .build();
@@ -33,9 +34,8 @@ fn const_embedded_hal_receiver() {
 
 #[test]
 fn receiver_generic() {
-    let mut recv: Receiver<Rc5, Event, _> = Receiver::builder()
+    let mut recv: Receiver<Rc5> = Receiver::builder()
         .rc5()
-        .event_driven()
         .resolution(20_000)
         .build();
 
@@ -54,8 +54,7 @@ fn receiver_generic() {
 fn receiver_remote() {
     use infrared::remotecontrol::rc5;
 
-    let mut r: Receiver<Rc5, Event, DefaultInput, u32, Button<CdPlayer>> = Receiver::builder()
-        .event_driven()
+    let mut r: Receiver<Rc5, DefaultInput, u32, Button<CdPlayer>> = Receiver::builder()
         .rc5()
         .remotecontrol(rc5::CdPlayer)
         .build();
@@ -72,15 +71,17 @@ fn receiver_remote() {
         Err(_err) => (),
     }
 
-    let _r: Receiver<Rc5, Event, DefaultInput, u32, Button<CdPlayer>> = Receiver::new(20_000);
+    let _r: Receiver<Rc5, DefaultInput, u32, Button<CdPlayer>> = Receiver::new(20_000);
 
-    let _r: Receiver<Rc5, Poll, DefaultInput, u32, Button<CdPlayer>> = Receiver::new(20_000);
+    //let _r: Receiver<Rc5, DefaultInput, u32, Button<CdPlayer>> = Receiver::new(20_000);
 
+    /*
     let _r: Receiver<Rc5, Poll, DefaultInput, u32, Button<CdPlayer>> = Receiver::builder()
         .rc5()
         .polled()
         .remotecontrol(CdPlayer)
         .build();
+        */
 }
 
 struct DummyEmbeddedHalPin;

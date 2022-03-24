@@ -18,6 +18,7 @@ pub use error::*;
 pub use multireceiver::*;
 pub use receiver::*;
 pub use bufferinputreceiver::*;
+pub use ppoll::PeriodicPoll;
 
 /// Input from `poll` or `event` functions
 pub struct DefaultInput;
