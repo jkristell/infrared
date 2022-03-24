@@ -7,6 +7,7 @@ mod error;
 mod iter;
 mod multireceiver;
 mod bufferinputreceiver;
+mod ppoll;
 #[allow(clippy::module_inception)]
 mod receiver;
 pub mod time;
@@ -22,17 +23,3 @@ pub use bufferinputreceiver::*;
 pub struct DefaultInput;
 /// Input from pin
 pub struct PinInput<P>(pub P);
-
-#[derive(Default)]
-/// Periodic Poll
-pub struct Poll {
-    clock: u32,
-    /// Last seen edge
-    edge: bool,
-    /// Seen at
-    last_edge: u32,
-}
-
-#[derive(Default)]
-/// Event driven
-pub struct Event {}
