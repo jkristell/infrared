@@ -9,11 +9,9 @@ use panic_probe as _;
 
 use infrared::{
     protocol::NecApple,
-    receiver::{Event, PinInput},
     remotecontrol::{nec::Apple2009, Action, Button},
     Receiver,
 };
-use infrared::receiver::time::FugitMono;
 use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Edge, ExtiPin, Floating, Input},
     pac,
@@ -40,7 +38,7 @@ mod app {
     type RxPin = PB8<Input<Floating>>;
     type IrProto = NecApple;
     type IrRemote = Apple2009;
-    type IrReceiver = Receiver<IrProto, Event, PinInput<RxPin>, TimerInstantU32<MONOTIMER_FREQ>, Button<IrRemote>>;
+    type IrReceiver = Receiver<IrProto, RxPin, TimerInstantU32<MONOTIMER_FREQ>, Button<IrRemote>>;
 
     #[monotonic(binds = TIM3, default = true)]
     type Monotonic = stm32f1xx_hal::timer::MonoTimer<pac::TIM3, MONOTIMER_FREQ>;
