@@ -3,7 +3,7 @@ use crate::receiver::time::InfraMonotonic;
 use crate::receiver::Builder;
 use crate::{
     receiver::{
-        iter::BufferIterator, BufferInput, DecoderState, DecoderStateMachine, DecodingError,
+        DecoderState, DecoderStateMachine, DecodingError,
         DefaultInput, Error, Event, PinInput, Poll, Status,
     },
     Protocol,
@@ -110,10 +110,11 @@ use super::time::PulseSpans;
 /// ```
 ///    use infrared::{
 ///        Receiver,
-///        receiver::{Event, Poll, DefaultInput, PinInput, BufferInput, Builder},
+///        receiver::{Event, Poll, DefaultInput, PinInput, Builder},
 ///        protocol::{Rc6, Nec},
 ///    };
 ///    use dummy_pin::DummyPin;
+/// use infrared::receiver::BufferInputReceiver;
 ///
 ///    // Receiver for Rc6 signals, event based with embedded-hal pin
 ///    let pin = DummyPin::new_low();
@@ -122,10 +123,10 @@ use super::time::PulseSpans;
 ///    // Periodic polled Nec Receiver
 ///    let r2: Receiver<Nec, Poll, DefaultInput> = Receiver::builder().nec().resolution(40_000).polled().build();
 ///
-///    let buf = &[20, 40, 20];
-///    let mut r3: Receiver<Rc6, Event, BufferInput> = Receiver::builder().rc6().buffer(buf).build();
+///    let buf: &[u32] = &[20, 40, 20];
+///    let mut r3: BufferInputReceiver<Rc6> = BufferInputReceiver::with_resolution(20_000);
 ///
-///    let cmd_iter = r3.iter();
+///    let cmd_iter = r3.iter(buf);
 ///
 /// ```
 pub struct Receiver<
@@ -230,18 +231,6 @@ where
     }
 }
 
-impl<'a, SM, MD, T, C> Receiver<SM, MD, BufferInput<'a>, T, C>
-where
-    SM: DecoderStateMachine<T>,
-    MD: Default,
-    T: InfraMonotonic,
-    C: From<<SM as Protocol>::Cmd>,
-{
-    /// Create a Receiver with `buf` as input
-    pub fn with_buffer(resolution: u32, buf: &'a [u32]) -> Self {
-        Self::with_input(resolution, BufferInput(buf))
-    }
-}
 
 #[cfg(feature = "embedded-hal")]
 impl<SM, MD, PIN, T, C> Receiver<SM, MD, PinInput<PIN>, T, C>
@@ -269,22 +258,6 @@ where
     }
 }
 
-impl<'a, SM, C> Receiver<SM, Event, BufferInput<'a>, u32, C>
-where
-    SM: DecoderStateMachine<u32>,
-    C: From<<SM as Protocol>::Cmd>,
-{
-    pub fn iter(&'a mut self) -> BufferIterator<SM, C> {
-        BufferIterator {
-            pos: 0,
-            receiver: self,
-        }
-    }
-
-    pub fn set_buffer(&mut self, b: &'a [u32]) {
-        self.input.0 = b
-    }
-}
 
 #[cfg(feature = "embedded-hal")]
 impl<SM, P, T, C> Receiver<SM, Event, PinInput<P>, T, C>

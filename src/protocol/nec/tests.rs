@@ -4,11 +4,11 @@ use crate::{
         nec::{Nec16Command, NecAppleCommand, NecCommand, NecCommandVariant, NecSamsungCommand},
         Nec,
     },
-    receiver::Builder,
     sender::PulsedataBuffer,
     Receiver,
 };
 use fugit::TimerDurationU32;
+use crate::receiver::BufferInputReceiver;
 
 #[test]
 #[rustfmt::skip]
@@ -27,13 +27,9 @@ fn standard_nec() {
         24, 21, 24, 21, 24, 21, 24, 65, 25, 65, 24, 21, 24, 21, 24, 66, 24, 65, 25, 65, 24, 66, 24,
     ];
 
-    let mut brecv = Builder::new()
-        .nec()
-        .resolution(40_000)
-        .buffer(&dists)
-        .build();
+    let mut brecv = BufferInputReceiver::<Nec>::with_resolution(40_000);
 
-    let cmds = brecv.iter().collect::<Vec<_>>();
+    let cmds = brecv.iter(&dists).collect::<Vec<_>>();
     assert_eq!(cmds.len(), 2);
 
     for cmd in &cmds {
@@ -60,17 +56,10 @@ fn apple_rem() {
         596, 555, 568, 1662, 575, 549, 574, 1657, 569, 555, 578, 1651, 544, 1686, 571, 569, 575,
     ];
 
-    let mut brecv = Builder::new()
-        .nec_apple()
-        .resolution(1_000_000)
-        .buffer(&dists)
-        .build();
+    let mut brecv = BufferInputReceiver::<Nec>::with_resolution(40_000);
 
-    let iter = brecv.iter();
+    let cmds = brecv.iter(&dists).collect::<std::vec::Vec<_>>();
 
-    println!("{:?}", iter.receiver.spans);
-
-    let cmds = iter.collect::<std::vec::Vec<_>>();
     //assert_eq!(cmds.len(), 2);
 
     println!("{:?}", cmds);
@@ -147,13 +136,9 @@ fn all_nec_commands() {
                 repeat: false,
             };
             ptb.load::<Nec, FREQUENCY>(&cmd);
-            let mut brecv = Builder::new()
-                .nec()
-                .resolution(40_000)
-                .buffer(ptb.buffer())
-                .build();
+            let mut brecv = BufferInputReceiver::<Nec>::with_resolution(40_000);
 
-            let cmdres = brecv.iter().next().unwrap();
+            let cmdres = brecv.iter(ptb.buffer()).next().unwrap();
             assert_eq!(cmd.addr, cmdres.addr);
             assert_eq!(cmd.cmd, cmdres.cmd);
         }
@@ -179,13 +164,9 @@ fn one_freq<const F: u32>() {
 
     println!("{:?}", &ptb.buf);
 
-    let mut receiver = Builder::new()
-        .nec()
-        .resolution(F)
-        .buffer(ptb.buffer())
-        .build();
+    let mut receiver = BufferInputReceiver::<Nec>::with_resolution(F);
 
-    if let Some(cmd) = receiver.iter().next() {
+    if let Some(cmd) = receiver.iter(ptb.buffer()).next() {
         println!("{:?}", cmd);
         assert_eq!(cmd.addr, 20);
         assert_eq!(cmd.cmd, 10);
@@ -238,9 +219,9 @@ fn repeat() {
         97387
     ];
 
-    let mut receiver = Receiver::builder().nec().buffer(&data).build();
+    let mut receiver = BufferInputReceiver::<Nec>::with_resolution(1_000_000);
 
-    let iter = receiver.iter();
+    let iter = receiver.iter(&data);
 
     let cmds = iter.collect::<std::vec::Vec<_>>();
 

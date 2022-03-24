@@ -1,5 +1,5 @@
 use crate::receiver::{
-    BufferInput, DecoderStateMachine, DefaultInput, Event, PinInput, Poll, Receiver,
+    DecoderStateMachine, DefaultInput, Event, PinInput, Poll, Receiver,
 };
 use core::marker::PhantomData;
 
@@ -147,18 +147,6 @@ where
             input: PinInput(pin),
             monotonic: PhantomData,
             method: PhantomData,
-            output: PhantomData,
-        }
-    }
-
-    /// The Receiver should read the data from a data buffer
-    pub fn buffer(self, buf: &[u32]) -> Builder<SM, Event, BufferInput<'_>, T> {
-        Builder {
-            resolution: self.resolution,
-            proto: PhantomData,
-            input: BufferInput(buf),
-            method: PhantomData,
-            monotonic: PhantomData,
             output: PhantomData,
         }
     }

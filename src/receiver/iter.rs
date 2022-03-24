@@ -1,32 +1,37 @@
 use crate::{
-    receiver::{BufferInput, DecoderState, DecoderStateMachine, Event, Receiver, Status},
+    receiver::{DecoderState, DecoderStateMachine, Event, Receiver, Status},
     Protocol,
 };
+use crate::receiver::DefaultInput;
+use crate::receiver::time::InfraMonotonic;
 
-pub struct BufferIterator<'a, SM, C>
+pub struct BufferIterator<'a, SM, Monotonic,C>
 where
-    SM: DecoderStateMachine<u32>,
+    SM: DecoderStateMachine<Monotonic>,
+    Monotonic: InfraMonotonic,
     C: From<<SM as Protocol>::Cmd>,
 {
     pub(crate) pos: usize,
-    pub(crate) receiver: &'a mut Receiver<SM, Event, BufferInput<'a>, u32, C>,
+    pub(crate) buf: &'a [Monotonic::Duration],
+    pub(crate) receiver: Receiver<SM, Event, DefaultInput, Monotonic, C>,
 }
 
-impl<'a, SM, C> Iterator for BufferIterator<'a, SM, C>
+impl<'a, SM, Monotonic, C> Iterator for BufferIterator<'a, SM, Monotonic, C>
 where
-    SM: DecoderStateMachine<u32>,
+    SM: DecoderStateMachine<Monotonic>,
+    Monotonic: InfraMonotonic,
     C: From<<SM as Protocol>::Cmd>,
 {
     type Item = C;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            if self.pos == self.receiver.input.0.len() {
+            if self.pos == self.buf.len() {
                 break None;
             }
 
             let pos_edge = self.pos & 0x1 == 0;
-            let dt_us = self.receiver.input.0[self.pos];
+            let dt_us = self.buf[self.pos];
             self.pos += 1;
 
             let state: Status = SM::new_event(

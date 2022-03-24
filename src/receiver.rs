@@ -6,6 +6,7 @@ mod decoder;
 mod error;
 mod iter;
 mod multireceiver;
+mod bufferinputreceiver;
 #[allow(clippy::module_inception)]
 mod receiver;
 pub mod time;
@@ -15,13 +16,12 @@ pub use decoder::*;
 pub use error::*;
 pub use multireceiver::*;
 pub use receiver::*;
+pub use bufferinputreceiver::*;
 
 /// Input from `poll` or `event` functions
 pub struct DefaultInput;
 /// Input from pin
 pub struct PinInput<P>(pub P);
-/// Input from buffer
-pub struct BufferInput<'a>(&'a [u32]);
 
 #[derive(Default)]
 /// Periodic Poll

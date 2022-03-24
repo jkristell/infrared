@@ -1,4 +1,5 @@
-use crate::receiver::Builder;
+use crate::protocol::Denon;
+use crate::receiver::{BufferInputReceiver};
 
 #[test]
 fn denon() {
@@ -19,12 +20,8 @@ fn denon() {
         48, 19, 15, 18, 17, 16, 19, 15, 19, 15, 18, 15, 19, 49, 19, 15, 18, 16, 17, 16, 18, 16, 18,
         15, 18, 16, 19, 14, 18, 16, 18, 16, 17, 16, 18, 16, 18, 15, 18, 16, 18, 49, 18, 16, 18,
     ];
-    let mut brecv = Builder::new()
-        .denon()
-        .resolution(40_000)
-        .buffer(dists)
-        .build();
-    let cmds = brecv.iter().collect::<Vec<_>>();
+    let mut brecv = BufferInputReceiver::<Denon>::with_resolution(40_000);
+    let cmds = brecv.iter(dists).collect::<Vec<_>>();
 
     for cmd in &cmds {
         println!("{:?}", cmd);
