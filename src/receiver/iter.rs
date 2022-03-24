@@ -1,11 +1,11 @@
+use crate::receiver::time::InfraMonotonic;
+use crate::receiver::NoPinInput;
 use crate::{
     receiver::{DecoderState, DecoderStateMachine, Receiver, Status},
     Protocol,
 };
-use crate::receiver::NoPinInput;
-use crate::receiver::time::InfraMonotonic;
 
-pub struct BufferIterator<'a, SM, Monotonic,C>
+pub struct BufferIterator<'a, SM, Monotonic, C>
 where
     SM: DecoderStateMachine<Monotonic>,
     Monotonic: InfraMonotonic,

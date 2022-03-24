@@ -1,14 +1,13 @@
-use embedded_hal::digital::v2::InputPin;
+use crate::receiver::{DecoderStateMachine, DecodingError, Error, NoPinInput};
 use crate::{Protocol, Receiver};
-use crate::receiver::{DecoderStateMachine, NoPinInput, Error, DecodingError};
+use embedded_hal::digital::v2::InputPin;
 
 pub struct PeriodicPoll<
     Proto: DecoderStateMachine<u32>,
-    In = NoPinInput,
+    Input = NoPinInput,
     Cmd: From<<Proto as Protocol>::Cmd> = <Proto as Protocol>::Cmd,
->
-{
-    receiver: Receiver<Proto, In, u32, Cmd>,
+> {
+    receiver: Receiver<Proto, Input, u32, Cmd>,
 
     clock: u32,
     /// Last seen edge
@@ -27,7 +26,7 @@ where
             receiver: Receiver::<Proto, Input, u32, Cmd>::with_input(resolution, input),
             clock: 0,
             edge: false,
-            last_edge: 0
+            last_edge: 0,
         }
     }
 }
@@ -38,7 +37,6 @@ where
     Cmd: From<<Proto as Protocol>::Cmd>,
 {
     pub fn poll(&mut self, edge: bool) -> Result<Option<Cmd>, DecodingError> {
-
         self.clock = self.clock.wrapping_add(1);
 
         if edge == self.edge {
@@ -53,8 +51,6 @@ where
     }
 }
 
-
-
 #[cfg(feature = "embedded-hal")]
 impl<Proto, Pin, Cmd> PeriodicPoll<Proto, Pin, Cmd>
 where
@@ -65,7 +61,6 @@ where
     pub fn with_pin(resolution: u32, pin: Pin) -> PeriodicPoll<Proto, Pin, Cmd> {
         Self::new(resolution, pin)
     }
-
 
     pub fn poll(&mut self) -> Result<Option<Cmd>, Error<Pin::Error>> {
         let edge = self.receiver.pin().is_low().map_err(Error::Hal)?;
@@ -83,4 +78,3 @@ where
         Ok(self.receiver.generic_event(ds, edge)?.map(Into::into))
     }
 }
-

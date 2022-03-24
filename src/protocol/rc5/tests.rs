@@ -1,10 +1,10 @@
+use crate::receiver::BufferInputReceiver;
+use crate::remotecontrol::Button;
 use crate::{
     protocol::{rc5::Rc5Command, Rc5},
     remotecontrol::Action,
     sender::PulsedataBuffer,
 };
-use crate::receiver::BufferInputReceiver;
-use crate::remotecontrol::Button;
 
 #[test]
 fn rc5_command() {
@@ -30,8 +30,7 @@ fn test_bufrecv() {
 
     let mut r = BufferInputReceiver::<Rc5>::with_resolution(40_000);
 
-
-    let v: std::vec::Vec<_> = r.iter( &dists).collect();
+    let v: std::vec::Vec<_> = r.iter(&dists).collect();
     assert_eq!(v.len(), 2);
 
     for c in &v {
@@ -108,7 +107,7 @@ fn all_commands() {
                 .build();
              */
 
-            let cmdres = r.iter( &ptb.buf).next().unwrap();
+            let cmdres = r.iter(&ptb.buf).next().unwrap();
 
             assert_eq!(cmd.addr, cmdres.addr);
             assert_eq!(cmd.cmd, cmdres.cmd);

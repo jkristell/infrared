@@ -1,4 +1,5 @@
 use crate::receiver::time::FugitMono;
+use crate::receiver::BufferInputReceiver;
 use crate::{
     protocol::{
         nec::{Nec16Command, NecAppleCommand, NecCommand, NecCommandVariant, NecSamsungCommand},
@@ -8,7 +9,6 @@ use crate::{
     Receiver,
 };
 use fugit::TimerDurationU32;
-use crate::receiver::BufferInputReceiver;
 
 #[test]
 #[rustfmt::skip]

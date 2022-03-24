@@ -2,10 +2,7 @@ use crate::protocol::capture::Capture;
 use crate::receiver::time::InfraMonotonic;
 use crate::receiver::Builder;
 use crate::{
-    receiver::{
-        DecoderState, DecoderStateMachine, DecodingError,
-        NoPinInput, Error, Status,
-    },
+    receiver::{DecoderState, DecoderStateMachine, DecodingError, Error, NoPinInput, Status},
     Protocol,
 };
 use core::marker::PhantomData;
@@ -215,7 +212,6 @@ where
     }
 }
 
-
 #[cfg(feature = "embedded-hal")]
 impl<Proto, Pin, Mono, C> Receiver<Proto, Pin, Mono, C>
 where
@@ -240,7 +236,6 @@ where
         Ok(self.generic_event(dt, edge)?.map(Into::into))
     }
 }
-
 
 #[cfg(feature = "embedded-hal")]
 impl<Proto, Pin, Mono, C> Receiver<Proto, Pin, Mono, C>

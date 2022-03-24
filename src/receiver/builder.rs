@@ -1,6 +1,4 @@
-use crate::receiver::{
-    DecoderStateMachine, NoPinInput, Receiver,
-};
+use crate::receiver::{DecoderStateMachine, NoPinInput, Receiver};
 use core::marker::PhantomData;
 
 #[cfg(feature = "embedded-hal")]

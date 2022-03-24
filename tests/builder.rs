@@ -1,14 +1,13 @@
 use embedded_hal::digital::v2::InputPin;
 use infrared::{
-    protocol::{Rc5},
+    protocol::Rc5,
     receiver::{NoPinInput, Receiver},
     remotecontrol::{rc5::CdPlayer, Button},
 };
 
 #[test]
 fn const_embedded_hal_receiver() {
-
-    /* 
+    /*
     let pin = DummyEmbeddedHalPin;
     let mut recv: Receiver<Rc5, Poll, _> = Receiver::builder()
         .rc5()
@@ -31,13 +30,9 @@ fn const_embedded_hal_receiver() {
     let _ = recv.event(204);
 }
 
-
 #[test]
 fn receiver_generic() {
-    let mut recv: Receiver<Rc5> = Receiver::builder()
-        .rc5()
-        .resolution(20_000)
-        .build();
+    let mut recv: Receiver<Rc5> = Receiver::builder().rc5().resolution(20_000).build();
 
     recv.event(20, true).unwrap();
 

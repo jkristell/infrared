@@ -1,8 +1,8 @@
+use crate::receiver::BufferInputReceiver;
 use crate::{
     protocol::{rc6::Rc6Command, Rc6},
     sender::PulsedataBuffer,
 };
-use crate::receiver::BufferInputReceiver;
 
 /*
 #[test]
@@ -91,8 +91,6 @@ fn all_commands() {
             let mut recv = BufferInputReceiver::<Rc6>::with_resolution(SAMPLE_RATE);
 
             let cmdres = recv.iter(&ptb.buf).next().unwrap();
-
-
 
             assert_eq!(cmd.addr, cmdres.addr);
             assert_eq!(cmd.cmd, cmdres.cmd);
