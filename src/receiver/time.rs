@@ -1,7 +1,8 @@
-use crate::protocol::utils::scale_with_samplerate;
 use crate::receiver::DecoderStateMachine;
 use core::ops::{Add, Sub};
-use fugit::{ExtU32, TimerDurationU32, TimerInstantU32};
+
+mod fgt;
+mod primitives;
 
 pub trait InfraMonotonic: Sized {
     type Instant: Ord
@@ -19,7 +20,9 @@ pub trait InfraMonotonic: Sized {
 
     fn checked_sub(a: Self::Instant, b: Self::Instant) -> Option<Self::Duration>;
 
-    fn create_span<D: DecoderStateMachine<Self>>(freq: u32) -> PulseSpans<Self::Duration>;
+    //fn create_span<D: DecoderStateMachine<Self>>(freq: u32) -> PulseSpans<Self::Duration>;
+
+    fn create_span(freq: u32, p: u32, t: u32) -> Span<Self::Duration>;
 
     fn find<P: From<usize>>(spans: &PulseSpans<Self::Duration>, pl: Self::Duration) -> Option<P> {
         spans
@@ -30,208 +33,22 @@ pub trait InfraMonotonic: Sized {
     }
 }
 
-pub struct FugitMono<const HZ: u32>;
-
-impl<const HZ: u32> InfraMonotonic for TimerInstantU32<HZ> {
-    type Instant = TimerInstantU32<HZ>;
-    type Duration = TimerDurationU32<HZ>;
-    const ZERO_INSTANT: Self::Instant = TimerInstantU32::from_ticks(0);
-    const ZERO_DURATION: Self::Duration = TimerDurationU32::from_ticks(0);
-
-    /// Calc a - b
-    fn checked_sub(a: Self::Instant, b: Self::Instant) -> Option<Self::Duration> {
-        a.checked_duration_since(b)
-    }
-
-    fn create_span<D: DecoderStateMachine<Self>>(_freq: u32) -> PulseSpans<Self::Duration> {
-        PulseSpans {
-            spans: [
-                PulseSpan::<Self::Duration>::new(D::PULSE_LENGTHS[0].micros(), D::TOLERANCE[0]),
-                PulseSpan::<Self::Duration>::new(D::PULSE_LENGTHS[1].micros(), D::TOLERANCE[1]),
-                PulseSpan::<Self::Duration>::new(D::PULSE_LENGTHS[2].micros(), D::TOLERANCE[2]),
-                PulseSpan::<Self::Duration>::new(D::PULSE_LENGTHS[3].micros(), D::TOLERANCE[3]),
-                PulseSpan::<Self::Duration>::new(D::PULSE_LENGTHS[4].micros(), D::TOLERANCE[4]),
-                PulseSpan::<Self::Duration>::new(D::PULSE_LENGTHS[5].micros(), D::TOLERANCE[5]),
-                PulseSpan::<Self::Duration>::new(D::PULSE_LENGTHS[6].micros(), D::TOLERANCE[6]),
-                PulseSpan::<Self::Duration>::new(D::PULSE_LENGTHS[7].micros(), D::TOLERANCE[7]),
-            ],
-        }
-    }
-}
-
-impl<const HZ: u32> InfraMonotonic for FugitMono<HZ> {
-    type Instant = TimerInstantU32<HZ>;
-    type Duration = TimerDurationU32<HZ>;
-    const ZERO_INSTANT: Self::Instant = TimerInstantU32::from_ticks(0);
-    const ZERO_DURATION: Self::Duration = TimerDurationU32::from_ticks(0);
-
-    fn checked_sub(a: Self::Instant, b: Self::Instant) -> Option<Self::Duration> {
-        a.checked_duration_since(b)
-    }
-
-    fn create_span<D: DecoderStateMachine<Self>>(_freq: u32) -> PulseSpans<Self::Duration> {
-        PulseSpans {
-            spans: [
-                PulseSpan::<Self::Duration>::new(D::PULSE_LENGTHS[0].micros(), D::TOLERANCE[0]),
-                PulseSpan::<Self::Duration>::new(D::PULSE_LENGTHS[1].micros(), D::TOLERANCE[1]),
-                PulseSpan::<Self::Duration>::new(D::PULSE_LENGTHS[2].micros(), D::TOLERANCE[2]),
-                PulseSpan::<Self::Duration>::new(D::PULSE_LENGTHS[3].micros(), D::TOLERANCE[3]),
-                PulseSpan::<Self::Duration>::new(D::PULSE_LENGTHS[4].micros(), D::TOLERANCE[4]),
-                PulseSpan::<Self::Duration>::new(D::PULSE_LENGTHS[5].micros(), D::TOLERANCE[5]),
-                PulseSpan::<Self::Duration>::new(D::PULSE_LENGTHS[6].micros(), D::TOLERANCE[6]),
-                PulseSpan::<Self::Duration>::new(D::PULSE_LENGTHS[7].micros(), D::TOLERANCE[7]),
-            ],
-        }
-    }
-}
-
-impl InfraMonotonic for u32 {
-    type Instant = u32;
-    type Duration = u32;
-    const ZERO_INSTANT: Self::Instant = 0;
-    const ZERO_DURATION: Self::Duration = 0;
-
-    fn checked_sub(a: Self::Instant, b: Self::Instant) -> Option<Self::Duration> {
-        a.checked_sub(b)
-    }
-
-    fn create_span<D: DecoderStateMachine<Self>>(freq: u32) -> PulseSpans<u32> {
-        PulseSpans {
-            spans: [
-                PulseSpan::<u32>::new(
-                    scale_with_samplerate(D::PULSE_LENGTHS[0], freq),
-                    D::TOLERANCE[0],
-                ),
-                PulseSpan::<u32>::new(
-                    scale_with_samplerate(D::PULSE_LENGTHS[1], freq),
-                    D::TOLERANCE[1],
-                ),
-                PulseSpan::<u32>::new(
-                    scale_with_samplerate(D::PULSE_LENGTHS[2], freq),
-                    D::TOLERANCE[2],
-                ),
-                PulseSpan::<u32>::new(
-                    scale_with_samplerate(D::PULSE_LENGTHS[3], freq),
-                    D::TOLERANCE[3],
-                ),
-                PulseSpan::<u32>::new(
-                    scale_with_samplerate(D::PULSE_LENGTHS[4], freq),
-                    D::TOLERANCE[4],
-                ),
-                PulseSpan::<u32>::new(
-                    scale_with_samplerate(D::PULSE_LENGTHS[5], freq),
-                    D::TOLERANCE[5],
-                ),
-                PulseSpan::<u32>::new(
-                    scale_with_samplerate(D::PULSE_LENGTHS[6], freq),
-                    D::TOLERANCE[6],
-                ),
-                PulseSpan::<u32>::new(
-                    scale_with_samplerate(D::PULSE_LENGTHS[7], freq),
-                    D::TOLERANCE[7],
-                ),
-            ],
-        }
-    }
-}
-
-impl InfraMonotonic for u64 {
-    type Instant = u64;
-    type Duration = u64;
-    const ZERO_INSTANT: Self::Instant = 0;
-    const ZERO_DURATION: Self::Duration = 0;
-
-    fn checked_sub(a: Self::Instant, b: Self::Instant) -> Option<Self::Duration> {
-        a.checked_sub(b)
-    }
-
-    fn create_span<D: DecoderStateMachine<Self>>(freq: u32) -> PulseSpans<u64> {
-        PulseSpans {
-            spans: [
-                PulseSpan::<u64>::new(
-                    scale_with_samplerate(D::PULSE_LENGTHS[0], freq),
-                    D::TOLERANCE[0],
-                ),
-                PulseSpan::<u64>::new(
-                    scale_with_samplerate(D::PULSE_LENGTHS[1], freq),
-                    D::TOLERANCE[1],
-                ),
-                PulseSpan::<u64>::new(
-                    scale_with_samplerate(D::PULSE_LENGTHS[2], freq),
-                    D::TOLERANCE[2],
-                ),
-                PulseSpan::<u64>::new(
-                    scale_with_samplerate(D::PULSE_LENGTHS[3], freq),
-                    D::TOLERANCE[3],
-                ),
-                PulseSpan::<u64>::new(
-                    scale_with_samplerate(D::PULSE_LENGTHS[4], freq),
-                    D::TOLERANCE[4],
-                ),
-                PulseSpan::<u64>::new(
-                    scale_with_samplerate(D::PULSE_LENGTHS[5], freq),
-                    D::TOLERANCE[5],
-                ),
-                PulseSpan::<u64>::new(
-                    scale_with_samplerate(D::PULSE_LENGTHS[6], freq),
-                    D::TOLERANCE[6],
-                ),
-                PulseSpan::<u64>::new(
-                    scale_with_samplerate(D::PULSE_LENGTHS[7], freq),
-                    D::TOLERANCE[7],
-                ),
-            ],
-        }
-    }
-}
-
 #[derive(Debug)]
-pub struct PulseSpan<T> {
+pub struct Span<T> {
     low: T,
     high: T,
 }
 
 #[derive(Debug)]
 pub struct PulseSpans<T> {
-    spans: [PulseSpan<T>; 8],
+    pub(crate) spans: [Span<T>; 8],
 }
 
-impl PulseSpan<u32> {
-    pub const fn new(base: u32, tol: u32) -> Self {
-        let tol = base * tol / 100;
-        let low = base - tol;
-        let high = base + tol;
-
-        PulseSpan { low, high }
-    }
-}
-
-impl PulseSpan<u64> {
-    pub const fn new(base: u32, tol: u32) -> Self {
-        let tol = base * tol / 100;
-        let low = base - tol;
-        let high = base + tol;
-
-        PulseSpan { low: low as u64, high: high as u64 }
-    }
-}
-
-
-impl<T> PulseSpan<T>
+impl<T> Span<T>
 where
     T: PartialOrd,
 {
     fn contains(&self, other: T) -> bool {
         self.low <= other && other <= self.high
-    }
-}
-
-impl<const HZ: u32> PulseSpan<TimerDurationU32<HZ>> {
-    pub fn new(base: TimerDurationU32<HZ>, tol: u32) -> Self {
-        let tol = base * tol / 100;
-        let low = base - tol;
-        let high = base + tol;
-
-        PulseSpan { low, high }
     }
 }

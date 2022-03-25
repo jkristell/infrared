@@ -9,7 +9,7 @@ const RC6_TIME_UNIT: u32 = 444;
 impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Rc6 {
     type Data = Rc6Data;
     type InternalState = Rc6State;
-    const PULSE_LENGTHS: [u32; 8] = [
+    const PULSE: [u32; 8] = [
         RC6_TIME_UNIT,
         RC6_TIME_UNIT * 2,
         RC6_TIME_UNIT * 3,
@@ -19,7 +19,7 @@ impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Rc6 {
         0,
         0,
     ];
-    const TOLERANCE: [u32; 8] = [12, 12, 12, 12, 12, 12, 12, 12];
+    const TOL: [u32; 8] = [12, 12, 12, 12, 12, 12, 12, 12];
 
     fn create_data() -> Self::Data {
         Self::Data {

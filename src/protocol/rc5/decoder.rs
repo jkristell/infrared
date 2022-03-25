@@ -9,8 +9,8 @@ const RC5_BASE_TIME: u32 = 889;
 impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Rc5 {
     type Data = Rc5Data;
     type InternalState = Rc5State;
-    const PULSE_LENGTHS: [u32; 8] = [RC5_BASE_TIME, 2 * RC5_BASE_TIME, 0, 0, 0, 0, 0, 0];
-    const TOLERANCE: [u32; 8] = [12, 10, 0, 0, 0, 0, 0, 0];
+    const PULSE: [u32; 8] = [RC5_BASE_TIME, 2 * RC5_BASE_TIME, 0, 0, 0, 0, 0, 0];
+    const TOL: [u32; 8] = [12, 10, 0, 0, 0, 0, 0, 0];
 
     fn create_data() -> Self::Data {
         Rc5Data::default()

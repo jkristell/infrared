@@ -63,7 +63,7 @@ where
     type Data = NecData<Time, Cmd>;
     type InternalState = NecState;
 
-    const PULSE_LENGTHS: [u32; 8] = [
+    const PULSE: [u32; 8] = [
         Cmd::PULSE_DISTANCE.header_high + Cmd::PULSE_DISTANCE.header_low,
         Cmd::PULSE_DISTANCE.header_high + Cmd::PULSE_DISTANCE.repeat_low,
         Cmd::PULSE_DISTANCE.data_high + Cmd::PULSE_DISTANCE.data_zero_low,
@@ -74,7 +74,7 @@ where
         0,
     ];
 
-    const TOLERANCE: [u32; 8] = [7, 7, 5, 5, 0, 0, 0, 0];
+    const TOL: [u32; 8] = [7, 7, 5, 5, 0, 0, 0, 0];
 
     fn create_data() -> Self::Data {
         NecData {

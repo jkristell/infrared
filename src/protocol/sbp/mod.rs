@@ -111,7 +111,7 @@ pub enum SbpState {
 impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Sbp {
     type Data = SbpData<Mono>;
     type InternalState = SbpState;
-    const PULSE_LENGTHS: [u32; 8] = [
+    const PULSE: [u32; 8] = [
         (4500 + 4500),
         (500 + 4500),
         (500 + 500),
@@ -121,7 +121,7 @@ impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Sbp {
         0,
         0,
     ];
-    const TOLERANCE: [u32; 8] = [5, 5, 10, 10, 0, 0, 0, 0];
+    const TOL: [u32; 8] = [5, 5, 10, 10, 0, 0, 0, 0];
 
     fn create_data() -> Self::Data {
         SbpData {

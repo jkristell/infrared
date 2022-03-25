@@ -7,7 +7,6 @@ use std::{
 use infrared::Receiver;
 
 fn main() -> io::Result<()> {
-
     let mut args = std::env::args();
     let _ = args.next();
 

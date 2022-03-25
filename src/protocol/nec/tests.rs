@@ -1,4 +1,3 @@
-use crate::receiver::time::FugitMono;
 use crate::receiver::BufferInputReceiver;
 use crate::{
     protocol::{
@@ -8,7 +7,7 @@ use crate::{
     sender::PulsedataBuffer,
     Receiver,
 };
-use fugit::TimerDurationU32;
+use fugit::{TimerDurationU32, TimerInstantU32};
 
 #[test]
 #[rustfmt::skip]
@@ -255,7 +254,7 @@ fn fugit() {
 
     let mut receiver = Receiver::builder()
         .nec()
-        .monotonic::<FugitMono<1_000_000>>()
+        .monotonic::<TimerInstantU32<1_000_000>>()
         .build();
 
     println!("{:?}", receiver.spans());

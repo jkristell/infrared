@@ -44,7 +44,7 @@ impl<Time: InfraMonotonic> DecoderStateMachine<Time> for Denon {
     type Data = DenonData<Time>;
     type InternalState = DenonState;
 
-    const PULSE_LENGTHS: [u32; 8] = [
+    const PULSE: [u32; 8] = [
         (HEADER_HIGH + HEADER_LOW),
         (DATA_HIGH + ZERO_LOW),
         (DATA_HIGH + ONE_LOW),
@@ -55,7 +55,7 @@ impl<Time: InfraMonotonic> DecoderStateMachine<Time> for Denon {
         0,
     ];
 
-    const TOLERANCE: [u32; 8] = [8, 10, 10, 0, 0, 0, 0, 0];
+    const TOL: [u32; 8] = [8, 10, 10, 0, 0, 0, 0, 0];
 
     fn create_data() -> Self::Data {
         DenonData {

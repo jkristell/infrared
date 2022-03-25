@@ -11,8 +11,23 @@ pub trait DecoderStateMachine<Mono: InfraMonotonic>: Protocol {
     /// Internal State type
     type InternalState: Into<State>;
 
-    const PULSE_LENGTHS: [u32; 8];
-    const TOLERANCE: [u32; 8];
+    const PULSE: [u32; 8];
+    const TOL: [u32; 8];
+
+    fn create_pulsespans(freq: u32) -> PulseSpans<Mono::Duration> {
+        PulseSpans {
+            spans: [
+                Mono::create_span(freq, Self::PULSE[0], Self::TOL[0]),
+                Mono::create_span(freq, Self::PULSE[1], Self::TOL[1]),
+                Mono::create_span(freq, Self::PULSE[2], Self::TOL[2]),
+                Mono::create_span(freq, Self::PULSE[3], Self::TOL[3]),
+                Mono::create_span(freq, Self::PULSE[4], Self::TOL[4]),
+                Mono::create_span(freq, Self::PULSE[5], Self::TOL[5]),
+                Mono::create_span(freq, Self::PULSE[6], Self::TOL[6]),
+                Mono::create_span(freq, Self::PULSE[7], Self::TOL[7]),
+            ],
+        }
+    }
 
     /// Create the resources
     fn create_data() -> Self::Data;

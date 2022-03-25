@@ -25,8 +25,8 @@ impl Protocol for Capture {
 impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Capture {
     type Data = CaptureData;
     type InternalState = State;
-    const PULSE_LENGTHS: [u32; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
-    const TOLERANCE: [u32; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
+    const PULSE: [u32; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
+    const TOL: [u32; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
 
     fn create_data() -> Self::Data {
         CaptureData {
