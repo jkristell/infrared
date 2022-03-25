@@ -15,15 +15,14 @@ use stm32f1xx_hal::{
 
 use infrared::{
     protocol::Rc6,
-    receiver::{PinInput, Poll},
-    Receiver,
+    PeriodicPoll,
 };
 
 // Sample rate
 const TIMER_FREQ: u32 = 100_000;
 
 // Our receivertype
-type IrReceiver = Receiver<Rc6, Poll, PinInput<PB8<Input<Floating>>>>;
+type IrReceiver = PeriodicPoll<Rc6, PB8<Input<Floating>>>;
 
 // Globals
 static mut TIMER: Option<CounterHz<TIM2>> = None;
@@ -51,7 +50,7 @@ fn main() -> ! {
     timer.start(TIMER_FREQ.Hz()).unwrap();
     timer.listen(Event::Update);
 
-    let receiver = Receiver::with_pin(TIMER_FREQ, pin);
+    let receiver = infrared::PeriodicPoll::with_pin(TIMER_FREQ, pin);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {

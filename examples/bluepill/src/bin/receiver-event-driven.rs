@@ -13,23 +13,21 @@ use stm32f1xx_hal::{
     time::{Instant, MonoTimer},
 };
 
-use infrared::protocol::{NecApple, NecSamsung};
 #[allow(unused_imports)]
 use infrared::{
-    protocol::{Nec, Rc6},
-    receiver::{Event, PinInput},
+    protocol::{Nec, Rc6, NecApple},
     remotecontrol::{nec::*, rc5::*},
     Receiver,
 };
 
 // Pin connected to the receiver
-type RecvPin = PB8<Input<Floating>>;
+type IrPin = PB8<Input<Floating>>;
 
 // Our timer. Needs to be accessible in the interrupt handler.
 static mut MONO: Option<MonoTimer> = None;
 
 // Our Infrared receiver
-static mut RECEIVER: Option<Receiver<NecApple, Event, PinInput<RecvPin>>> = None;
+static mut RECEIVER: Option<Receiver<NecApple, IrPin>> = None;
 
 #[entry]
 fn main() -> ! {
@@ -86,6 +84,8 @@ fn EXTI9_5() {
     let mono = unsafe { MONO.as_ref().unwrap() };
     let now = mono.now();
 
+    
+
     if let Some(dt) = LAST.map(|i| i.elapsed()) {
         if let Ok(Some(cmd)) = receiver.event(dt) {
             info!("cmd: {:?}", Debug2Format(&cmd));
@@ -94,5 +94,5 @@ fn EXTI9_5() {
 
     LAST.replace(now);
 
-    receiver.pin().clear_interrupt_pending_bit();
+    receiver.pin_mut().clear_interrupt_pending_bit();
 }

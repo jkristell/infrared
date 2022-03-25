@@ -13,8 +13,6 @@ use stm32f1xx_hal::{
     timer::{CounterHz, Event, Timer},
 };
 
-use infrared::receiver::{PinInput, Poll};
-
 #[allow(unused_imports)]
 use infrared::{
     protocol::{Nec, NecApple},
@@ -25,7 +23,7 @@ use infrared::{
 
 // Pin connected to the receiver
 type IrPin = PB8<Input<Floating>>;
-type IrReceiver = Receiver<NecApple, Poll, PinInput<IrPin>, Button<Apple2009>>;
+type IrReceiver = infrared::PeriodicPoll<NecApple, IrPin, Button<Apple2009>>;
 
 // Samplerate
 const SAMPLERATE: u32 = 100_000;
@@ -58,15 +56,7 @@ fn main() -> ! {
 
     timer.listen(Event::Update);
 
-    let receiver = infrared::Receiver::with_pin(SAMPLERATE, pin);
-    /*
-       .nec_apple()
-       .remote::<Apple2009>()
-       .polled()
-       .resolution(SAMPLERATE)
-       .pin(pin)
-       .build();
-    */
+    let receiver = infrared::PeriodicPoll::with_pin(SAMPLERATE, pin);
 
     // Safe because the devices are only used from in the interrupt handler
     unsafe {

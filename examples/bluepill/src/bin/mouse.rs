@@ -35,10 +35,10 @@ mod app {
     const MONOTIMER_FREQ: u32 = 100_000;
 
     /// The pin connected to the infrared receiver module
-    type RxPin = PB8<Input<Floating>>;
+    type IrPin = PB8<Input<Floating>>;
     type IrProto = NecApple;
     type IrRemote = Apple2009;
-    type IrReceiver = Receiver<IrProto, RxPin, TimerInstantU32<MONOTIMER_FREQ>, Button<IrRemote>>;
+    type IrReceiver = Receiver<IrProto, IrPin, TimerInstantU32<MONOTIMER_FREQ>, Button<IrRemote>>;
 
     #[monotonic(binds = TIM3, default = true)]
     type Monotonic = stm32f1xx_hal::timer::MonoTimer<pac::TIM3, MONOTIMER_FREQ>;
@@ -138,11 +138,11 @@ mod app {
 
         let now = monotonics::Monotonic::now();
 
-        if let Ok(Some(button)) = ir_rx.fugit_time(now) {
+        if let Ok(Some(button)) = ir_rx.event_instant(now) {
             let _ = process_ir_cmd::spawn(button).ok();
         }
 
-        ir_rx.pin().clear_interrupt_pending_bit();
+        ir_rx.pin_mut().clear_interrupt_pending_bit();
     }
 
     #[task(

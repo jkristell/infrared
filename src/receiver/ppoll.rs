@@ -59,7 +59,7 @@ where
     }
 
     pub fn poll(&mut self) -> Result<Option<Cmd>, Error<Pin::Error>> {
-        let edge = self.receiver.mut_pin().is_low().map_err(Error::Hal)?;
+        let edge = self.receiver.pin_mut().is_low().map_err(Error::Hal)?;
 
         self.poll_edge(edge).map_err(Into::into)
     }

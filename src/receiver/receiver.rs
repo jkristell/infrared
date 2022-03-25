@@ -259,8 +259,13 @@ where
         Ok(self.event_edge(dt, edge)?.map(Into::into))
     }
 
+    /// Get a reference to the Pin
+    pub fn pin(&self) -> &Pin {
+        &self.input
+    }
+
     /// Get a mut ref to the Pin
-    pub fn mut_pin(&mut self) -> &mut Pin {
+    pub fn pin_mut(&mut self) -> &mut Pin {
         &mut self.input
     }
 
