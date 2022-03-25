@@ -180,13 +180,13 @@ where
 }
 
 impl<P1, P2, P3, Time: InfraMonotonic> ReceiverWrapper<3, Time> for (P1, P2, P3)
-    where
-        P1: DecoderStateMachine<Time>,
-        P2: DecoderStateMachine<Time>,
-        P3: DecoderStateMachine<Time>,
-        P1::Cmd: Into<CmdEnum>,
-        P2::Cmd: Into<CmdEnum>,
-        P3::Cmd: Into<CmdEnum>,
+where
+    P1: DecoderStateMachine<Time>,
+    P2: DecoderStateMachine<Time>,
+    P3: DecoderStateMachine<Time>,
+    P1::Cmd: Into<CmdEnum>,
+    P2::Cmd: Into<CmdEnum>,
+    P3::Cmd: Into<CmdEnum>,
 {
     type Receivers = (
         Receiver<P1, NoPinInput, Time>,
@@ -195,10 +195,7 @@ impl<P1, P2, P3, Time: InfraMonotonic> ReceiverWrapper<3, Time> for (P1, P2, P3)
     );
 
     fn make(res: u32) -> Self::Receivers {
-        (Receiver::new(res),
-         Receiver::new(res),
-         Receiver::new(res),
-        )
+        (Receiver::new(res), Receiver::new(res), Receiver::new(res))
     }
 
     fn event(rs: &mut Self::Receivers, dt: Time::Duration, edge: bool) -> [Option<CmdEnum>; 3] {
@@ -210,17 +207,16 @@ impl<P1, P2, P3, Time: InfraMonotonic> ReceiverWrapper<3, Time> for (P1, P2, P3)
     }
 }
 
-
 impl<P1, P2, P3, P4, Time: InfraMonotonic> ReceiverWrapper<4, Time> for (P1, P2, P3, P4)
-    where
-        P1: DecoderStateMachine<Time>,
-        P2: DecoderStateMachine<Time>,
-        P3: DecoderStateMachine<Time>,
-        P4: DecoderStateMachine<Time>,
-        P1::Cmd: Into<CmdEnum>,
-        P2::Cmd: Into<CmdEnum>,
-        P3::Cmd: Into<CmdEnum>,
-        P4::Cmd: Into<CmdEnum>,
+where
+    P1: DecoderStateMachine<Time>,
+    P2: DecoderStateMachine<Time>,
+    P3: DecoderStateMachine<Time>,
+    P4: DecoderStateMachine<Time>,
+    P1::Cmd: Into<CmdEnum>,
+    P2::Cmd: Into<CmdEnum>,
+    P3::Cmd: Into<CmdEnum>,
+    P4::Cmd: Into<CmdEnum>,
 {
     type Receivers = (
         Receiver<P1, NoPinInput, Time>,
@@ -230,10 +226,11 @@ impl<P1, P2, P3, P4, Time: InfraMonotonic> ReceiverWrapper<4, Time> for (P1, P2,
     );
 
     fn make(res: u32) -> Self::Receivers {
-        (Receiver::new(res),
-         Receiver::new(res),
-         Receiver::new(res),
-         Receiver::new(res),
+        (
+            Receiver::new(res),
+            Receiver::new(res),
+            Receiver::new(res),
+            Receiver::new(res),
         )
     }
 
@@ -247,19 +244,18 @@ impl<P1, P2, P3, P4, Time: InfraMonotonic> ReceiverWrapper<4, Time> for (P1, P2,
     }
 }
 
-
 impl<P1, P2, P3, P4, P5, Time: InfraMonotonic> ReceiverWrapper<5, Time> for (P1, P2, P3, P4, P5)
-    where
-        P1: DecoderStateMachine<Time>,
-        P2: DecoderStateMachine<Time>,
-        P3: DecoderStateMachine<Time>,
-        P4: DecoderStateMachine<Time>,
-        P5: DecoderStateMachine<Time>,
-        P1::Cmd: Into<CmdEnum>,
-        P2::Cmd: Into<CmdEnum>,
-        P3::Cmd: Into<CmdEnum>,
-        P4::Cmd: Into<CmdEnum>,
-        P5::Cmd: Into<CmdEnum>,
+where
+    P1: DecoderStateMachine<Time>,
+    P2: DecoderStateMachine<Time>,
+    P3: DecoderStateMachine<Time>,
+    P4: DecoderStateMachine<Time>,
+    P5: DecoderStateMachine<Time>,
+    P1::Cmd: Into<CmdEnum>,
+    P2::Cmd: Into<CmdEnum>,
+    P3::Cmd: Into<CmdEnum>,
+    P4::Cmd: Into<CmdEnum>,
+    P5::Cmd: Into<CmdEnum>,
 {
     type Receivers = (
         Receiver<P1, NoPinInput, Time>,
@@ -270,11 +266,12 @@ impl<P1, P2, P3, P4, P5, Time: InfraMonotonic> ReceiverWrapper<5, Time> for (P1,
     );
 
     fn make(res: u32) -> Self::Receivers {
-        (Receiver::new(res),
-         Receiver::new(res),
-         Receiver::new(res),
-         Receiver::new(res),
-         Receiver::new(res),
+        (
+            Receiver::new(res),
+            Receiver::new(res),
+            Receiver::new(res),
+            Receiver::new(res),
+            Receiver::new(res),
         )
     }
 
@@ -289,23 +286,22 @@ impl<P1, P2, P3, P4, P5, Time: InfraMonotonic> ReceiverWrapper<5, Time> for (P1,
     }
 }
 
+impl<P1, P2, P3, P4, P5, P6, Time: InfraMonotonic> ReceiverWrapper<6, Time>
+    for (P1, P2, P3, P4, P5, P6)
+where
+    P1: DecoderStateMachine<Time>,
+    P2: DecoderStateMachine<Time>,
+    P3: DecoderStateMachine<Time>,
+    P4: DecoderStateMachine<Time>,
+    P5: DecoderStateMachine<Time>,
+    P6: DecoderStateMachine<Time>,
 
-
-impl<P1, P2, P3, P4, P5, P6, Time: InfraMonotonic> ReceiverWrapper<6, Time> for (P1, P2, P3, P4, P5, P6)
-    where
-        P1: DecoderStateMachine<Time>,
-        P2: DecoderStateMachine<Time>,
-        P3: DecoderStateMachine<Time>,
-        P4: DecoderStateMachine<Time>,
-        P5: DecoderStateMachine<Time>,
-        P6: DecoderStateMachine<Time>,
-
-        P1::Cmd: Into<CmdEnum>,
-        P2::Cmd: Into<CmdEnum>,
-        P3::Cmd: Into<CmdEnum>,
-        P4::Cmd: Into<CmdEnum>,
-        P5::Cmd: Into<CmdEnum>,
-        P6::Cmd: Into<CmdEnum>,
+    P1::Cmd: Into<CmdEnum>,
+    P2::Cmd: Into<CmdEnum>,
+    P3::Cmd: Into<CmdEnum>,
+    P4::Cmd: Into<CmdEnum>,
+    P5::Cmd: Into<CmdEnum>,
+    P6::Cmd: Into<CmdEnum>,
 {
     type Receivers = (
         Receiver<P1, NoPinInput, Time>,
@@ -317,12 +313,13 @@ impl<P1, P2, P3, P4, P5, P6, Time: InfraMonotonic> ReceiverWrapper<6, Time> for 
     );
 
     fn make(res: u32) -> Self::Receivers {
-        (Receiver::new(res),
-         Receiver::new(res),
-         Receiver::new(res),
-         Receiver::new(res),
-         Receiver::new(res),
-         Receiver::new(res),
+        (
+            Receiver::new(res),
+            Receiver::new(res),
+            Receiver::new(res),
+            Receiver::new(res),
+            Receiver::new(res),
+            Receiver::new(res),
         )
     }
 
@@ -337,4 +334,3 @@ impl<P1, P2, P3, P4, P5, P6, Time: InfraMonotonic> ReceiverWrapper<6, Time> for 
         ]
     }
 }
-

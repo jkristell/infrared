@@ -95,7 +95,6 @@ impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Rc6 {
     }
 }
 
-
 pub struct Rc6Data {
     pub(crate) state: Rc6State,
     data: u16,

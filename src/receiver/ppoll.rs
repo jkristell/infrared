@@ -44,7 +44,6 @@ where
 
         Ok(self.receiver.event_edge(ds, edge)?.map(Into::into))
     }
-
 }
 
 #[cfg(feature = "embedded-hal")]
