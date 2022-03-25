@@ -32,8 +32,8 @@ impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Rc6 {
     }
 
     #[rustfmt::skip]
-    fn new_event(data: &mut Self::Data, spans: &PulseSpans<Mono::Duration>, rising: bool, dt: Mono::Duration)
-                 -> Self::InternalState {
+    fn event(data: &mut Self::Data, spans: &PulseSpans<Mono::Duration>, rising: bool, dt: Mono::Duration)
+             -> Self::InternalState {
         use Rc6State::*;
 
         // Find the nbr of time unit ticks the dt represents

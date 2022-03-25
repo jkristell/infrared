@@ -268,7 +268,7 @@ fn fugit() {
 
         let dtf = TimerDurationU32::from_ticks(*dt);
 
-        let s = receiver.generic_event(dtf, edge);
+        let s = receiver.event_edge(dtf, edge);
 
         if let Ok(Some(cmd)) = s {
             println!("Fugit: {:?}", cmd);

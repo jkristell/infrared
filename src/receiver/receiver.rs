@@ -125,7 +125,7 @@ pub struct Receiver<
     Proto: DecoderStateMachine<Mono>,
     Input = NoPinInput,
     Mono: InfraMonotonic = u32,
-    C: From<<Proto as Protocol>::Cmd> = <Proto as Protocol>::Cmd,
+    Cmd: From<<Proto as Protocol>::Cmd> = <Proto as Protocol>::Cmd,
 > {
     /// Decoder data
     pub(crate) state: Proto::Data,
@@ -137,39 +137,39 @@ pub struct Receiver<
     prev_instant: Mono::Instant,
 
     /// Type of the final command output
-    pub(crate) output: PhantomData<C>,
+    pub(crate) output: PhantomData<Cmd>,
 }
 
-impl Receiver<Capture, NoPinInput> {
+impl Receiver<Capture> {
     pub fn builder() -> Builder {
         Builder::new()
     }
 }
 
-impl<Proto, Mono, C> Receiver<Proto, NoPinInput, Mono, C>
+impl<Proto, Mono, Cmd> Receiver<Proto, NoPinInput, Mono, Cmd>
 where
     Proto: DecoderStateMachine<Mono>,
     Mono: InfraMonotonic,
-    C: From<<Proto as Protocol>::Cmd>,
+    Cmd: From<<Proto as Protocol>::Cmd>,
 {
-    pub fn new(resolution: u32) -> Receiver<Proto, NoPinInput, Mono, C> {
+    pub fn new(resolution: u32) -> Receiver<Proto, NoPinInput, Mono, Cmd> {
         let state = Proto::create_data();
 
         Receiver {
             state,
             input: NoPinInput {},
             spans: Mono::create_span::<Proto>(resolution),
-            prev_instant: Mono::ZERO,
+            prev_instant: Mono::ZERO_INSTANT,
             output: PhantomData::default(),
         }
     }
 }
 
-impl<Proto, Input, Mono, C> Receiver<Proto, Input, Mono, C>
+impl<Proto, Input, Mono, Cmd> Receiver<Proto, Input, Mono, Cmd>
 where
     Proto: DecoderStateMachine<Mono>,
     Mono: InfraMonotonic,
-    C: From<<Proto as Protocol>::Cmd>,
+    Cmd: From<<Proto as Protocol>::Cmd>,
 {
     pub fn with_input(resolution: u32, input: Input) -> Self {
         let state = Proto::create_data();
@@ -178,7 +178,7 @@ where
             state,
             input,
             spans: Mono::create_span::<Proto>(resolution),
-            prev_instant: Mono::ZERO,
+            prev_instant: Mono::ZERO_INSTANT,
             output: PhantomData::default(),
         }
     }
@@ -187,13 +187,13 @@ where
         &self.spans
     }
 
-    pub fn generic_event(
+    pub fn event_edge(
         &mut self,
         dt: Mono::Duration,
         edge: bool,
     ) -> Result<Option<Proto::Cmd>, DecodingError> {
         // Update state machine
-        let state: State = Proto::new_event(&mut self.state, &self.spans, edge, dt).into();
+        let state: State = Proto::event(&mut self.state, &self.spans, edge, dt).into();
 
         trace!("dt: {:?}, edge: {} s: {:?}", dt, edge, state);
 
@@ -213,12 +213,12 @@ where
 }
 
 #[cfg(feature = "embedded-hal")]
-impl<Proto, Pin, Mono, C> Receiver<Proto, Pin, Mono, C>
+impl<Proto, Pin, Mono, Cmd> Receiver<Proto, Pin, Mono, Cmd>
 where
     Proto: DecoderStateMachine<Mono>,
     Pin: InputPin,
     Mono: InfraMonotonic,
-    C: From<<Proto as Protocol>::Cmd>,
+    Cmd: From<<Proto as Protocol>::Cmd>,
 {
     /// Create a `Receiver` with `pin` as input
     pub fn with_pin(resolution: u32, pin: Pin) -> Self {
@@ -226,74 +226,46 @@ where
     }
 }
 
-impl<Proto, Mono, C> Receiver<Proto, NoPinInput, Mono, C>
+impl<Proto, Mono, Cmd> Receiver<Proto, NoPinInput, Mono, Cmd>
 where
     Proto: DecoderStateMachine<Mono>,
     Mono: InfraMonotonic,
-    C: From<<Proto as Protocol>::Cmd>,
+    Cmd: From<<Proto as Protocol>::Cmd>,
 {
-    pub fn event(&mut self, dt: Mono::Duration, edge: bool) -> Result<Option<C>, DecodingError> {
-        Ok(self.generic_event(dt, edge)?.map(Into::into))
+    pub fn event(&mut self, dt: Mono::Duration, edge: bool) -> Result<Option<Cmd>, DecodingError> {
+        Ok(self.event_edge(dt, edge)?.map(Into::into))
     }
 }
 
 #[cfg(feature = "embedded-hal")]
-impl<Proto, Pin, Mono, C> Receiver<Proto, Pin, Mono, C>
+impl<Proto, Pin, Mono, Cmd> Receiver<Proto, Pin, Mono, Cmd>
 where
     Proto: DecoderStateMachine<Mono>,
     Pin: InputPin,
     Mono: InfraMonotonic,
-    C: From<<Proto as Protocol>::Cmd>,
+    Cmd: From<<Proto as Protocol>::Cmd>,
 {
-    pub fn event(&mut self, dt: Mono::Duration) -> Result<Option<C>, Error<Pin::Error>> {
+    pub fn event(&mut self, dt: Mono::Duration) -> Result<Option<Cmd>, Error<Pin::Error>> {
         let edge = self.input.is_low().map_err(Error::Hal)?;
-        Ok(self.generic_event(dt, edge)?.map(Into::into))
+        Ok(self.event_edge(dt, edge)?.map(Into::into))
     }
 
-    pub fn fugit_time(&mut self, t: Mono::Instant) -> Result<Option<C>, Error<Pin::Error>> {
+    pub fn event_instant(&mut self, t: Mono::Instant) -> Result<Option<Cmd>, Error<Pin::Error>> {
         let edge = self.input.is_low().map_err(Error::Hal)?;
-
-        //let dt = t - self.prev_instant;
 
         let dt = Mono::checked_sub(t, self.prev_instant).unwrap_or(Mono::ZERO_DURATION);
-
         self.prev_instant = t;
 
-        Ok(self.generic_event(dt, edge)?.map(Into::into))
+        Ok(self.event_edge(dt, edge)?.map(Into::into))
     }
 
-    pub fn pin(&mut self) -> &mut Pin {
+    /// Get a mut ref to the Pin
+    pub fn mut_pin(&mut self) -> &mut Pin {
         &mut self.input
     }
 
+    /// Drop the receiver and release the pin
     pub fn release(self) -> Pin {
         self.input
     }
 }
-
-/*
-#[cfg(feature = "embedded-hal")]
-impl<SM, P, C> Receiver<SM, Poll, PinInput<P>, u32, C>
-where
-    SM: DecoderStateMachine<u32>,
-    P: InputPin,
-    C: From<<SM as Protocol>::Cmd>,
-{
-    pub fn poll(&mut self) -> Result<Option<C>, Error<P::Error>> {
-        let edge = self.input.0.is_low().map_err(Error::Hal)?;
-
-        self.data.clock = self.data.clock.wrapping_add(1);
-
-        if edge == self.data.edge {
-            return Ok(None);
-        }
-
-        let ds = self.data.clock.wrapping_sub(self.data.last_edge);
-        self.data.edge = edge;
-        self.data.last_edge = self.data.clock;
-
-        Ok(self.generic_event(ds, edge)?.map(Into::into))
-    }
-}
-
- */

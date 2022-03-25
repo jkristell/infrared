@@ -5,7 +5,7 @@ use core::fmt::Debug;
 use super::time::PulseSpans;
 
 /// Protocol decode state machine
-pub trait DecoderStateMachine<Time: InfraMonotonic>: Protocol {
+pub trait DecoderStateMachine<Mono: InfraMonotonic>: Protocol {
     /// Decoder state
     type Data: DecoderData;
     /// Internal State type
@@ -20,11 +20,11 @@ pub trait DecoderStateMachine<Time: InfraMonotonic>: Protocol {
     /// Notify the state machine of a new event
     /// * `edge`: true = positive edge, false = negative edge
     /// * `dt` : Time in micro seconds since last transition
-    fn new_event(
+    fn event(
         data: &mut Self::Data,
-        spans: &PulseSpans<Time::Duration>,
+        spans: &PulseSpans<Mono::Duration>,
         edge: bool,
-        dt: Time::Duration,
+        dt: Mono::Duration,
     ) -> Self::InternalState;
 
     /// Get the command

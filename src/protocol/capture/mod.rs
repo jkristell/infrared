@@ -35,7 +35,7 @@ impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Capture {
         }
     }
 
-    fn new_event(
+    fn event(
         state: &mut Self::Data,
         _: &PulseSpans<Mono::Duration>,
         _edge: bool,

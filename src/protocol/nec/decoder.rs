@@ -86,7 +86,7 @@ where
     }
 
     #[rustfmt::skip]
-    fn new_event(
+    fn event(
         state: &mut Self::Data,
         spans: &PulseSpans<Time::Duration>,
         rising: bool,

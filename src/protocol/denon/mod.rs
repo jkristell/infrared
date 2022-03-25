@@ -66,9 +66,9 @@ impl<Time: InfraMonotonic> DecoderStateMachine<Time> for Denon {
     }
 
     #[rustfmt::skip]
-    fn new_event(state: &mut Self::Data,
-                 ranges: &PulseSpans<Time::Duration>,
-                 rising: bool, dt: Time::Duration) -> DenonState {
+    fn event(state: &mut Self::Data,
+             ranges: &PulseSpans<Time::Duration>,
+             rising: bool, dt: Time::Duration) -> DenonState {
         if rising {
             let pulsewidth = Time::find::<PulseWidth>(ranges, state.dt_save + dt)
                 .unwrap_or(PulseWidth::Fail);

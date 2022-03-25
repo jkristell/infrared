@@ -16,7 +16,7 @@ impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Rc5 {
         Rc5Data::default()
     }
 
-    fn new_event(
+    fn event(
         data: &mut Self::Data,
         spans: &PulseSpans<Mono::Duration>,
         rising: bool,

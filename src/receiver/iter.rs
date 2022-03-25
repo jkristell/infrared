@@ -34,7 +34,7 @@ where
             let dt_us = self.buf[self.pos];
             self.pos += 1;
 
-            let state: State = SM::new_event(
+            let state: State = SM::event(
                 &mut self.receiver.state,
                 &self.receiver.spans,
                 pos_edge,

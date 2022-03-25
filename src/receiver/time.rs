@@ -14,7 +14,7 @@ pub trait InfraMonotonic: Sized {
         + Add<Self::Duration, Output = Self::Duration>
         + core::fmt::Debug;
 
-    const ZERO: Self::Instant;
+    const ZERO_INSTANT: Self::Instant;
     const ZERO_DURATION: Self::Duration;
 
     fn checked_sub(a: Self::Instant, b: Self::Instant) -> Option<Self::Duration>;
@@ -35,7 +35,7 @@ pub struct FugitMono<const HZ: u32>;
 impl<const HZ: u32> InfraMonotonic for TimerInstantU32<HZ> {
     type Instant = TimerInstantU32<HZ>;
     type Duration = TimerDurationU32<HZ>;
-    const ZERO: Self::Instant = TimerInstantU32::from_ticks(0);
+    const ZERO_INSTANT: Self::Instant = TimerInstantU32::from_ticks(0);
     const ZERO_DURATION: Self::Duration = TimerDurationU32::from_ticks(0);
 
     /// Calc a - b
@@ -62,7 +62,7 @@ impl<const HZ: u32> InfraMonotonic for TimerInstantU32<HZ> {
 impl<const HZ: u32> InfraMonotonic for FugitMono<HZ> {
     type Instant = TimerInstantU32<HZ>;
     type Duration = TimerDurationU32<HZ>;
-    const ZERO: Self::Instant = TimerInstantU32::from_ticks(0);
+    const ZERO_INSTANT: Self::Instant = TimerInstantU32::from_ticks(0);
     const ZERO_DURATION: Self::Duration = TimerDurationU32::from_ticks(0);
 
     fn checked_sub(a: Self::Instant, b: Self::Instant) -> Option<Self::Duration> {
@@ -88,7 +88,7 @@ impl<const HZ: u32> InfraMonotonic for FugitMono<HZ> {
 impl InfraMonotonic for u32 {
     type Instant = u32;
     type Duration = u32;
-    const ZERO: Self::Instant = 0;
+    const ZERO_INSTANT: Self::Instant = 0;
     const ZERO_DURATION: Self::Duration = 0;
 
     fn checked_sub(a: Self::Instant, b: Self::Instant) -> Option<Self::Duration> {

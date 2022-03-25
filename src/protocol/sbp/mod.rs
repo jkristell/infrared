@@ -133,7 +133,7 @@ impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Sbp {
     }
 
     #[rustfmt::skip]
-    fn new_event(data: &mut Self::Data, ranges: &PulseSpans<Mono::Duration>, rising: bool, dt: Mono::Duration) -> SbpState {
+    fn event(data: &mut Self::Data, ranges: &PulseSpans<Mono::Duration>, rising: bool, dt: Mono::Duration) -> SbpState {
         use SbpPulse::*;
         use SbpState::*;
 
