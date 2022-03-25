@@ -54,6 +54,7 @@ where
     Mono: InfraMonotonic,
     C: From<<Proto as Protocol>::Cmd>,
 {
+    /// Set the monotonic clock type to use
     pub fn monotonic<NewMono: InfraMonotonic>(self) -> Builder<Proto, Input, NewMono> {
         Builder {
             resolution: self.resolution,

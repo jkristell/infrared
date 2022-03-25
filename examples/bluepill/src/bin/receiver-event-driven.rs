@@ -2,7 +2,7 @@
 #![no_main]
 
 use bluepill_examples as _;
-use defmt::{Debug2Format, info};
+use defmt::{info, Debug2Format};
 
 use cortex_m_rt::entry;
 use stm32f1xx_hal::{
@@ -15,7 +15,7 @@ use stm32f1xx_hal::{
 
 #[allow(unused_imports)]
 use infrared::{
-    protocol::{Nec, Rc6, NecApple},
+    protocol::{Nec, NecApple, Rc6},
     remotecontrol::{nec::*, rc5::*},
     Receiver,
 };
@@ -83,8 +83,6 @@ fn EXTI9_5() {
     let receiver = unsafe { RECEIVER.as_mut().unwrap() };
     let mono = unsafe { MONO.as_ref().unwrap() };
     let now = mono.now();
-
-    
 
     if let Some(dt) = LAST.map(|i| i.elapsed()) {
         if let Ok(Some(cmd)) = receiver.event(dt) {

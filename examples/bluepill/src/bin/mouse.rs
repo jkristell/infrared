@@ -27,7 +27,6 @@ use usbd_hid::{
     hid_class::HIDClass,
 };
 
-
 #[rtic::app(device = stm32f1xx_hal::stm32, peripherals = true, dispatchers = [USART1])]
 mod app {
     use super::*;
@@ -103,23 +102,12 @@ mod app {
             pin
         };
 
-        // Run the receiver with native resolution and let embedded time to the conversion
-        let ir_rx = infrared::Receiver::with_pin(1_000_000, rx_pin);
-        //NOTE: Or use the builder:
-        // infrared::Receiver::builder()
-        //      .nec_apple()
-        //      .resolution(1_000_000)
-        //      .remote_control(IrRemote::default())
-        //      .pin(rx_pin)
-        //      .build();
-
+        let ir_rx = infrared::Receiver::with_fugit(rx_pin);
         let mono = cx.device.TIM3.monotonic(&clocks);
 
         let shared = Shared { usb_dev, usb_hid };
 
-        let local = Local {
-            ir_rx,
-        };
+        let local = Local { ir_rx };
 
         (shared, local, init::Monotonics(mono))
     }
@@ -157,7 +145,11 @@ mod app {
         }
         *repeats += 1;
 
-        info!("Received: {:?}, repeat: {}", Debug2Format(&button), *repeats);
+        info!(
+            "Received: {:?}, repeat: {}",
+            Debug2Format(&button),
+            *repeats
+        );
         if let Some(action) = button.action() {
             let report = super::button_to_mousereport(action, *repeats);
             info!("{:?}", Debug2Format(&report));

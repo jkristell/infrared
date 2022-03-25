@@ -135,6 +135,56 @@ impl InfraMonotonic for u32 {
     }
 }
 
+impl InfraMonotonic for u64 {
+    type Instant = u64;
+    type Duration = u64;
+    const ZERO_INSTANT: Self::Instant = 0;
+    const ZERO_DURATION: Self::Duration = 0;
+
+    fn checked_sub(a: Self::Instant, b: Self::Instant) -> Option<Self::Duration> {
+        a.checked_sub(b)
+    }
+
+    fn create_span<D: DecoderStateMachine<Self>>(freq: u32) -> PulseSpans<u64> {
+        PulseSpans {
+            spans: [
+                PulseSpan::<u64>::new(
+                    scale_with_samplerate(D::PULSE_LENGTHS[0], freq),
+                    D::TOLERANCE[0],
+                ),
+                PulseSpan::<u64>::new(
+                    scale_with_samplerate(D::PULSE_LENGTHS[1], freq),
+                    D::TOLERANCE[1],
+                ),
+                PulseSpan::<u64>::new(
+                    scale_with_samplerate(D::PULSE_LENGTHS[2], freq),
+                    D::TOLERANCE[2],
+                ),
+                PulseSpan::<u64>::new(
+                    scale_with_samplerate(D::PULSE_LENGTHS[3], freq),
+                    D::TOLERANCE[3],
+                ),
+                PulseSpan::<u64>::new(
+                    scale_with_samplerate(D::PULSE_LENGTHS[4], freq),
+                    D::TOLERANCE[4],
+                ),
+                PulseSpan::<u64>::new(
+                    scale_with_samplerate(D::PULSE_LENGTHS[5], freq),
+                    D::TOLERANCE[5],
+                ),
+                PulseSpan::<u64>::new(
+                    scale_with_samplerate(D::PULSE_LENGTHS[6], freq),
+                    D::TOLERANCE[6],
+                ),
+                PulseSpan::<u64>::new(
+                    scale_with_samplerate(D::PULSE_LENGTHS[7], freq),
+                    D::TOLERANCE[7],
+                ),
+            ],
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct PulseSpan<T> {
     low: T,
@@ -155,6 +205,17 @@ impl PulseSpan<u32> {
         PulseSpan { low, high }
     }
 }
+
+impl PulseSpan<u64> {
+    pub const fn new(base: u32, tol: u32) -> Self {
+        let tol = base * tol / 100;
+        let low = base - tol;
+        let high = base + tol;
+
+        PulseSpan { low: low as u64, high: high as u64 }
+    }
+}
+
 
 impl<T> PulseSpan<T>
 where

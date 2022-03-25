@@ -13,10 +13,7 @@ use stm32f1xx_hal::{
     timer::{CounterHz, Event, Timer},
 };
 
-use infrared::{
-    protocol::Rc6,
-    PeriodicPoll,
-};
+use infrared::{protocol::Rc6, PeriodicPoll};
 
 // Sample rate
 const TIMER_FREQ: u32 = 100_000;

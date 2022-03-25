@@ -11,15 +11,15 @@ use infrared::{
     Receiver,
 };
 
-use defmt::{info};
+use defmt::info;
 
+use stm32f1xx_hal::timer::fugit::TimerInstantU32;
 use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Edge, ExtiPin, Floating, Input},
     pac,
     prelude::*,
     usb::{Peripheral, UsbBus, UsbBusType},
 };
-use stm32f1xx_hal::timer::fugit::TimerInstantU32;
 
 use usb_device::{bus, prelude::*};
 use usbd_hid::{

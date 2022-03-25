@@ -2,7 +2,7 @@
 #![no_main]
 
 use bluepill_examples as _;
-use defmt::{Debug2Format, info};
+use defmt::{info, Debug2Format};
 
 use cortex_m_rt::entry;
 use stm32f1xx_hal::{

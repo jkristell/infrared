@@ -1,5 +1,5 @@
 use crate::protocol::capture::Capture;
-use crate::receiver::time::InfraMonotonic;
+use crate::receiver::time::{FugitMono, InfraMonotonic};
 use crate::receiver::Builder;
 use crate::{
     receiver::{DecoderData, DecoderStateMachine, DecodingError, Error, NoPinInput, State},
@@ -8,6 +8,7 @@ use crate::{
 use core::marker::PhantomData;
 #[cfg(feature = "embedded-hal")]
 use embedded_hal::digital::v2::InputPin;
+use fugit::TimerInstantU32;
 
 use super::time::PulseSpans;
 
@@ -226,6 +227,20 @@ where
     }
 }
 
+#[cfg(feature = "embedded-hal")]
+impl<Proto, Pin, const HZ: u32, Cmd> Receiver<Proto, Pin, TimerInstantU32<HZ>, Cmd>
+    where
+        Proto: DecoderStateMachine<TimerInstantU32<HZ>>,
+        Pin: InputPin,
+        Cmd: From<<Proto as Protocol>::Cmd>,
+{
+    /// Create a `Receiver` with `pin` as input
+    pub fn with_fugit(pin: Pin) -> Self {
+        Self::with_input(HZ, pin)
+    }
+}
+
+
 impl<Proto, Mono, Cmd> Receiver<Proto, NoPinInput, Mono, Cmd>
 where
     Proto: DecoderStateMachine<Mono>,
@@ -235,6 +250,15 @@ where
     pub fn event(&mut self, dt: Mono::Duration, edge: bool) -> Result<Option<Cmd>, DecodingError> {
         Ok(self.event_edge(dt, edge)?.map(Into::into))
     }
+
+    pub fn event_instant(&mut self, t: Mono::Instant, edge: bool) -> Result<Option<Cmd>, DecodingError> {
+
+        let dt = Mono::checked_sub(t, self.prev_instant).unwrap_or(Mono::ZERO_DURATION);
+        self.prev_instant = t;
+
+        Ok(self.event_edge(dt, edge)?.map(Into::into))
+    }
+
 }
 
 #[cfg(feature = "embedded-hal")]
