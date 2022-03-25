@@ -179,6 +179,118 @@ where
     }
 }
 
+impl<P1, P2, P3, Time: InfraMonotonic> ReceiverWrapper<3, Time> for (P1, P2, P3)
+    where
+        P1: DecoderStateMachine<Time>,
+        P2: DecoderStateMachine<Time>,
+        P3: DecoderStateMachine<Time>,
+        P1::Cmd: Into<CmdEnum>,
+        P2::Cmd: Into<CmdEnum>,
+        P3::Cmd: Into<CmdEnum>,
+{
+    type Receivers = (
+        Receiver<P1, NoPinInput, Time>,
+        Receiver<P2, NoPinInput, Time>,
+        Receiver<P3, NoPinInput, Time>,
+    );
+
+    fn make(res: u32) -> Self::Receivers {
+        (Receiver::new(res),
+         Receiver::new(res),
+         Receiver::new(res),
+        )
+    }
+
+    fn event(rs: &mut Self::Receivers, dt: Time::Duration, edge: bool) -> [Option<CmdEnum>; 3] {
+        [
+            rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
+            rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
+            rs.2.event(dt, edge).unwrap_or_default().map(Into::into),
+        ]
+    }
+}
+
+
+impl<P1, P2, P3, P4, Time: InfraMonotonic> ReceiverWrapper<4, Time> for (P1, P2, P3, P4)
+    where
+        P1: DecoderStateMachine<Time>,
+        P2: DecoderStateMachine<Time>,
+        P3: DecoderStateMachine<Time>,
+        P4: DecoderStateMachine<Time>,
+        P1::Cmd: Into<CmdEnum>,
+        P2::Cmd: Into<CmdEnum>,
+        P3::Cmd: Into<CmdEnum>,
+        P4::Cmd: Into<CmdEnum>,
+{
+    type Receivers = (
+        Receiver<P1, NoPinInput, Time>,
+        Receiver<P2, NoPinInput, Time>,
+        Receiver<P3, NoPinInput, Time>,
+        Receiver<P4, NoPinInput, Time>,
+    );
+
+    fn make(res: u32) -> Self::Receivers {
+        (Receiver::new(res),
+         Receiver::new(res),
+         Receiver::new(res),
+         Receiver::new(res),
+        )
+    }
+
+    fn event(rs: &mut Self::Receivers, dt: Time::Duration, edge: bool) -> [Option<CmdEnum>; 4] {
+        [
+            rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
+            rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
+            rs.2.event(dt, edge).unwrap_or_default().map(Into::into),
+            rs.3.event(dt, edge).unwrap_or_default().map(Into::into),
+        ]
+    }
+}
+
+
+impl<P1, P2, P3, P4, P5, Time: InfraMonotonic> ReceiverWrapper<5, Time> for (P1, P2, P3, P4, P5)
+    where
+        P1: DecoderStateMachine<Time>,
+        P2: DecoderStateMachine<Time>,
+        P3: DecoderStateMachine<Time>,
+        P4: DecoderStateMachine<Time>,
+        P5: DecoderStateMachine<Time>,
+        P1::Cmd: Into<CmdEnum>,
+        P2::Cmd: Into<CmdEnum>,
+        P3::Cmd: Into<CmdEnum>,
+        P4::Cmd: Into<CmdEnum>,
+        P5::Cmd: Into<CmdEnum>,
+{
+    type Receivers = (
+        Receiver<P1, NoPinInput, Time>,
+        Receiver<P2, NoPinInput, Time>,
+        Receiver<P3, NoPinInput, Time>,
+        Receiver<P4, NoPinInput, Time>,
+        Receiver<P5, NoPinInput, Time>,
+    );
+
+    fn make(res: u32) -> Self::Receivers {
+        (Receiver::new(res),
+         Receiver::new(res),
+         Receiver::new(res),
+         Receiver::new(res),
+         Receiver::new(res),
+        )
+    }
+
+    fn event(rs: &mut Self::Receivers, dt: Time::Duration, edge: bool) -> [Option<CmdEnum>; 5] {
+        [
+            rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
+            rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
+            rs.2.event(dt, edge).unwrap_or_default().map(Into::into),
+            rs.3.event(dt, edge).unwrap_or_default().map(Into::into),
+            rs.4.event(dt, edge).unwrap_or_default().map(Into::into),
+        ]
+    }
+}
+
+
+
 impl<P1, P2, P3, P4, P5, P6, Time: InfraMonotonic> ReceiverWrapper<6, Time> for (P1, P2, P3, P4, P5, P6)
     where
         P1: DecoderStateMachine<Time>,
@@ -226,163 +338,3 @@ impl<P1, P2, P3, P4, P5, P6, Time: InfraMonotonic> ReceiverWrapper<6, Time> for 
     }
 }
 
-
-/*
-impl<P1, P2, P3> ReceiverWrapper<3> for (P1, P2, P3)
-where
-    P1: DecoderStateMachine,
-    P2: DecoderStateMachine,
-    P3: DecoderStateMachine,
-    P1::Cmd: Into<CmdEnum>,
-    P2::Cmd: Into<CmdEnum>,
-    P3::Cmd: Into<CmdEnum>,
-{
-    #[allow(clippy::type_complexity)]
-    type Receivers = (
-        Receiver<P1, Event, DefaultInput>,
-        Receiver<P2, Event, DefaultInput>,
-        Receiver<P3, Event, DefaultInput>,
-    );
-
-    fn make(res: u32) -> Self::Receivers {
-        (Receiver::new(res), Receiver::new(res), Receiver::new(res))
-    }
-
-    fn event(rs: &mut Self::Receivers, dt: u32, edge: bool) -> [Option<CmdEnum>; 3] {
-        [
-            rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
-            rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
-            rs.2.event(dt, edge).unwrap_or_default().map(Into::into),
-        ]
-    }
-}
-
-impl<P1, P2, P3, P4> ReceiverWrapper<4> for (P1, P2, P3, P4)
-where
-    P1: DecoderStateMachine,
-    P2: DecoderStateMachine,
-    P3: DecoderStateMachine,
-    P4: DecoderStateMachine,
-    P1::Cmd: Into<CmdEnum>,
-    P2::Cmd: Into<CmdEnum>,
-    P3::Cmd: Into<CmdEnum>,
-    P4::Cmd: Into<CmdEnum>,
-{
-    #[allow(clippy::type_complexity)]
-    type Receivers = (
-        Receiver<P1, Event, DefaultInput>,
-        Receiver<P2, Event, DefaultInput>,
-        Receiver<P3, Event, DefaultInput>,
-        Receiver<P4, Event, DefaultInput>,
-    );
-
-    fn make(res: u32) -> Self::Receivers {
-        (
-            Receiver::new(res),
-            Receiver::new(res),
-            Receiver::new(res),
-            Receiver::new(res),
-        )
-    }
-
-    fn event(rs: &mut Self::Receivers, dt: u32, edge: bool) -> [Option<CmdEnum>; 4] {
-        [
-            rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
-            rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
-            rs.2.event(dt, edge).unwrap_or_default().map(Into::into),
-            rs.3.event(dt, edge).unwrap_or_default().map(Into::into),
-        ]
-    }
-}
-
-impl<P1, P2, P3, P4, P5> ReceiverWrapper<5> for (P1, P2, P3, P4, P5)
-where
-    P1: DecoderStateMachine,
-    P2: DecoderStateMachine,
-    P3: DecoderStateMachine,
-    P4: DecoderStateMachine,
-    P5: DecoderStateMachine,
-    P1::Cmd: Into<CmdEnum>,
-    P2::Cmd: Into<CmdEnum>,
-    P3::Cmd: Into<CmdEnum>,
-    P4::Cmd: Into<CmdEnum>,
-    P5::Cmd: Into<CmdEnum>,
-{
-    #[allow(clippy::type_complexity)]
-    type Receivers = (
-        Receiver<P1, Event, DefaultInput>,
-        Receiver<P2, Event, DefaultInput>,
-        Receiver<P3, Event, DefaultInput>,
-        Receiver<P4, Event, DefaultInput>,
-        Receiver<P5, Event, DefaultInput>,
-    );
-
-    fn make(res: u32) -> Self::Receivers {
-        (
-            Receiver::new(res),
-            Receiver::new(res),
-            Receiver::new(res),
-            Receiver::new(res),
-            Receiver::new(res),
-        )
-    }
-
-    fn event(rs: &mut Self::Receivers, dt: u32, edge: bool) -> [Option<CmdEnum>; 5] {
-        [
-            rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
-            rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
-            rs.2.event(dt, edge).unwrap_or_default().map(Into::into),
-            rs.3.event(dt, edge).unwrap_or_default().map(Into::into),
-            rs.4.event(dt, edge).unwrap_or_default().map(Into::into),
-        ]
-    }
-}
-
-impl<P1, P2, P3, P4, P5, P6> ReceiverWrapper<6> for (P1, P2, P3, P4, P5, P6)
-where
-    P1: DecoderStateMachine,
-    P2: DecoderStateMachine,
-    P3: DecoderStateMachine,
-    P4: DecoderStateMachine,
-    P5: DecoderStateMachine,
-    P6: DecoderStateMachine,
-    P1::Cmd: Into<CmdEnum>,
-    P2::Cmd: Into<CmdEnum>,
-    P3::Cmd: Into<CmdEnum>,
-    P4::Cmd: Into<CmdEnum>,
-    P5::Cmd: Into<CmdEnum>,
-    P6::Cmd: Into<CmdEnum>,
-{
-    #[allow(clippy::type_complexity)]
-    type Receivers = (
-        Receiver<P1, Event, DefaultInput>,
-        Receiver<P2, Event, DefaultInput>,
-        Receiver<P3, Event, DefaultInput>,
-        Receiver<P4, Event, DefaultInput>,
-        Receiver<P5, Event, DefaultInput>,
-        Receiver<P6, Event, DefaultInput>,
-    );
-
-    fn make(res: u32) -> Self::Receivers {
-        (
-            Receiver::new(res),
-            Receiver::new(res),
-            Receiver::new(res),
-            Receiver::new(res),
-            Receiver::new(res),
-            Receiver::new(res),
-        )
-    }
-
-    fn event(rs: &mut Self::Receivers, dt: u32, edge: bool) -> [Option<CmdEnum>; 6] {
-        [
-            rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
-            rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
-            rs.2.event(dt, edge).unwrap_or_default().map(Into::into),
-            rs.3.event(dt, edge).unwrap_or_default().map(Into::into),
-            rs.4.event(dt, edge).unwrap_or_default().map(Into::into),
-            rs.5.event(dt, edge).unwrap_or_default().map(Into::into),
-        ]
-    }
-}
-*/
