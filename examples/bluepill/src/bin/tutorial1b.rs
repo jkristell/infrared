@@ -2,7 +2,7 @@
 #![no_main]
 
 use bluepill_examples as _;
-use defmt::{info, Debug2Format};
+use defmt::info;
 
 use cortex_m_rt::entry;
 use stm32f1xx_hal::{
@@ -19,7 +19,7 @@ use infrared::{
 };
 
 // Sample rate
-const TIMER_FREQ: u32 = 100_000;
+const TIMER_FREQ: u32 = 40_000;
 
 // Our receivertype
 type IrReceiver = infrared::PeriodicPoll<Rc6, PB8<Input<Floating>>, Button<Rc6Tv>>;
@@ -28,7 +28,7 @@ type IrReceiver = infrared::PeriodicPoll<Rc6, PB8<Input<Floating>>, Button<Rc6Tv
 static mut TIMER: Option<CounterHz<TIM2>> = None;
 static mut RECEIVER: Option<IrReceiver> = None;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, defmt::Format)]
 struct Rc6Tv;
 
 impl RemoteControlModel for Rc6Tv {
@@ -107,7 +107,7 @@ fn TIM2() {
         match cmd.action() {
             Some(Teletext) => info!("Teletext!"),
             Some(Power) => info!("Power on/off"),
-            _ => info!("cmd: {:?}", Debug2Format(&cmd)),
+            _ => info!("cmd: {:?}", cmd),
         };
     }
 

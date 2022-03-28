@@ -2,7 +2,7 @@
 #![no_main]
 
 use bluepill_examples as _;
-use defmt::info;
+use defmt::{info, warn};
 
 use cortex_m_rt::entry;
 use stm32f1xx_hal::{
@@ -16,7 +16,7 @@ use stm32f1xx_hal::{
 use infrared::{protocol::Rc6, PeriodicPoll};
 
 // Sample rate
-const TIMER_FREQ: u32 = 100_000;
+const TIMER_FREQ: u32 = 40_000;
 
 // Our receivertype
 type IrReceiver = PeriodicPoll<Rc6, PB8<Input<Floating>>>;
@@ -71,8 +71,10 @@ fn main() -> ! {
 fn TIM2() {
     let receiver = unsafe { RECEIVER.as_mut().unwrap() };
 
-    if let Ok(Some(cmd)) = receiver.poll() {
-        info!("Cmd: {} {}", cmd.addr, cmd.cmd);
+    match receiver.poll() {
+        Ok(Some(cmd)) => info!("Cmd: {} {}", cmd.addr, cmd.cmd),
+        Ok(None) => (),
+        Err(err) => warn!("Err: {:?}", err),
     }
 
     // Clear the interrupt

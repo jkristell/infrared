@@ -19,7 +19,7 @@ usbd-hid = "0.5"
 embedded-hal = "0.2"
 cortex-m-rtic = "1"
 rtic-monotonic = "1"
-infrared = { path = "../.." }
+infrared = { path = "../..", features = ["defmt"] }
 
 [profile.release]
 codegen-units = 1

@@ -138,9 +138,9 @@ mod app {
 
         if let Ok(Some(button)) = receiver.event_instant(now) {
             if let Some(action) = button.action() {
-                info!("{:?}", defmt::Debug2Format(&button));
+                info!("{:?}", button);
                 let key = super::mediakey_from_action(action);
-                info!("{:?}", defmt::Debug2Format(&key));
+                info!("{:?}", key);
                 keydown::spawn(key).unwrap();
             }
         }

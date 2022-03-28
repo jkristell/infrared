@@ -3,7 +3,7 @@
 
 use bluepill_examples as _;
 
-use defmt::{info, Debug2Format};
+use defmt::info;
 use defmt_rtt as _; // global logger
 use panic_probe as _;
 
@@ -145,14 +145,10 @@ mod app {
         }
         *repeats += 1;
 
-        info!(
-            "Received: {:?}, repeat: {}",
-            Debug2Format(&button),
-            *repeats
-        );
+        info!("Received: {:?}, repeat: {}", button, *repeats);
         if let Some(action) = button.action() {
             let report = super::button_to_mousereport(action, *repeats);
-            info!("{:?}", Debug2Format(&report));
+            info!("{:?}", report);
             keydown::spawn(report).unwrap()
         }
     }

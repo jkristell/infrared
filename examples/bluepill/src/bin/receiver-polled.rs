@@ -2,7 +2,7 @@
 #![no_main]
 
 use bluepill_examples as _;
-use defmt::{info, Debug2Format};
+use defmt::info;
 
 use cortex_m_rt::entry;
 use stm32f1xx_hal::{
@@ -26,7 +26,7 @@ type IrPin = PB8<Input<Floating>>;
 type IrReceiver = infrared::PeriodicPoll<NecApple, IrPin, Button<Apple2009>>;
 
 // Samplerate
-const SAMPLERATE: u32 = 100_000;
+const SAMPLERATE: u32 = 20_000;
 // Our timer. Needs to be accessible in the interrupt handler.
 static mut TIMER: Option<CounterHz<TIM2>> = None;
 // Our Infrared receiver
@@ -88,12 +88,12 @@ fn TIM2() {
                 match button {
                     Action::Play_Pause => info!("Play was pressed!"),
                     Action::Power => info!("Power on/off"),
-                    _ => info!("{:?}", Debug2Format(&button)),
+                    _ => info!("Button pressed: {:?}", button),
                 };
             }
         }
         Ok(None) => {}
-        Err(err) => info!("Err: {:?}", Debug2Format(&err)),
+        Err(err) => info!("Err: {:?}", err),
     }
 
     // Clear the interrupt

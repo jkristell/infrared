@@ -2,7 +2,7 @@
 #![no_main]
 
 use bluepill_examples as _;
-use defmt::{info, Debug2Format};
+use defmt::info;
 
 use cortex_m_rt::entry;
 use stm32f1xx_hal::{
@@ -79,7 +79,7 @@ fn EXTI9_5() {
     if let Some(dt) = LAST.map(|i| i.elapsed()) {
         if let Ok(cmds) = receiver.event_iter(dt) {
             for cmd in cmds {
-                info!("cmd: {:?}", Debug2Format(&cmd));
+                info!("cmd: {:?}", cmd);
             }
         }
     }

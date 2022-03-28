@@ -86,7 +86,7 @@ fn EXTI9_5() {
 
     if let Some(dt) = LAST.map(|i| i.elapsed()) {
         if let Ok(Some(cmd)) = receiver.event(dt) {
-            info!("cmd: {:?}", Debug2Format(&cmd));
+            info!("cmd: {:?}", cmd);
         }
     }
 
