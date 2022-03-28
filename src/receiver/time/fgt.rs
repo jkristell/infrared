@@ -1,5 +1,4 @@
-use crate::receiver::time::{InfraMonotonic, PulseSpans, Span};
-use crate::receiver::DecoderStateMachine;
+use crate::receiver::time::{InfraMonotonic, Span};
 use fugit::{Duration, ExtU32, Instant};
 
 impl<const NOM: u32, const DENOM: u32> InfraMonotonic for Instant<u32, NOM, DENOM> {

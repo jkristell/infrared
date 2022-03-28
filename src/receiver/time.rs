@@ -1,4 +1,3 @@
-use crate::receiver::DecoderStateMachine;
 use core::ops::{Add, Sub};
 
 mod fgt;
@@ -19,8 +18,6 @@ pub trait InfraMonotonic: Sized {
     const ZERO_DURATION: Self::Duration;
 
     fn checked_sub(a: Self::Instant, b: Self::Instant) -> Option<Self::Duration>;
-
-    //fn create_span<D: DecoderStateMachine<Self>>(freq: u32) -> PulseSpans<Self::Duration>;
 
     fn create_span(freq: u32, p: u32, t: u32) -> Span<Self::Duration>;
 
