@@ -14,20 +14,21 @@ use embedded_hal::digital::v2::InputPin;
 
 use super::time::InfraMonotonic;
 
+
 pub struct MultiReceiver<
     const N: usize,
     Receivers: ReceiverWrapper<N, Time>,
-    IN,
+    Input,
     Time: InfraMonotonic = u32,
 > {
     receivers: Receivers::Receivers,
-    input: IN,
+    input: Input,
 }
 
-impl<const N: usize, Receivers: ReceiverWrapper<N, Time>, IN, Time: InfraMonotonic>
-    MultiReceiver<N, Receivers, IN, Time>
+impl<const N: usize, Receivers: ReceiverWrapper<N, Time>, Input, Time: InfraMonotonic>
+    MultiReceiver<N, Receivers, Input, Time>
 {
-    pub fn new(res: u32, input: IN) -> Self {
+    pub fn new(res: u32, input: Input) -> Self {
         MultiReceiver {
             input,
             receivers: Receivers::make(res),
@@ -51,12 +52,12 @@ impl<const N: usize, Receivers: ReceiverWrapper<N, Time>, IN, Time: InfraMonoton
 }
 
 #[cfg(feature = "embedded-hal")]
-impl<const N: usize, Receivers, PIN: InputPin, Time: InfraMonotonic>
-    MultiReceiver<N, Receivers, PIN, Time>
+impl<const N: usize, Receivers, Pin: InputPin, Time: InfraMonotonic>
+    MultiReceiver<N, Receivers, Pin, Time>
 where
     Receivers: ReceiverWrapper<N, Time>,
 {
-    pub fn event(&mut self, dt: Time::Duration) -> Result<[Option<CmdEnum>; N], PIN::Error> {
+    pub fn event(&mut self, dt: Time::Duration) -> Result<[Option<CmdEnum>; N], Pin::Error> {
         let edge = self.input.is_low()?;
         Ok(self.event_generic(dt, edge))
     }
@@ -64,7 +65,7 @@ where
     pub fn event_iter(
         &mut self,
         dt: Time::Duration,
-    ) -> Result<impl Iterator<Item = CmdEnum>, PIN::Error> {
+    ) -> Result<impl Iterator<Item = CmdEnum>, Pin::Error> {
         let arr = self.event(dt)?;
         Ok(arr.into_iter().filter_map(|c| c))
         // Keep the actual commands we got.
@@ -72,7 +73,7 @@ where
         //Ok(core::array::IntoIter::new(arr).filter_map(|c| c))
     }
 
-    pub fn pin(&mut self) -> &mut PIN {
+    pub fn pin(&mut self) -> &mut Pin {
         &mut self.input
     }
 }
