@@ -15,7 +15,8 @@ members = ["examples/vcd-parser"]
 exclude = ["examples/bluepill"]
 
 [features]
-default = ["nec", "rc5", "rc6", "sbp", "denon", "remotes", "embedded-hal"]
+default = ["nec", "rc5", "rc6", "sbp", "denon", "remotes", "embedded"]
+embedded = ["embedded-hal", "fugit"]
 nec = []
 rc5 = []
 rc6 = []
@@ -27,7 +28,7 @@ remotes = []
 embedded-hal = {version = "0.2.4", features = ["unproven"], optional = true}
 defmt = { version = "0.3", optional = true }
 log = { version = "0.4", optional = true }
-fugit = "0.3.5"
+fugit = { version = "0.3.5", optional = true }
 
 [dev-dependencies]
 dummy-pin = "0.1.1"
