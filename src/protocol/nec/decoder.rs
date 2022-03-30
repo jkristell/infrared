@@ -55,12 +55,12 @@ impl From<NecState> for State {
     }
 }
 
-impl<Cmd, Time> DecoderStateMachine<Time> for Nec<Cmd>
+impl<Cmd, Mono> DecoderStateMachine<Mono> for Nec<Cmd>
 where
     Cmd: NecCommandVariant,
-    Time: InfraMonotonic,
+    Mono: InfraMonotonic,
 {
-    type Data = NecData<Time, Cmd>;
+    type Data = NecData<Mono, Cmd>;
     type InternalState = NecState;
 
     const PULSE: [u32; 8] = [
@@ -81,16 +81,16 @@ where
             status: NecState::Init,
             bitbuf: 0,
             cmd_type: Default::default(),
-            dt_save: Time::ZERO_DURATION,
+            dt_save: Mono::ZERO_DURATION,
         }
     }
 
     #[rustfmt::skip]
     fn event(
         state: &mut Self::Data,
-        spans: &PulseSpans<Time::Duration>,
+        spans: &PulseSpans<Mono::Duration>,
         rising: bool,
-        dur: Time::Duration,
+        dur: Mono::Duration,
     ) -> Self::InternalState {
 
         use NecState::*;
@@ -100,7 +100,7 @@ where
 
             let total_duration = dur + state.dt_save;
 
-            let pulsewidth = Time::find::<PulseWidth>(spans, total_duration)
+            let pulsewidth = Mono::find::<PulseWidth>(spans, total_duration)
                 .unwrap_or(PulseWidth::Invalid);
 
 
@@ -129,7 +129,7 @@ where
 
             state.status = status;
 
-            state.dt_save = Time::ZERO_DURATION;
+            state.dt_save = Mono::ZERO_DURATION;
         } else {
             // Save
             state.dt_save = dur;
