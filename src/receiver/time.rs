@@ -44,6 +44,10 @@ impl<Dur> PulseSpans<Dur>
             .position(|v| v.contains(pl))
             .map(Into::into)
     }
+
+    pub fn check_overlaps(&self) -> bool {
+        false
+    }
 }
 
 impl<Dur> Span<Dur>

@@ -4,31 +4,15 @@ use core::fmt::Debug;
 
 use super::time::PulseSpans;
 
-/// Protocol decode state machine
-pub trait Decoder<Mono: InfraMonotonic>: Protocol {
-    /// Decoder state
-    type Data: DecoderData;
-    /// Internal State type
-    type InternalState: Into<State>;
+pub trait ProtocolDecoderAdaptor<Mono: InfraMonotonic>: Protocol {
+    type Decoder: ProtocolDecoder<Mono, <Self as Protocol>::Cmd>;
+
 
     const PULSE: [u32; 8];
     const TOL: [u32; 8];
 
-    /// Create the resources
-    fn decoder(freq: u32) -> Self::Data;
 
-    /// Notify the state machine of a new event
-    /// * `edge`: true = positive edge, false = negative edge
-    /// * `dt` : Time in micro seconds since last transition
-    fn event(
-        self_: &mut Self::Data,
-        edge: bool,
-        dt: Mono::Duration,
-    ) -> Self::InternalState;
-
-    /// Get the command
-    /// Returns the data if State == Done, otherwise None
-    fn command(self_: &Self::Data) -> Option<Self::Cmd>;
+    fn decoder(freq: u32) -> Self::Decoder;
 
     fn create_pulsespans(freq: u32) -> PulseSpans<Mono::Duration> {
         PulseSpans {
@@ -44,10 +28,42 @@ pub trait Decoder<Mono: InfraMonotonic>: Protocol {
             ],
         }
     }
+
 }
 
-pub trait DecoderData {
+
+/// Protocol decode state machine
+pub trait ProtocolDecoder<Mono: InfraMonotonic, Cmd> {
+    //type Cmd = Cmd;
+    /// Decoder state
+    //type Decoder: DecoderData<Mono>;
+    // Internal State type
+    //type InternalState: Into<State>;
+    /// Create the resources
+    //fn decoder(freq: u32) -> Self::Decoder;
+
+    /// Notify the state machine of a new event
+    /// * `edge`: true = positive edge, false = negative edge
+    /// * `dt` : Duration since last event
+    fn event(
+        &mut self,
+        edge: bool,
+        dt: Mono::Duration,
+    ) -> State;
+
+    /// Get the command
+    /// Returns the data if State == Done, otherwise None
+    fn command(&self) -> Option<Cmd>;
+
     fn reset(&mut self);
+
+}
+
+pub trait DecoderData<Mono: InfraMonotonic> {
+    type State;
+    fn reset(&mut self);
+    fn spans(&self) -> &PulseSpans<Mono::Duration>;
+    fn internal_state(&self) -> Self::State;
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]

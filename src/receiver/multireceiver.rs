@@ -1,4 +1,4 @@
-use crate::receiver::{Decoder, NoPinInput, Receiver};
+use crate::receiver::{ProtocolDecoder, NoPinInput, Receiver};
 
 #[cfg(feature = "denon")]
 use crate::protocol::DenonCommand;
@@ -152,8 +152,8 @@ pub trait ReceiverWrapper<const N: usize, Time: InfraMonotonic> {
 
 impl<P1, P2, Time: InfraMonotonic> ReceiverWrapper<2, Time> for (P1, P2)
 where
-    P1: Decoder<Time>,
-    P2: Decoder<Time>,
+    P1: ProtocolDecoder<Time>,
+    P2: ProtocolDecoder<Time>,
     P1::Cmd: Into<CmdEnum>,
     P2::Cmd: Into<CmdEnum>,
 {
@@ -176,9 +176,9 @@ where
 
 impl<P1, P2, P3, Time: InfraMonotonic> ReceiverWrapper<3, Time> for (P1, P2, P3)
 where
-    P1: Decoder<Time>,
-    P2: Decoder<Time>,
-    P3: Decoder<Time>,
+    P1: ProtocolDecoder<Time>,
+    P2: ProtocolDecoder<Time>,
+    P3: ProtocolDecoder<Time>,
     P1::Cmd: Into<CmdEnum>,
     P2::Cmd: Into<CmdEnum>,
     P3::Cmd: Into<CmdEnum>,
@@ -204,10 +204,10 @@ where
 
 impl<P1, P2, P3, P4, Time: InfraMonotonic> ReceiverWrapper<4, Time> for (P1, P2, P3, P4)
 where
-    P1: Decoder<Time>,
-    P2: Decoder<Time>,
-    P3: Decoder<Time>,
-    P4: Decoder<Time>,
+    P1: ProtocolDecoder<Time>,
+    P2: ProtocolDecoder<Time>,
+    P3: ProtocolDecoder<Time>,
+    P4: ProtocolDecoder<Time>,
     P1::Cmd: Into<CmdEnum>,
     P2::Cmd: Into<CmdEnum>,
     P3::Cmd: Into<CmdEnum>,
@@ -241,11 +241,11 @@ where
 
 impl<P1, P2, P3, P4, P5, Time: InfraMonotonic> ReceiverWrapper<5, Time> for (P1, P2, P3, P4, P5)
 where
-    P1: Decoder<Time>,
-    P2: Decoder<Time>,
-    P3: Decoder<Time>,
-    P4: Decoder<Time>,
-    P5: Decoder<Time>,
+    P1: ProtocolDecoder<Time>,
+    P2: ProtocolDecoder<Time>,
+    P3: ProtocolDecoder<Time>,
+    P4: ProtocolDecoder<Time>,
+    P5: ProtocolDecoder<Time>,
     P1::Cmd: Into<CmdEnum>,
     P2::Cmd: Into<CmdEnum>,
     P3::Cmd: Into<CmdEnum>,
@@ -284,12 +284,12 @@ where
 impl<P1, P2, P3, P4, P5, P6, Time: InfraMonotonic> ReceiverWrapper<6, Time>
     for (P1, P2, P3, P4, P5, P6)
 where
-    P1: Decoder<Time>,
-    P2: Decoder<Time>,
-    P3: Decoder<Time>,
-    P4: Decoder<Time>,
-    P5: Decoder<Time>,
-    P6: Decoder<Time>,
+    P1: ProtocolDecoder<Time>,
+    P2: ProtocolDecoder<Time>,
+    P3: ProtocolDecoder<Time>,
+    P4: ProtocolDecoder<Time>,
+    P5: ProtocolDecoder<Time>,
+    P6: ProtocolDecoder<Time>,
 
     P1::Cmd: Into<CmdEnum>,
     P2::Cmd: Into<CmdEnum>,

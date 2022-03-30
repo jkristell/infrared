@@ -26,7 +26,7 @@ pub mod sender;
 #[cfg(feature = "remotes")]
 pub mod remotecontrol;
 
-pub use receiver::{PeriodicPoll, Receiver};
+pub use receiver::{Receiver};
 
 #[doc(inline)]
 pub use protocol::{Protocol, ProtocolId};

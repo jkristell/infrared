@@ -122,27 +122,27 @@ mod builder;
 mod decoder;
 mod error;
 mod iter;
-mod multireceiver;
-mod ppoll;
+//mod multireceiver;
+//mod ppoll;
 pub mod time;
 
 pub use bufferinputreceiver::BufferInputReceiver;
 pub use builder::Builder;
-pub use decoder::{DecoderData, Decoder, State};
+pub use decoder::{DecoderData, ProtocolDecoder, State, ProtocolDecoderAdaptor};
 pub use error::{DecodingError, Error};
-pub use multireceiver::MultiReceiver;
-pub use ppoll::PeriodicPoll;
+//pub use multireceiver::MultiReceiver;
+//pub use ppoll::PeriodicPoll;
 
 pub struct NoPinInput;
 
 pub struct Receiver<
-    Proto: Decoder<Mono>,
+    Proto: ProtocolDecoderAdaptor<Mono>,
     Pin = NoPinInput,
     Mono: InfraMonotonic = u32,
-    Cmd: From<<Proto as Protocol>::Cmd> = <Proto as Protocol>::Cmd,
+    Cmd: From<Proto::Cmd> = <Proto as Protocol>::Cmd,
 > {
     /// Decoder data
-    pub(crate) decoder: Proto::Data,
+    pub(crate) decoder: Proto::Decoder,
     /// Input
     pub(crate) pin: Pin,
     prev_instant: Mono::Instant,
@@ -158,9 +158,9 @@ impl Receiver<Capture<u32>> {
 
 impl<Proto, Mono, Cmd> Receiver<Proto, NoPinInput, Mono, Cmd>
 where
-    Proto: Decoder<Mono>,
+    Proto: ProtocolDecoderAdaptor<Mono>,
     Mono: InfraMonotonic,
-    Cmd: From<<Proto as Protocol>::Cmd>,
+    Cmd: From<Proto::Cmd>,
 {
     pub fn new(freq: u32) -> Receiver<Proto, NoPinInput, Mono, Cmd> {
         let decoder = Proto::decoder(freq);
@@ -176,9 +176,9 @@ where
 
 impl<Proto, Input, Mono, Cmd> Receiver<Proto, Input, Mono, Cmd>
 where
-    Proto: Decoder<Mono>,
+    Proto: ProtocolDecoderAdaptor<Mono>,
     Mono: InfraMonotonic,
-    Cmd: From<<Proto as Protocol>::Cmd>,
+    Cmd: From<Proto::Cmd>,
 {
     pub fn with_input(freq: u32, input: Input) -> Self {
         let decoder = Proto::decoder(freq);
@@ -195,15 +195,16 @@ where
         &mut self,
         dt: Mono::Duration,
         edge: bool,
-    ) -> Result<Option<Proto::Cmd>, DecodingError> {
+    ) -> Result<Option<Cmd>, DecodingError> {
         // Update state machine
-        let state: State = Proto::event(&mut self.decoder, edge, dt).into();
+        //let state: State = Proto::event(&mut self.decoder, edge, dt).into();
+        let state: State = self.decoder.event( edge, dt).into();
 
         trace!("dt: {:?}, edge: {} s: {:?}", dt, edge, state);
 
         match state {
             State::Done => {
-                let cmd = Proto::command(&self.decoder);
+                let cmd = self.decoder.command().map(Into::into);
                 self.decoder.reset();
                 Ok(cmd)
             }
@@ -219,10 +220,10 @@ where
 #[cfg(feature = "embedded-hal")]
 impl<Proto, Pin, Mono, Cmd> Receiver<Proto, Pin, Mono, Cmd>
 where
-    Proto: Decoder<Mono>,
+    Proto: ProtocolDecoder<Mono>,
     Pin: InputPin,
     Mono: InfraMonotonic,
-    Cmd: From<<Proto as Protocol>::Cmd>,
+    Cmd: From<Proto::Cmd>,
 {
     /// Create a `Receiver` with `pin` as input
     pub fn with_pin(resolution: u32, pin: Pin) -> Self {
@@ -233,9 +234,9 @@ where
 #[cfg(feature = "embedded-hal")]
 impl<Proto, Pin, const HZ: u32, Cmd> Receiver<Proto, Pin, TimerInstantU32<HZ>, Cmd>
 where
-    Proto: Decoder<TimerInstantU32<HZ>>,
+    Proto: ProtocolDecoderAdaptor<TimerInstantU32<HZ>>,
     Pin: InputPin,
-    Cmd: From<<Proto as Protocol>::Cmd>,
+    Cmd: From<Proto::Cmd>,
 {
     /// Create a `Receiver` with `pin` as input
     pub fn with_fugit(pin: Pin) -> Self {
@@ -245,9 +246,9 @@ where
 
 impl<Proto, Mono, Cmd> Receiver<Proto, NoPinInput, Mono, Cmd>
 where
-    Proto: Decoder<Mono>,
+    Proto: ProtocolDecoderAdaptor<Mono>,
     Mono: InfraMonotonic,
-    Cmd: From<<Proto as Protocol>::Cmd>,
+    Cmd: From<Proto::Cmd>,
 {
     pub fn event(&mut self, dt: Mono::Duration, edge: bool) -> Result<Option<Cmd>, DecodingError> {
         Ok(self.event_edge(dt, edge)?.map(Into::into))
@@ -268,10 +269,10 @@ where
 #[cfg(feature = "embedded-hal")]
 impl<Proto, Pin, Mono, Cmd> Receiver<Proto, Pin, Mono, Cmd>
 where
-    Proto: Decoder<Mono>,
+    Proto: ProtocolDecoder<Mono>,
     Pin: InputPin,
     Mono: InfraMonotonic,
-    Cmd: From<<Proto as Protocol>::Cmd>,
+    Cmd: From<Proto::Cmd>,
 {
     pub fn event(&mut self, dt: Mono::Duration) -> Result<Option<Cmd>, Error<Pin::Error>> {
         let edge = self.pin.is_low().map_err(Error::Hal)?;

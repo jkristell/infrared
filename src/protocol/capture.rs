@@ -1,59 +1,65 @@
 use core::marker::PhantomData;
 
-use crate::receiver::time::{InfraMonotonic};
+use crate::receiver::time::{InfraMonotonic, PulseSpans};
 use crate::{
-    receiver::{DecoderData, Decoder, State},
+    receiver::{DecoderData, ProtocolDecoder, State},
     Protocol,
 };
+use crate::receiver::ProtocolDecoderAdaptor;
 
-pub struct Capture<Dur> {
-    dur: PhantomData<Dur>,
-}
+impl<Mono: InfraMonotonic> ProtocolDecoderAdaptor<Mono> for Capture<Mono>  {
+    type Decoder = CaptureDecoder<Mono>;
 
-pub struct CaptureData<Dur> {
-    pub ts: [Dur; 96],
-    pub pos: usize,
-}
-
-impl<Dur> DecoderData for CaptureData<Dur> {
-    fn reset(&mut self) {
-        self.pos = 0;
-    }
-}
-
-impl<Dur> Protocol for Capture<Dur> {
-    type Cmd = [Dur; 96];
-}
-
-impl<Mono: InfraMonotonic> Decoder<Mono> for Capture<Mono::Duration> {
-    type Data = CaptureData<Mono::Duration>;
-    type InternalState = State;
     const PULSE: [u32; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
     const TOL: [u32; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
 
-    fn decoder(_freq: u32) -> Self::Data {
-        CaptureData {
+    fn decoder(freq: u32) -> Self::Decoder {
+        CaptureDecoder {
+            data: freq,
             ts: [Mono::ZERO_DURATION; 96],
             pos: 0,
         }
     }
+}
 
+pub struct Capture<Mono> {
+    dur: PhantomData<Mono>,
+}
+
+pub struct CaptureDecoder<Mono: InfraMonotonic> {
+    data: u32,
+    pub ts: [Mono::Duration; 96],
+    pub pos: usize,
+
+}
+
+impl<Mono: InfraMonotonic> Protocol for Capture<Mono> {
+    type Cmd = [Mono::Duration; 96];
+}
+
+impl<Mono: InfraMonotonic> ProtocolDecoder<Mono, [Mono::Duration; 96]> for CaptureDecoder<Mono> {
+    //type Cmd = [Mono::Duration; 96];
+    //type InternalState = State;
     fn event(
-        state: &mut Self::Data,
+        &mut self,
         _edge: bool,
         dur: Mono::Duration,
-    ) -> Self::InternalState {
-        if state.pos >= state.ts.len() {
+    ) -> State {
+        if self.pos >= self.ts.len() {
             return State::Done;
         }
 
-        state.ts[state.pos] = dur;
-        state.pos += 1;
+        self.ts[self.pos] = dur;
+        self.pos += 1;
 
         State::Receiving
     }
 
-    fn command(state: &Self::Data) -> Option<Self::Cmd> {
-        Some(state.ts)
+    fn command(&self) -> Option<[Mono::Duration; 96]> {
+        Some(self.ts)
+    }
+
+    fn reset(&mut self) {
+        self.pos = 0;
     }
 }

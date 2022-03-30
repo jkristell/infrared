@@ -6,10 +6,39 @@ use crate::{
         nec::{NecCommand, NecCommandVariant},
         Nec,
     },
-    receiver::{DecoderData, Decoder, DecodingError, State},
+    receiver::{DecoderData, ProtocolDecoder, DecodingError, State},
 };
+use crate::receiver::ProtocolDecoderAdaptor;
 
-pub struct NecData<Mono: InfraMonotonic, C = NecCommand> {
+impl<Mono: InfraMonotonic, Cmd: NecCommandVariant> ProtocolDecoderAdaptor<Mono> for Nec<Cmd> {
+
+    type Decoder = NecDecoder<Mono, Cmd>;
+    const PULSE: [u32; 8] = [
+        Cmd::PULSE_DISTANCE.header_high + Cmd::PULSE_DISTANCE.header_low,
+        Cmd::PULSE_DISTANCE.header_high + Cmd::PULSE_DISTANCE.repeat_low,
+        Cmd::PULSE_DISTANCE.data_high + Cmd::PULSE_DISTANCE.data_zero_low,
+        Cmd::PULSE_DISTANCE.data_high + Cmd::PULSE_DISTANCE.data_one_low,
+        0,
+        0,
+        0,
+        0,
+    ];
+
+    const TOL: [u32; 8] = [7, 7, 5, 5, 0, 0, 0, 0];
+
+    fn decoder(freq: u32) -> Self::Decoder {
+        NecDecoder {
+            state: NecState::Init,
+            bitbuf: 0,
+            cmd_type: Default::default(),
+            dt_save: Mono::ZERO_DURATION,
+            pulsespans: <Self as ProtocolDecoderAdaptor<Mono>>::create_pulsespans(freq),
+        }
+    }
+}
+
+
+pub struct NecDecoder<Mono: InfraMonotonic, C = NecCommand> {
     // State
     state: NecState,
     // Data buffer
@@ -20,13 +49,6 @@ pub struct NecData<Mono: InfraMonotonic, C = NecCommand> {
     dt_save: Mono::Duration,
 
     pulsespans: PulseSpans<Mono::Duration>,
-}
-
-impl<C: NecCommandVariant, Mono: InfraMonotonic> DecoderData for NecData<Mono, C> {
-    fn reset(&mut self) {
-        self.state = NecState::Init;
-        self.dt_save = Mono::ZERO_DURATION;
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -57,62 +79,37 @@ impl From<NecState> for State {
     }
 }
 
-impl<Cmd, Mono> Decoder<Mono> for Nec<Cmd>
+impl<Cmd, Mono> ProtocolDecoder<Mono, Cmd> for NecDecoder<Mono, Cmd>
 where
     Cmd: NecCommandVariant,
     Mono: InfraMonotonic,
 {
-    type Data = NecData<Mono, Cmd>;
-    type InternalState = NecState;
-
-    const PULSE: [u32; 8] = [
-        Cmd::PULSE_DISTANCE.header_high + Cmd::PULSE_DISTANCE.header_low,
-        Cmd::PULSE_DISTANCE.header_high + Cmd::PULSE_DISTANCE.repeat_low,
-        Cmd::PULSE_DISTANCE.data_high + Cmd::PULSE_DISTANCE.data_zero_low,
-        Cmd::PULSE_DISTANCE.data_high + Cmd::PULSE_DISTANCE.data_one_low,
-        0,
-        0,
-        0,
-        0,
-    ];
-
-    const TOL: [u32; 8] = [7, 7, 5, 5, 0, 0, 0, 0];
-
-    fn decoder(freq: u32) -> Self::Data {
-        NecData {
-            state: NecState::Init,
-            bitbuf: 0,
-            cmd_type: Default::default(),
-            dt_save: Mono::ZERO_DURATION,
-            pulsespans: <Self as Decoder<Mono>>::create_pulsespans(freq),
-        }
-    }
 
     #[rustfmt::skip]
     fn event(
-        self_: &mut Self::Data,
+        &mut self,
         rising: bool,
         dur: Mono::Duration,
-    ) -> Self::InternalState {
+    ) -> State {
 
         use NecState::*;
         use PulseWidth::*;
 
         if rising {
 
-            let total_duration = dur + self_.dt_save;
+            let total_duration = dur + self.dt_save;
 
-            let pulsewidth = self_.pulsespans.get(total_duration)
+            let pulsewidth = self.pulsespans.get(total_duration)
                 .unwrap_or(PulseWidth::Invalid);
 
-            let status = match (self_.state, pulsewidth) {
-                (Init,              Sync)   => { self_.bitbuf = 0; Receiving(0) },
+            let status = match (self.state, pulsewidth) {
+                (Init,              Sync)   => { self.bitbuf = 0; Receiving(0) },
                 (Init,              Repeat) => RepeatDone,
                 (Init,              _)      => Init,
 
-                (Receiving(31),     One)    => { self_.bitbuf |= 1 << 31; Done }
+                (Receiving(31),     One)    => { self.bitbuf |= 1 << 31; Done }
                 (Receiving(31),     Zero)   => Done,
-                (Receiving(bit),    One)    => { self_.bitbuf |= 1 << bit; Receiving(bit + 1) }
+                (Receiving(bit),    One)    => { self.bitbuf |= 1 << bit; Receiving(bit + 1) }
                 (Receiving(bit),    Zero)   => Receiving(bit + 1),
                 (Receiving(_),      _)      => Err(DecodingError::Data),
 
@@ -123,28 +120,32 @@ where
 
             trace!(
                 "State(prev, new): ({:?}, {:?}) pulsewidth: {:?}",
-                self_.state,
+                self.state,
                 status,
                 pulsewidth
             );
 
-            self_.state = status;
+            self.state = status;
 
-            self_.dt_save = Mono::ZERO_DURATION;
+            self.dt_save = Mono::ZERO_DURATION;
         } else {
             // Save
-            self_.dt_save = dur;
+            self.dt_save = dur;
         }
 
-        self_.state
+        self.state.into()
     }
-
-    fn command(self_: &Self::Data) -> Option<Self::Cmd> {
-        match self_.state {
-            NecState::Done => Self::Cmd::unpack(self_.bitbuf, false),
-            NecState::RepeatDone => Self::Cmd::unpack(self_.bitbuf, true),
+    fn command(&self) -> Option<Cmd> {
+        match self.state {
+            NecState::Done => Cmd::unpack(self.bitbuf, false),
+            NecState::RepeatDone => Cmd::unpack(self.bitbuf, true),
             _ => None,
         }
+    }
+
+    fn reset(&mut self) {
+        self.state = NecState::Init;
+        self.dt_save = Mono::ZERO_DURATION;
     }
 }
 

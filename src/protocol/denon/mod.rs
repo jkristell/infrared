@@ -1,7 +1,7 @@
 use crate::receiver::time::{InfraMonotonic, PulseSpans};
 use crate::{
     protocol::Protocol,
-    receiver::{DecoderData, Decoder, State},
+    receiver::{DecoderData, ProtocolDecoder, State},
 };
 
 #[cfg(test)]
@@ -41,8 +41,8 @@ pub struct DenonCommand {
     pub bits: u64,
 }
 
-impl<Mono: InfraMonotonic> Decoder<Mono> for Denon {
-    type Data = DenonData<Mono>;
+impl<Mono: InfraMonotonic> ProtocolDecoder<Mono> for Denon {
+    type Decoder = DenonData<Mono>;
     type InternalState = DenonState;
 
     const PULSE: [u32; 8] = [
@@ -58,17 +58,17 @@ impl<Mono: InfraMonotonic> Decoder<Mono> for Denon {
 
     const TOL: [u32; 8] = [8, 10, 10, 0, 0, 0, 0, 0];
 
-    fn decoder(freq: u32) -> Self::Data {
+    fn decoder(freq: u32) -> Self::Decoder {
         DenonData {
             state: DenonState::Idle,
             buf: 0,
             dt_save: Mono::ZERO_DURATION,
-            spans: <Self as Decoder<Mono>>::create_pulsespans(freq),
+            spans: <Self as ProtocolDecoder<Mono>>::create_pulsespans(freq),
         }
     }
 
     #[rustfmt::skip]
-    fn event(self_: &mut Self::Data, rising: bool, dt: Mono::Duration) -> DenonState {
+    fn event(self_: &mut Self::Decoder, rising: bool, dt: Mono::Duration) -> DenonState {
 
         if rising {
             let pulsewidth = self_.spans.get::<PulseWidth>( self_.dt_save + dt)
@@ -92,7 +92,7 @@ impl<Mono: InfraMonotonic> Decoder<Mono> for Denon {
 
         self_.state
     }
-    fn command(state: &Self::Data) -> Option<Self::Cmd> {
+    fn command(state: &Self::Decoder) -> Option<Self::Cmd> {
         if state.state == DenonState::Done {
             Some(DenonCommand { bits: state.buf })
         } else {

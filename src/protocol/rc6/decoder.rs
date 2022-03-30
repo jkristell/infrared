@@ -1,13 +1,13 @@
 use crate::receiver::time::{InfraMonotonic, PulseSpans};
 use crate::{
     protocol::{rc6::Rc6Command, Rc6},
-    receiver::{DecoderData, Decoder, DecodingError, State},
+    receiver::{DecoderData, ProtocolDecoder, DecodingError, State},
 };
 
 const RC6_TIME_UNIT: u32 = 444;
 
-impl<Mono: InfraMonotonic> Decoder<Mono> for Rc6 {
-    type Data = Rc6Data<Mono>;
+impl<Mono: InfraMonotonic> ProtocolDecoder<Mono> for Rc6 {
+    type Decoder = Rc6Data<Mono>;
     type InternalState = Rc6State;
     const PULSE: [u32; 8] = [
         RC6_TIME_UNIT,
@@ -21,19 +21,19 @@ impl<Mono: InfraMonotonic> Decoder<Mono> for Rc6 {
     ];
     const TOL: [u32; 8] = [12, 12, 12, 12, 12, 12, 12, 12];
 
-    fn decoder(freq: u32) -> Self::Data {
-        Self::Data {
+    fn decoder(freq: u32) -> Self::Decoder {
+        Self::Decoder {
             state: Rc6State::Idle,
             data: 0,
             headerdata: 0,
             toggle: false,
             clock: 0,
-            spans: <Self as Decoder<Mono>>::create_pulsespans(freq),
+            spans: <Self as ProtocolDecoder<Mono>>::create_pulsespans(freq),
         }
     }
 
     #[rustfmt::skip]
-    fn event(self_: &mut Self::Data, rising: bool, dt: Mono::Duration) -> Self::InternalState {
+    fn event(self_: &mut Self::Decoder, rising: bool, dt: Mono::Duration) -> Self::InternalState {
         use Rc6State::*;
 
         // Find the nbr of time unit ticks the dt represents
@@ -89,7 +89,7 @@ impl<Mono: InfraMonotonic> Decoder<Mono> for Rc6 {
 
     }
 
-    fn command(this_: &Self::Data) -> Option<Self::Cmd> {
+    fn command(this_: &Self::Decoder) -> Option<Self::Cmd> {
         Some(Rc6Command::from_bits(this_.data, this_.toggle))
     }
 }

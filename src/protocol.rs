@@ -32,13 +32,15 @@ pub use rc6::{Rc6, Rc6Command};
 #[doc(inline)]
 pub use sbp::{Sbp, SbpCommand};
 
-pub use capture::{Capture, CaptureData};
+pub use capture::{Capture};
+use crate::receiver::ProtocolDecoder;
 
 pub(crate) mod utils;
 
 /// Infrared protocol
 pub trait Protocol {
     type Cmd;
+
 }
 
 pub struct DummyProtocol {}

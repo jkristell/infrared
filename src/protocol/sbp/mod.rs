@@ -11,7 +11,7 @@ use core::convert::TryInto;
 
 use crate::receiver::time::InfraMonotonic;
 #[cfg(feature = "remotes")]
-use crate::receiver::{Decoder, DecodingError, State};
+use crate::receiver::{ProtocolDecoder, DecodingError, State};
 use crate::{
     cmd::{AddressCommand, Command},
     protocol::Protocol,
@@ -109,8 +109,8 @@ pub enum SbpState {
     Err(DecodingError),
 }
 
-impl<Mono: InfraMonotonic> Decoder<Mono> for Sbp {
-    type Data = SbpData<Mono>;
+impl<Mono: InfraMonotonic> ProtocolDecoder<Mono> for Sbp {
+    type Decoder = SbpData<Mono>;
     type InternalState = SbpState;
     const PULSE: [u32; 8] = [
         (4500 + 4500),
@@ -124,18 +124,18 @@ impl<Mono: InfraMonotonic> Decoder<Mono> for Sbp {
     ];
     const TOL: [u32; 8] = [5, 5, 10, 10, 0, 0, 0, 0];
 
-    fn decoder(freq: u32) -> Self::Data {
+    fn decoder(freq: u32) -> Self::Decoder {
         SbpData {
             state: SbpState::Init,
             address: 0,
             command: 0,
             since_rising: Mono::ZERO_DURATION,
-            spans: <Self as Decoder<Mono>>::create_pulsespans(freq)
+            spans: <Self as ProtocolDecoder<Mono>>::create_pulsespans(freq)
         }
     }
 
     #[rustfmt::skip]
-    fn event(self_: &mut Self::Data, rising: bool, dt: Mono::Duration) -> SbpState {
+    fn event(self_: &mut Self::Decoder, rising: bool, dt: Mono::Duration) -> SbpState {
         use SbpPulse::*;
         use SbpState::*;
 
@@ -172,7 +172,7 @@ impl<Mono: InfraMonotonic> Decoder<Mono> for Sbp {
         self_.state
     }
 
-    fn command(this_: &Self::Data) -> Option<Self::Cmd> {
+    fn command(this_: &Self::Decoder) -> Option<Self::Cmd> {
         Some(SbpCommand::unpack(this_.address, this_.command))
     }
 }
