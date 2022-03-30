@@ -1,36 +1,39 @@
+use core::marker::PhantomData;
+
 use crate::receiver::time::{InfraMonotonic, PulseSpans};
 use crate::{
     receiver::{DecoderData, DecoderStateMachine, State},
     Protocol,
 };
 
-pub struct Capture;
+pub struct Capture<Dur> {
+    dur: PhantomData<Dur>,
+}
 
-pub struct CaptureData {
-    pub ts: [u16; 96],
+pub struct CaptureData<Dur> {
+    pub ts: [Dur; 96],
     pub pos: usize,
 }
 
-impl DecoderData for CaptureData {
+impl<Dur> DecoderData for CaptureData<Dur> {
     fn reset(&mut self) {
-        self.ts.fill(0);
         self.pos = 0;
     }
 }
 
-impl Protocol for Capture {
-    type Cmd = [u16; 96];
+impl<Dur> Protocol for Capture<Dur> {
+    type Cmd = [Dur; 96];
 }
 
-impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Capture {
-    type Data = CaptureData;
+impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Capture<Mono::Duration> {
+    type Data = CaptureData<Mono::Duration>;
     type InternalState = State;
     const PULSE: [u32; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
     const TOL: [u32; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
 
     fn create_data() -> Self::Data {
         CaptureData {
-            ts: [0; 96],
+            ts: [Mono::ZERO_DURATION; 96],
             pos: 0,
         }
     }
@@ -39,13 +42,13 @@ impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Capture {
         state: &mut Self::Data,
         _: &PulseSpans<Mono::Duration>,
         _edge: bool,
-        _: Mono::Duration,
+        dur: Mono::Duration,
     ) -> Self::InternalState {
         if state.pos >= state.ts.len() {
             return State::Done;
         }
 
-        state.ts[state.pos] = 0 as u16; //TODO
+        state.ts[state.pos] = dur;
         state.pos += 1;
 
         State::Receiving

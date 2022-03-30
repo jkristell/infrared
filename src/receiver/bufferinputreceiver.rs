@@ -15,6 +15,17 @@ pub struct BufferInputReceiver<
     cmd: PhantomData<Cmd>,
 }
 
+impl<Proto, Mono, Cmd> Default for BufferInputReceiver<Proto, Mono, Cmd>
+where
+    Proto: DecoderStateMachine<Mono>,
+    Mono: InfraMonotonic,
+    Cmd: From<<Proto as Protocol>::Cmd>,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<Proto, Mono, Cmd> BufferInputReceiver<Proto, Mono, Cmd>
 where
     Proto: DecoderStateMachine<Mono>,

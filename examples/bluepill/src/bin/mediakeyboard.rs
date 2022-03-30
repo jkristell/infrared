@@ -139,8 +139,8 @@ mod app {
         if let Ok(Some(button)) = receiver.event_instant(now) {
             if let Some(action) = button.action() {
                 info!("{:?}", button);
-                let key = super::mediakey_from_action(action);
-                info!("{:?}", key);
+                let key = super::action_to_mediakey(action);
+                info!("{:?}", defmt::Debug2Format(&key));
                 keydown::spawn(key).unwrap();
             }
         }
@@ -187,7 +187,7 @@ fn send_keycode(kbd: &HIDClass<UsbBusType>, key: MediaKey) {
     }
 }
 
-fn mediakey_from_action(action: Action) -> MediaKey {
+fn action_to_mediakey(action: Action) -> MediaKey {
     match action {
         Action::Play_Pause => MediaKey::PlayPause,
         Action::Up => MediaKey::VolumeIncrement,

@@ -108,7 +108,7 @@
 //!    let cmd_iter = r3.iter(buf);
 //!
 //! ```
-use crate::protocol::capture::Capture;
+use crate::protocol::Capture;
 use crate::receiver::time::{InfraMonotonic, PulseSpans};
 use crate::Protocol;
 
@@ -133,7 +133,6 @@ pub use error::{DecodingError, Error};
 pub use multireceiver::MultiReceiver;
 pub use ppoll::PeriodicPoll;
 
-/// TODO: Input from `poll` or `event` functions
 pub struct NoPinInput;
 
 pub struct Receiver<
@@ -153,7 +152,7 @@ pub struct Receiver<
     pub(crate) cmd: PhantomData<Cmd>,
 }
 
-impl Receiver<Capture> {
+impl Receiver<Capture<u32>> {
     pub fn builder() -> Builder {
         Builder::new()
     }

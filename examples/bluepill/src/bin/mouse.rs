@@ -148,7 +148,6 @@ mod app {
         info!("Received: {:?}, repeat: {}", button, *repeats);
         if let Some(action) = button.action() {
             let report = super::button_to_mousereport(action, *repeats);
-            info!("{:?}", report);
             keydown::spawn(report).unwrap()
         }
     }

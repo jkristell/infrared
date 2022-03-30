@@ -14,7 +14,6 @@ use embedded_hal::digital::v2::InputPin;
 
 use super::time::InfraMonotonic;
 
-
 pub struct MultiReceiver<
     const N: usize,
     Receivers: ReceiverWrapper<N, Time>,
@@ -45,9 +44,7 @@ impl<const N: usize, Receivers: ReceiverWrapper<N, Time>, Input, Time: InfraMono
         flank: bool,
     ) -> impl Iterator<Item = CmdEnum> {
         let arr = self.event_generic(dt, flank);
-        arr.into_iter().filter_map(|v| v)
-        //Iterator::into_iter(arr)
-        //core::array::IntoIter::new(arr).flat_map(|c| c)
+        arr.into_iter().flatten()
     }
 }
 
@@ -67,10 +64,7 @@ where
         dt: Time::Duration,
     ) -> Result<impl Iterator<Item = CmdEnum>, Pin::Error> {
         let arr = self.event(dt)?;
-        Ok(arr.into_iter().filter_map(|c| c))
-        // Keep the actual commands we got.
-        // Clippy is suggesting that we use flatten here. but that doesn't produce the right result
-        //Ok(core::array::IntoIter::new(arr).filter_map(|c| c))
+        Ok(arr.into_iter().flatten())
     }
 
     pub fn pin(&mut self) -> &mut Pin {

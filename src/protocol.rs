@@ -1,5 +1,7 @@
 //! Infrared protocol
 
+mod capture;
+
 #[cfg(feature = "denon")]
 mod denon;
 #[cfg(feature = "nec")]
@@ -30,7 +32,7 @@ pub use rc6::{Rc6, Rc6Command};
 #[doc(inline)]
 pub use sbp::{Sbp, SbpCommand};
 
-pub mod capture;
+pub use capture::{Capture, CaptureData};
 
 pub(crate) mod utils;
 
