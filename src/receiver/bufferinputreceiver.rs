@@ -1,11 +1,11 @@
 use crate::receiver::iter::BufferIterator;
 use crate::receiver::time::InfraMonotonic;
-use crate::receiver::DecoderStateMachine;
+use crate::receiver::Decoder;
 use crate::{Protocol, Receiver};
 use core::marker::PhantomData;
 
 pub struct BufferInputReceiver<
-    Proto: DecoderStateMachine<Mono>,
+    Proto: Decoder<Mono>,
     Mono: InfraMonotonic = u32,
     Cmd: From<<Proto as Protocol>::Cmd> = <Proto as Protocol>::Cmd,
 > {
@@ -17,7 +17,7 @@ pub struct BufferInputReceiver<
 
 impl<Proto, Mono, Cmd> Default for BufferInputReceiver<Proto, Mono, Cmd>
 where
-    Proto: DecoderStateMachine<Mono>,
+    Proto: Decoder<Mono>,
     Mono: InfraMonotonic,
     Cmd: From<<Proto as Protocol>::Cmd>,
 {
@@ -28,7 +28,7 @@ where
 
 impl<Proto, Mono, Cmd> BufferInputReceiver<Proto, Mono, Cmd>
 where
-    Proto: DecoderStateMachine<Mono>,
+    Proto: Decoder<Mono>,
     Mono: InfraMonotonic,
     Cmd: From<<Proto as Protocol>::Cmd>,
 {
@@ -64,7 +64,7 @@ where
         buf: &'a [M::Duration],
     ) -> BufferIterator<P, M, C>
     where
-        P: DecoderStateMachine<M>,
+        P: Decoder<M>,
         M: InfraMonotonic,
         C: From<<P as Protocol>::Cmd>,
     {

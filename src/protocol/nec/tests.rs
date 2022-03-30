@@ -257,7 +257,6 @@ fn fugit() {
         .monotonic::<TimerInstantU32<1_000_000>>()
         .build();
 
-    println!("{:?}", receiver.spans());
 
     let mut cmds = std::vec::Vec::new();
 

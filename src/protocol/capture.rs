@@ -1,8 +1,8 @@
 use core::marker::PhantomData;
 
-use crate::receiver::time::{InfraMonotonic, PulseSpans};
+use crate::receiver::time::{InfraMonotonic};
 use crate::{
-    receiver::{DecoderData, DecoderStateMachine, State},
+    receiver::{DecoderData, Decoder, State},
     Protocol,
 };
 
@@ -25,13 +25,13 @@ impl<Dur> Protocol for Capture<Dur> {
     type Cmd = [Dur; 96];
 }
 
-impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Capture<Mono::Duration> {
+impl<Mono: InfraMonotonic> Decoder<Mono> for Capture<Mono::Duration> {
     type Data = CaptureData<Mono::Duration>;
     type InternalState = State;
     const PULSE: [u32; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
     const TOL: [u32; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
 
-    fn create_data() -> Self::Data {
+    fn decoder(_freq: u32) -> Self::Data {
         CaptureData {
             ts: [Mono::ZERO_DURATION; 96],
             pos: 0,
@@ -40,7 +40,6 @@ impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Capture<Mono::Duration>
 
     fn event(
         state: &mut Self::Data,
-        _: &PulseSpans<Mono::Duration>,
         _edge: bool,
         dur: Mono::Duration,
     ) -> Self::InternalState {

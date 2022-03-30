@@ -1,4 +1,4 @@
-use crate::receiver::{DecoderStateMachine, NoPinInput, Receiver};
+use crate::receiver::{Decoder, NoPinInput, Receiver};
 use core::marker::PhantomData;
 
 #[cfg(feature = "embedded-hal")]
@@ -150,7 +150,7 @@ where
     /// Create the Receiver
     pub fn build(self) -> Receiver<Proto, Input, Mono, C>
     where
-        Proto: DecoderStateMachine<Mono>,
+        Proto: Decoder<Mono>,
     {
         Receiver::with_input(self.resolution, self.input)
     }

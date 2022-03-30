@@ -1,13 +1,13 @@
 use crate::receiver::time::{InfraMonotonic, PulseSpans};
 use crate::{
     protocol::{rc6::Rc6Command, Rc6},
-    receiver::{DecoderData, DecoderStateMachine, DecodingError, State},
+    receiver::{DecoderData, Decoder, DecodingError, State},
 };
 
 const RC6_TIME_UNIT: u32 = 444;
 
-impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Rc6 {
-    type Data = Rc6Data;
+impl<Mono: InfraMonotonic> Decoder<Mono> for Rc6 {
+    type Data = Rc6Data<Mono>;
     type InternalState = Rc6State;
     const PULSE: [u32; 8] = [
         RC6_TIME_UNIT,
@@ -21,44 +21,44 @@ impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Rc6 {
     ];
     const TOL: [u32; 8] = [12, 12, 12, 12, 12, 12, 12, 12];
 
-    fn create_data() -> Self::Data {
+    fn decoder(freq: u32) -> Self::Data {
         Self::Data {
             state: Rc6State::Idle,
             data: 0,
             headerdata: 0,
             toggle: false,
             clock: 0,
+            spans: <Self as Decoder<Mono>>::create_pulsespans(freq),
         }
     }
 
     #[rustfmt::skip]
-    fn event(data: &mut Self::Data, spans: &PulseSpans<Mono::Duration>, rising: bool, dt: Mono::Duration)
-             -> Self::InternalState {
+    fn event(this_: &mut Self::Data, rising: bool, dt: Mono::Duration) -> Self::InternalState {
         use Rc6State::*;
 
         // Find the nbr of time unit ticks the dt represents
         //let ticks = ranges.find::<usize>(dt).map(|v| (v + 1));
-        let ticks = Mono::find::<usize>(spans, dt).map(|v| (v +1) );
+        let ticks = Mono::find::<usize>(&this_.spans, dt).map(|v| (v +1) );
 
         // Reconstruct the clock
         if let Some(ticks) = ticks {
-            data.clock += ticks;
+            this_.clock += ticks;
         } else {
-            data.reset();
+            this_.reset();
         }
 
-        let odd = data.clock & 1 == 1;
+        let odd = this_.clock & 1 == 1;
 
-        data.state = match (data.state, rising, ticks) {
+        this_.state = match (this_.state, rising, ticks) {
             (Idle,          false,    _)            => Idle,
-            (Idle,          true,     _)            => { data.clock = 0; Leading },
+            (Idle,          true,     _)            => { this_.clock = 0; Leading },
             (Leading,       false,    Some(6))      => LeadingPaus,
             (Leading,       _,        _)            => Idle,
             (LeadingPaus,   true,     Some(2))      => HeaderData(3),
             (LeadingPaus,   _,        _)            => Idle,
 
             (HeaderData(n), _,          Some(_)) if odd => {
-                data.headerdata |= if rising { 0 } else { 1 } << n;
+                this_.headerdata |= if rising { 0 } else { 1 } << n;
                 if n == 0 {
                     Trailing
                 } else {
@@ -69,16 +69,16 @@ impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Rc6 {
             (HeaderData(n), _,          Some(_))    => HeaderData(n),
             (HeaderData(_), _,          None)       => Idle,
 
-            (Trailing,      false,      Some(3))    => { data.toggle = true; Data(15) }
-            (Trailing,      true,       Some(2))    => { data.toggle = false; Data(15) }
+            (Trailing,      false,      Some(3))    => { this_.toggle = true; Data(15) }
+            (Trailing,      true,       Some(2))    => { this_.toggle = false; Data(15) }
             (Trailing,      false,      Some(1))    => Trailing,
             (Trailing,      _,          _)          => Idle,
 
             (Data(0),       true,       Some(_)) if odd => Done,
-            (Data(0),       false,      Some(_)) if odd => { data.data |= 1; Done }
+            (Data(0),       false,      Some(_)) if odd => { this_.data |= 1; Done }
             (Data(0),       _,          Some(_))        => Data(0),
             (Data(n),       true,       Some(_)) if odd => Data(n - 1),
-            (Data(n),       false,      Some(_)) if odd => { data.data |= 1 << n; Data(n - 1) }
+            (Data(n),       false,      Some(_)) if odd => { this_.data |= 1 << n; Data(n - 1) }
             (Data(n),       _,          Some(_))        => Data(n),
             (Data(_),       _,          None)           => Rc6Err(DecodingError::Data),
 
@@ -86,24 +86,25 @@ impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Rc6 {
             (Rc6Err(err),   _,          _)              => Rc6Err(err),
         };
 
-        data.state
+        this_.state
 
     }
 
-    fn command(data: &Rc6Data) -> Option<Self::Cmd> {
-        Some(Rc6Command::from_bits(data.data, data.toggle))
+    fn command(this_: &Self::Data) -> Option<Self::Cmd> {
+        Some(Rc6Command::from_bits(this_.data, this_.toggle))
     }
 }
 
-pub struct Rc6Data {
+pub struct Rc6Data<Mono: InfraMonotonic> {
     pub(crate) state: Rc6State,
     data: u16,
     headerdata: u16,
     toggle: bool,
     clock: usize,
+    spans: PulseSpans<Mono::Duration>,
 }
 
-impl DecoderData for Rc6Data {
+impl<Mono: InfraMonotonic> DecoderData for Rc6Data<Mono> {
     fn reset(&mut self) {
         self.state = Rc6State::Idle;
         self.data = 0;

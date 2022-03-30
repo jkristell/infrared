@@ -5,7 +5,7 @@ use core::fmt::Debug;
 use super::time::PulseSpans;
 
 /// Protocol decode state machine
-pub trait DecoderStateMachine<Mono: InfraMonotonic>: Protocol {
+pub trait Decoder<Mono: InfraMonotonic>: Protocol {
     /// Decoder state
     type Data: DecoderData;
     /// Internal State type
@@ -13,6 +13,22 @@ pub trait DecoderStateMachine<Mono: InfraMonotonic>: Protocol {
 
     const PULSE: [u32; 8];
     const TOL: [u32; 8];
+
+    /// Create the resources
+    fn decoder(freq: u32) -> Self::Data;
+
+    /// Notify the state machine of a new event
+    /// * `edge`: true = positive edge, false = negative edge
+    /// * `dt` : Time in micro seconds since last transition
+    fn event(
+        self_: &mut Self::Data,
+        edge: bool,
+        dt: Mono::Duration,
+    ) -> Self::InternalState;
+
+    /// Get the command
+    /// Returns the data if State == Done, otherwise None
+    fn command(self_: &Self::Data) -> Option<Self::Cmd>;
 
     fn create_pulsespans(freq: u32) -> PulseSpans<Mono::Duration> {
         PulseSpans {
@@ -28,23 +44,6 @@ pub trait DecoderStateMachine<Mono: InfraMonotonic>: Protocol {
             ],
         }
     }
-
-    /// Create the resources
-    fn create_data() -> Self::Data;
-
-    /// Notify the state machine of a new event
-    /// * `edge`: true = positive edge, false = negative edge
-    /// * `dt` : Time in micro seconds since last transition
-    fn event(
-        data: &mut Self::Data,
-        spans: &PulseSpans<Mono::Duration>,
-        edge: bool,
-        dt: Mono::Duration,
-    ) -> Self::InternalState;
-
-    /// Get the command
-    /// Returns the data if State == Done, otherwise None
-    fn command(data: &Self::Data) -> Option<Self::Cmd>;
 }
 
 pub trait DecoderData {

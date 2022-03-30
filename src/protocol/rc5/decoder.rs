@@ -1,56 +1,60 @@
 use crate::receiver::time::{InfraMonotonic, PulseSpans};
 use crate::{
     protocol::{rc5::Rc5Command, Rc5},
-    receiver::{DecoderData, DecoderStateMachine, DecodingError, State},
+    receiver::{DecoderData, Decoder, DecodingError, State},
 };
 
 const RC5_BASE_TIME: u32 = 889;
 
-impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Rc5 {
-    type Data = Rc5Data;
+impl<Mono: InfraMonotonic> Decoder<Mono> for Rc5 {
+    type Data = Rc5Data<Mono>;
     type InternalState = Rc5State;
     const PULSE: [u32; 8] = [RC5_BASE_TIME, 2 * RC5_BASE_TIME, 0, 0, 0, 0, 0, 0];
     const TOL: [u32; 8] = [12, 10, 0, 0, 0, 0, 0, 0];
 
-    fn create_data() -> Self::Data {
-        Rc5Data::default()
+    fn decoder(freq: u32) -> Self::Data {
+        Rc5Data {
+            state: Rc5State::Idle,
+            bitbuf: 0,
+            clock: 0,
+            spans: <Self as Decoder<Mono>>::create_pulsespans(freq),
+        }
     }
 
     fn event(
-        data: &mut Self::Data,
-        spans: &PulseSpans<Mono::Duration>,
+        self_: &mut Self::Data,
         rising: bool,
         delta_t: Mono::Duration,
     ) -> Self::InternalState {
         use Rc5State::*;
 
         // Find this delta t in the defined ranges
-        let clock_ticks = Mono::find::<usize>(spans, delta_t);
+        let clock_ticks = Mono::find::<usize>(&self_.spans, delta_t);
 
         if let Some(ticks) = clock_ticks {
-            data.clock += ticks + 1;
+            self_.clock += ticks + 1;
         } else {
-            data.reset();
+            self_.reset();
         }
 
-        let is_odd = data.clock & 1 == 0;
+        let is_odd = self_.clock & 1 == 0;
 
-        data.state = match (data.state, rising, clock_ticks) {
+        self_.state = match (self_.state, rising, clock_ticks) {
             (Idle, false, _) => Idle,
             (Idle, true, _) => {
-                data.clock = 0;
-                data.bitbuf |= 1 << 13;
+                self_.clock = 0;
+                self_.bitbuf |= 1 << 13;
                 Data(12)
             }
 
             (Data(0), true, Some(_)) if is_odd => {
-                data.bitbuf |= 1;
+                self_.bitbuf |= 1;
                 Done
             }
             (Data(0), false, Some(_)) if is_odd => Done,
 
             (Data(bit), true, Some(_)) if is_odd => {
-                data.bitbuf |= 1 << bit;
+                self_.bitbuf |= 1 << bit;
                 Data(bit - 1)
             }
             (Data(bit), false, Some(_)) if is_odd => Data(bit - 1),
@@ -61,7 +65,7 @@ impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Rc5 {
             (Err(err), _, _) => Err(err),
         };
 
-        data.state
+        self_.state
     }
 
     fn command(state: &Self::Data) -> Option<Self::Cmd> {
@@ -69,14 +73,14 @@ impl<Mono: InfraMonotonic> DecoderStateMachine<Mono> for Rc5 {
     }
 }
 
-#[derive(Default)]
-pub struct Rc5Data {
+pub struct Rc5Data<Mono: InfraMonotonic> {
     pub(crate) state: Rc5State,
     bitbuf: u16,
     pub(crate) clock: usize,
+    spans: PulseSpans<Mono::Duration>,
 }
 
-impl DecoderData for Rc5Data {
+impl<Mono: InfraMonotonic> DecoderData for Rc5Data<Mono> {
     fn reset(&mut self) {
         self.state = Rc5State::Idle;
         self.bitbuf = 0;

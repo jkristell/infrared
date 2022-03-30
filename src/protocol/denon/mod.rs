@@ -1,7 +1,7 @@
 use crate::receiver::time::{InfraMonotonic, PulseSpans};
 use crate::{
     protocol::Protocol,
-    receiver::{DecoderData, DecoderStateMachine, State},
+    receiver::{DecoderData, Decoder, State},
 };
 
 #[cfg(test)]
@@ -20,10 +20,11 @@ impl Protocol for Denon {
     type Cmd = DenonCommand;
 }
 
-pub struct DenonData<T: InfraMonotonic> {
+pub struct DenonData<Mono: InfraMonotonic> {
     state: DenonState,
     buf: u64,
-    dt_save: T::Duration,
+    dt_save: Mono::Duration,
+    spans: PulseSpans<Mono::Duration>
 }
 
 impl<T: InfraMonotonic> DecoderData for DenonData<T> {
@@ -40,8 +41,8 @@ pub struct DenonCommand {
     pub bits: u64,
 }
 
-impl<Time: InfraMonotonic> DecoderStateMachine<Time> for Denon {
-    type Data = DenonData<Time>;
+impl<Mono: InfraMonotonic> Decoder<Mono> for Denon {
+    type Data = DenonData<Mono>;
     type InternalState = DenonState;
 
     const PULSE: [u32; 8] = [
@@ -57,39 +58,39 @@ impl<Time: InfraMonotonic> DecoderStateMachine<Time> for Denon {
 
     const TOL: [u32; 8] = [8, 10, 10, 0, 0, 0, 0, 0];
 
-    fn create_data() -> Self::Data {
+    fn decoder(freq: u32) -> Self::Data {
         DenonData {
             state: DenonState::Idle,
             buf: 0,
-            dt_save: Time::ZERO_DURATION,
+            dt_save: Mono::ZERO_DURATION,
+            spans: <Self as Decoder<Mono>>::create_pulsespans(freq),
         }
     }
 
     #[rustfmt::skip]
-    fn event(state: &mut Self::Data,
-             ranges: &PulseSpans<Time::Duration>,
-             rising: bool, dt: Time::Duration) -> DenonState {
+    fn event(self_: &mut Self::Data, rising: bool, dt: Mono::Duration) -> DenonState {
+
         if rising {
-            let pulsewidth = Time::find::<PulseWidth>(ranges, state.dt_save + dt)
+            let pulsewidth = Mono::find::<PulseWidth>(&self_.spans, self_.dt_save + dt)
                 .unwrap_or(PulseWidth::Fail);
 
-            state.state = match (state.state, pulsewidth) {
+            self_.state = match (self_.state, pulsewidth) {
                 (DenonState::Idle,          PulseWidth::Sync)   => DenonState::Data(0),
                 (DenonState::Idle,          _)                  => DenonState::Idle,
                 (DenonState::Data(47),      PulseWidth::Zero)   => DenonState::Done,
                 (DenonState::Data(47),      PulseWidth::One)    => DenonState::Done,
                 (DenonState::Data(idx),     PulseWidth::Zero)   => DenonState::Data(idx + 1),
-                (DenonState::Data(idx),     PulseWidth::One)    => { state.buf |= 1 << idx; DenonState::Data(idx + 1) }
+                (DenonState::Data(idx),     PulseWidth::One)    => { self_.buf |= 1 << idx; DenonState::Data(idx + 1) }
                 (DenonState::Data(_ix),     _)                  => DenonState::Idle,
                 (DenonState::Done,          _)                  => DenonState::Done,
             };
 
-            state.dt_save = Time::ZERO_DURATION;
+            self_.dt_save = Mono::ZERO_DURATION;
         } else {
-            state.dt_save = dt;
+            self_.dt_save = dt;
         }
 
-        state.state
+        self_.state
     }
     fn command(state: &Self::Data) -> Option<Self::Cmd> {
         if state.state == DenonState::Done {

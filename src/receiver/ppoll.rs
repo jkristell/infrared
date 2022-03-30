@@ -1,9 +1,9 @@
-use crate::receiver::{DecoderStateMachine, DecodingError, Error, NoPinInput};
+use crate::receiver::{Decoder, DecodingError, Error, NoPinInput};
 use crate::{Protocol, Receiver};
 use embedded_hal::digital::v2::InputPin;
 
 pub struct PeriodicPoll<
-    Proto: DecoderStateMachine<u32>,
+    Proto: Decoder<u32>,
     Input = NoPinInput,
     Cmd: From<<Proto as Protocol>::Cmd> = <Proto as Protocol>::Cmd,
 > {
@@ -19,7 +19,7 @@ pub struct PeriodicPoll<
 
 impl<Proto, Input, Cmd> PeriodicPoll<Proto, Input, Cmd>
 where
-    Proto: DecoderStateMachine<u32>,
+    Proto: Decoder<u32>,
     Cmd: From<<Proto as Protocol>::Cmd>,
 {
     pub fn new(resolution: u32, input: Input) -> Self {
@@ -49,7 +49,7 @@ where
 #[cfg(feature = "embedded-hal")]
 impl<Proto, Pin, Cmd> PeriodicPoll<Proto, Pin, Cmd>
 where
-    Proto: DecoderStateMachine<u32>,
+    Proto: Decoder<u32>,
     Pin: InputPin,
     Cmd: From<<Proto as Protocol>::Cmd>,
 {

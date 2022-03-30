@@ -31,15 +31,29 @@ pub trait InfraMonotonic: Sized {
 }
 
 #[derive(Debug)]
-pub struct Span<T> {
-    low: T,
-    high: T,
+pub struct Span<Dur> {
+    low: Dur,
+    high: Dur,
 }
 
 #[derive(Debug)]
-pub struct PulseSpans<T> {
-    pub(crate) spans: [Span<T>; 8],
+pub struct PulseSpans<Dur> {
+    pub(crate) spans: [Span<Dur>; 8],
 }
+
+/*
+impl<T> PulseSpans<T> {
+    pub fn get<P: From<usize>>(&self, pl: T) -> Option<P> {
+        self
+            .spans
+            .iter()
+            .position(|v| v.contains(pl))
+            .map(Into::into)
+    }
+
+}
+
+ */
 
 impl<T> Span<T>
 where

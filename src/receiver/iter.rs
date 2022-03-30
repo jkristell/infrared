@@ -1,13 +1,13 @@
 use crate::receiver::time::InfraMonotonic;
 use crate::receiver::NoPinInput;
 use crate::{
-    receiver::{DecoderData, DecoderStateMachine, Receiver, State},
+    receiver::{DecoderData, Decoder, Receiver, State},
     Protocol,
 };
 
 pub struct BufferIterator<'a, SM, Monotonic, C>
 where
-    SM: DecoderStateMachine<Monotonic>,
+    SM: Decoder<Monotonic>,
     Monotonic: InfraMonotonic,
     C: From<<SM as Protocol>::Cmd>,
 {
@@ -18,7 +18,7 @@ where
 
 impl<'a, SM, Monotonic, C> Iterator for BufferIterator<'a, SM, Monotonic, C>
 where
-    SM: DecoderStateMachine<Monotonic>,
+    SM: Decoder<Monotonic>,
     Monotonic: InfraMonotonic,
     C: From<<SM as Protocol>::Cmd>,
 {
@@ -35,8 +35,7 @@ where
             self.pos += 1;
 
             let state: State = SM::event(
-                &mut self.receiver.state,
-                &self.receiver.spans,
+                &mut self.receiver.decoder,
                 pos_edge,
                 dt_us,
             )
@@ -47,12 +46,12 @@ where
                     continue;
                 }
                 State::Done => {
-                    let cmd = SM::command(&self.receiver.state);
-                    self.receiver.state.reset();
+                    let cmd = SM::command(&self.receiver.decoder);
+                    self.receiver.decoder.reset();
                     break cmd.map(|r| r.into());
                 }
                 State::Error(_) => {
-                    self.receiver.state.reset();
+                    self.receiver.decoder.reset();
                     break None;
                 }
             }

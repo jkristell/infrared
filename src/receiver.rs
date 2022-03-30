@@ -128,7 +128,7 @@ pub mod time;
 
 pub use bufferinputreceiver::BufferInputReceiver;
 pub use builder::Builder;
-pub use decoder::{DecoderData, DecoderStateMachine, State};
+pub use decoder::{DecoderData, Decoder, State};
 pub use error::{DecodingError, Error};
 pub use multireceiver::MultiReceiver;
 pub use ppoll::PeriodicPoll;
@@ -136,17 +136,15 @@ pub use ppoll::PeriodicPoll;
 pub struct NoPinInput;
 
 pub struct Receiver<
-    Proto: DecoderStateMachine<Mono>,
-    Input = NoPinInput,
+    Proto: Decoder<Mono>,
+    Pin = NoPinInput,
     Mono: InfraMonotonic = u32,
     Cmd: From<<Proto as Protocol>::Cmd> = <Proto as Protocol>::Cmd,
 > {
     /// Decoder data
-    pub(crate) state: Proto::Data,
+    pub(crate) decoder: Proto::Data,
     /// Input
-    pub(crate) input: Input,
-    /// Spans
-    pub(crate) spans: PulseSpans<Mono::Duration>,
+    pub(crate) pin: Pin,
     prev_instant: Mono::Instant,
     /// Type of the final command output
     pub(crate) cmd: PhantomData<Cmd>,
@@ -160,17 +158,16 @@ impl Receiver<Capture<u32>> {
 
 impl<Proto, Mono, Cmd> Receiver<Proto, NoPinInput, Mono, Cmd>
 where
-    Proto: DecoderStateMachine<Mono>,
+    Proto: Decoder<Mono>,
     Mono: InfraMonotonic,
     Cmd: From<<Proto as Protocol>::Cmd>,
 {
     pub fn new(freq: u32) -> Receiver<Proto, NoPinInput, Mono, Cmd> {
-        let state = Proto::create_data();
+        let decoder = Proto::decoder(freq);
 
         Receiver {
-            state,
-            input: NoPinInput {},
-            spans: Proto::create_pulsespans(freq),
+            decoder,
+            pin: NoPinInput {},
             prev_instant: Mono::ZERO_INSTANT,
             cmd: PhantomData,
         }
@@ -179,24 +176,19 @@ where
 
 impl<Proto, Input, Mono, Cmd> Receiver<Proto, Input, Mono, Cmd>
 where
-    Proto: DecoderStateMachine<Mono>,
+    Proto: Decoder<Mono>,
     Mono: InfraMonotonic,
     Cmd: From<<Proto as Protocol>::Cmd>,
 {
     pub fn with_input(freq: u32, input: Input) -> Self {
-        let state = Proto::create_data();
+        let decoder = Proto::decoder(freq);
 
         Receiver {
-            state,
-            input,
-            spans: Proto::create_pulsespans(freq),
+            decoder,
+            pin: input,
             prev_instant: Mono::ZERO_INSTANT,
             cmd: PhantomData,
         }
-    }
-
-    pub fn spans(&self) -> &PulseSpans<<Mono as InfraMonotonic>::Duration> {
-        &self.spans
     }
 
     pub fn event_edge(
@@ -205,18 +197,18 @@ where
         edge: bool,
     ) -> Result<Option<Proto::Cmd>, DecodingError> {
         // Update state machine
-        let state: State = Proto::event(&mut self.state, &self.spans, edge, dt).into();
+        let state: State = Proto::event(&mut self.decoder, edge, dt).into();
 
         trace!("dt: {:?}, edge: {} s: {:?}", dt, edge, state);
 
         match state {
             State::Done => {
-                let cmd = Proto::command(&self.state);
-                self.state.reset();
+                let cmd = Proto::command(&self.decoder);
+                self.decoder.reset();
                 Ok(cmd)
             }
             State::Error(err) => {
-                self.state.reset();
+                self.decoder.reset();
                 Err(err)
             }
             State::Idle | State::Receiving => Ok(None),
@@ -227,7 +219,7 @@ where
 #[cfg(feature = "embedded-hal")]
 impl<Proto, Pin, Mono, Cmd> Receiver<Proto, Pin, Mono, Cmd>
 where
-    Proto: DecoderStateMachine<Mono>,
+    Proto: Decoder<Mono>,
     Pin: InputPin,
     Mono: InfraMonotonic,
     Cmd: From<<Proto as Protocol>::Cmd>,
@@ -241,7 +233,7 @@ where
 #[cfg(feature = "embedded-hal")]
 impl<Proto, Pin, const HZ: u32, Cmd> Receiver<Proto, Pin, TimerInstantU32<HZ>, Cmd>
 where
-    Proto: DecoderStateMachine<TimerInstantU32<HZ>>,
+    Proto: Decoder<TimerInstantU32<HZ>>,
     Pin: InputPin,
     Cmd: From<<Proto as Protocol>::Cmd>,
 {
@@ -253,7 +245,7 @@ where
 
 impl<Proto, Mono, Cmd> Receiver<Proto, NoPinInput, Mono, Cmd>
 where
-    Proto: DecoderStateMachine<Mono>,
+    Proto: Decoder<Mono>,
     Mono: InfraMonotonic,
     Cmd: From<<Proto as Protocol>::Cmd>,
 {
@@ -276,18 +268,18 @@ where
 #[cfg(feature = "embedded-hal")]
 impl<Proto, Pin, Mono, Cmd> Receiver<Proto, Pin, Mono, Cmd>
 where
-    Proto: DecoderStateMachine<Mono>,
+    Proto: Decoder<Mono>,
     Pin: InputPin,
     Mono: InfraMonotonic,
     Cmd: From<<Proto as Protocol>::Cmd>,
 {
     pub fn event(&mut self, dt: Mono::Duration) -> Result<Option<Cmd>, Error<Pin::Error>> {
-        let edge = self.input.is_low().map_err(Error::Hal)?;
+        let edge = self.pin.is_low().map_err(Error::Hal)?;
         Ok(self.event_edge(dt, edge)?.map(Into::into))
     }
 
     pub fn event_instant(&mut self, t: Mono::Instant) -> Result<Option<Cmd>, Error<Pin::Error>> {
-        let edge = self.input.is_low().map_err(Error::Hal)?;
+        let edge = self.pin.is_low().map_err(Error::Hal)?;
 
         let dt = Mono::checked_sub(t, self.prev_instant).unwrap_or(Mono::ZERO_DURATION);
         self.prev_instant = t;
@@ -297,16 +289,16 @@ where
 
     /// Get a reference to the Pin
     pub fn pin(&self) -> &Pin {
-        &self.input
+        &self.pin
     }
 
     /// Get a mut ref to the Pin
     pub fn pin_mut(&mut self) -> &mut Pin {
-        &mut self.input
+        &mut self.pin
     }
 
     /// Drop the receiver and release the pin
     pub fn release(self) -> Pin {
-        self.input
+        self.pin
     }
 }
