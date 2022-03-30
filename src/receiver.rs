@@ -109,7 +109,7 @@
 //!
 //! ```
 use crate::protocol::Capture;
-use crate::receiver::time::{InfraMonotonic, PulseSpans};
+use crate::receiver::time::{InfraMonotonic};
 use crate::Protocol;
 
 use core::marker::PhantomData;

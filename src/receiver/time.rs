@@ -20,14 +20,6 @@ pub trait InfraMonotonic: Sized {
     fn checked_sub(a: Self::Instant, b: Self::Instant) -> Option<Self::Duration>;
 
     fn create_span(freq: u32, p: u32, t: u32) -> Span<Self::Duration>;
-
-    fn find<P: From<usize>>(spans: &PulseSpans<Self::Duration>, pl: Self::Duration) -> Option<P> {
-        spans
-            .spans
-            .iter()
-            .position(|v| v.contains(pl))
-            .map(Into::into)
-    }
 }
 
 #[derive(Debug)]
@@ -41,25 +33,24 @@ pub struct PulseSpans<Dur> {
     pub(crate) spans: [Span<Dur>; 8],
 }
 
-/*
-impl<T> PulseSpans<T> {
-    pub fn get<P: From<usize>>(&self, pl: T) -> Option<P> {
+impl<Dur> PulseSpans<Dur>
+    where
+        Dur: PartialOrd + Copy,
+{
+    pub fn get<P: From<usize>>(&self, pl: Dur) -> Option<P> {
         self
             .spans
             .iter()
             .position(|v| v.contains(pl))
             .map(Into::into)
     }
-
 }
 
- */
-
-impl<T> Span<T>
+impl<Dur> Span<Dur>
 where
-    T: PartialOrd,
+    Dur: PartialOrd,
 {
-    fn contains(&self, other: T) -> bool {
+    fn contains(&self, other: Dur) -> bool {
         self.low <= other && other <= self.high
     }
 }

@@ -102,9 +102,8 @@ where
 
             let total_duration = dur + self_.dt_save;
 
-            let pulsewidth = Mono::find::<PulseWidth>(&self_.pulsespans, total_duration)
+            let pulsewidth = self_.pulsespans.get(total_duration)
                 .unwrap_or(PulseWidth::Invalid);
-
 
             let status = match (self_.state, pulsewidth) {
                 (Init,              Sync)   => { self_.bitbuf = 0; Receiving(0) },

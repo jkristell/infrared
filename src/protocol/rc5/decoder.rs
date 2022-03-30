@@ -29,7 +29,7 @@ impl<Mono: InfraMonotonic> Decoder<Mono> for Rc5 {
         use Rc5State::*;
 
         // Find this delta t in the defined ranges
-        let clock_ticks = Mono::find::<usize>(&self_.spans, delta_t);
+        let clock_ticks = self_.spans.get::<usize>(delta_t);
 
         if let Some(ticks) = clock_ticks {
             self_.clock += ticks + 1;

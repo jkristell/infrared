@@ -141,7 +141,7 @@ impl<Mono: InfraMonotonic> Decoder<Mono> for Sbp {
 
         if rising {
             let dt = self_.since_rising + dt;
-            let pulsewidth = Mono::find::<SbpPulse>(&self_.spans, dt).unwrap_or(SbpPulse::NotAPulseWidth);
+            let pulsewidth = self_.spans.get::<SbpPulse>(dt).unwrap_or(SbpPulse::NotAPulseWidth);
 
             self_.state = match (self_.state, pulsewidth) {
                 (Init,          Sync)   => Address(0),

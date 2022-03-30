@@ -71,7 +71,7 @@ impl<Mono: InfraMonotonic> Decoder<Mono> for Denon {
     fn event(self_: &mut Self::Data, rising: bool, dt: Mono::Duration) -> DenonState {
 
         if rising {
-            let pulsewidth = Mono::find::<PulseWidth>(&self_.spans, self_.dt_save + dt)
+            let pulsewidth = self_.spans.get::<PulseWidth>( self_.dt_save + dt)
                 .unwrap_or(PulseWidth::Fail);
 
             self_.state = match (self_.state, pulsewidth) {

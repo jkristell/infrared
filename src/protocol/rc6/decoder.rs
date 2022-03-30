@@ -33,32 +33,31 @@ impl<Mono: InfraMonotonic> Decoder<Mono> for Rc6 {
     }
 
     #[rustfmt::skip]
-    fn event(this_: &mut Self::Data, rising: bool, dt: Mono::Duration) -> Self::InternalState {
+    fn event(self_: &mut Self::Data, rising: bool, dt: Mono::Duration) -> Self::InternalState {
         use Rc6State::*;
 
         // Find the nbr of time unit ticks the dt represents
-        //let ticks = ranges.find::<usize>(dt).map(|v| (v + 1));
-        let ticks = Mono::find::<usize>(&this_.spans, dt).map(|v| (v +1) );
+        let ticks = self_.spans.get::<usize>(dt).map(|v| v + 1);
 
         // Reconstruct the clock
         if let Some(ticks) = ticks {
-            this_.clock += ticks;
+            self_.clock += ticks;
         } else {
-            this_.reset();
+            self_.reset();
         }
 
-        let odd = this_.clock & 1 == 1;
+        let odd = self_.clock & 1 == 1;
 
-        this_.state = match (this_.state, rising, ticks) {
+        self_.state = match (self_.state, rising, ticks) {
             (Idle,          false,    _)            => Idle,
-            (Idle,          true,     _)            => { this_.clock = 0; Leading },
+            (Idle,          true,     _)            => { self_.clock = 0; Leading },
             (Leading,       false,    Some(6))      => LeadingPaus,
             (Leading,       _,        _)            => Idle,
             (LeadingPaus,   true,     Some(2))      => HeaderData(3),
             (LeadingPaus,   _,        _)            => Idle,
 
             (HeaderData(n), _,          Some(_)) if odd => {
-                this_.headerdata |= if rising { 0 } else { 1 } << n;
+                self_.headerdata |= if rising { 0 } else { 1 } << n;
                 if n == 0 {
                     Trailing
                 } else {
@@ -69,16 +68,16 @@ impl<Mono: InfraMonotonic> Decoder<Mono> for Rc6 {
             (HeaderData(n), _,          Some(_))    => HeaderData(n),
             (HeaderData(_), _,          None)       => Idle,
 
-            (Trailing,      false,      Some(3))    => { this_.toggle = true; Data(15) }
-            (Trailing,      true,       Some(2))    => { this_.toggle = false; Data(15) }
+            (Trailing,      false,      Some(3))    => { self_.toggle = true; Data(15) }
+            (Trailing,      true,       Some(2))    => { self_.toggle = false; Data(15) }
             (Trailing,      false,      Some(1))    => Trailing,
             (Trailing,      _,          _)          => Idle,
 
             (Data(0),       true,       Some(_)) if odd => Done,
-            (Data(0),       false,      Some(_)) if odd => { this_.data |= 1; Done }
+            (Data(0),       false,      Some(_)) if odd => { self_.data |= 1; Done }
             (Data(0),       _,          Some(_))        => Data(0),
             (Data(n),       true,       Some(_)) if odd => Data(n - 1),
-            (Data(n),       false,      Some(_)) if odd => { this_.data |= 1 << n; Data(n - 1) }
+            (Data(n),       false,      Some(_)) if odd => { self_.data |= 1 << n; Data(n - 1) }
             (Data(n),       _,          Some(_))        => Data(n),
             (Data(_),       _,          None)           => Rc6Err(DecodingError::Data),
 
@@ -86,7 +85,7 @@ impl<Mono: InfraMonotonic> Decoder<Mono> for Rc6 {
             (Rc6Err(err),   _,          _)              => Rc6Err(err),
         };
 
-        this_.state
+        self_.state
 
     }
 
