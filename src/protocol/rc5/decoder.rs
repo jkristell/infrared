@@ -1,9 +1,10 @@
-use crate::receiver::time::{InfraMonotonic, PulseSpans};
 use crate::{
     protocol::{rc5::Rc5Command, Rc5},
-    receiver::{DecoderData, ProtocolDecoder, DecodingError, State},
+    receiver::{
+        time::{InfraMonotonic, PulseSpans},
+        DecodingError, ProtocolDecoder, ProtocolDecoderAdaptor, State,
+    },
 };
-use crate::receiver::ProtocolDecoderAdaptor;
 
 const RC5_BASE_TIME: u32 = 889;
 
@@ -24,13 +25,7 @@ impl<Mono: InfraMonotonic> ProtocolDecoderAdaptor<Mono> for Rc5 {
 }
 
 impl<Mono: InfraMonotonic> ProtocolDecoder<Mono, Rc5Command> for Rc5Decoder<Mono> {
-
-
-    fn event(
-        &mut self,
-        rising: bool,
-        delta_t: Mono::Duration,
-    ) -> State {
+    fn event(&mut self, rising: bool, delta_t: Mono::Duration) -> State {
         use Rc5State::*;
 
         // Find this delta t in the defined ranges

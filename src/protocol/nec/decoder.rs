@@ -1,17 +1,17 @@
 use core::marker::PhantomData;
 
-use crate::receiver::time::{InfraMonotonic, PulseSpans};
 use crate::{
     protocol::{
         nec::{NecCommand, NecCommandVariant},
         Nec,
     },
-    receiver::{DecoderData, ProtocolDecoder, DecodingError, State},
+    receiver::{
+        time::{InfraMonotonic, PulseSpans},
+        DecodingError, ProtocolDecoder, ProtocolDecoderAdaptor, State,
+    },
 };
-use crate::receiver::ProtocolDecoderAdaptor;
 
 impl<Mono: InfraMonotonic, Cmd: NecCommandVariant> ProtocolDecoderAdaptor<Mono> for Nec<Cmd> {
-
     type Decoder = NecDecoder<Mono, Cmd>;
     const PULSE: [u32; 8] = [
         Cmd::PULSE_DISTANCE.header_high + Cmd::PULSE_DISTANCE.header_low,
@@ -36,7 +36,6 @@ impl<Mono: InfraMonotonic, Cmd: NecCommandVariant> ProtocolDecoderAdaptor<Mono> 
         }
     }
 }
-
 
 pub struct NecDecoder<Mono: InfraMonotonic, C = NecCommand> {
     // State
@@ -84,7 +83,6 @@ where
     Cmd: NecCommandVariant,
     Mono: InfraMonotonic,
 {
-
     #[rustfmt::skip]
     fn event(
         &mut self,

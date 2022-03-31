@@ -1,7 +1,7 @@
-use crate::receiver::time::InfraMonotonic;
-use crate::receiver::{NoPinInput, ProtocolDecoderAdaptor};
 use crate::{
-    receiver::{DecoderData, ProtocolDecoder, Receiver, State},
+    receiver::{
+        time::InfraMonotonic, NoPinInput, ProtocolDecoder, ProtocolDecoderAdaptor, Receiver, State,
+    },
     Protocol,
 };
 
@@ -34,11 +34,7 @@ where
             let dt_us = self.buf[self.pos];
             self.pos += 1;
 
-            let state: State = self.receiver.decoder.event(
-                pos_edge,
-                dt_us,
-            )
-            .into();
+            let state: State = self.receiver.decoder.event(pos_edge, dt_us).into();
 
             match state {
                 State::Idle | State::Receiving => {

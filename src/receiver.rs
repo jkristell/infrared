@@ -108,14 +108,14 @@
 //!    let cmd_iter = r3.iter(buf);
 //!
 //! ```
-use crate::protocol::Capture;
-use crate::receiver::time::{InfraMonotonic};
-use crate::Protocol;
-
 use core::marker::PhantomData;
+
 #[cfg(feature = "embedded-hal")]
 use embedded_hal::digital::v2::InputPin;
+#[cfg(feature = "fugit")]
 use fugit::TimerInstantU32;
+
+use crate::{protocol::Capture, receiver::time::InfraMonotonic, Protocol};
 
 mod bufferinputreceiver;
 mod builder;
@@ -123,15 +123,15 @@ mod decoder;
 mod error;
 mod iter;
 //mod multireceiver;
-//mod ppoll;
+mod ppoll;
 pub mod time;
 
 pub use bufferinputreceiver::BufferInputReceiver;
 pub use builder::Builder;
-pub use decoder::{DecoderData, ProtocolDecoder, State, ProtocolDecoderAdaptor};
+pub use decoder::{ProtocolDecoder, ProtocolDecoderAdaptor, State};
 pub use error::{DecodingError, Error};
 //pub use multireceiver::MultiReceiver;
-//pub use ppoll::PeriodicPoll;
+pub use ppoll::PeriodicPoll;
 
 pub struct NoPinInput;
 
@@ -198,7 +198,7 @@ where
     ) -> Result<Option<Cmd>, DecodingError> {
         // Update state machine
         //let state: State = Proto::event(&mut self.decoder, edge, dt).into();
-        let state: State = self.decoder.event( edge, dt).into();
+        let state: State = self.decoder.event(edge, dt).into();
 
         trace!("dt: {:?}, edge: {} s: {:?}", dt, edge, state);
 
@@ -220,7 +220,7 @@ where
 #[cfg(feature = "embedded-hal")]
 impl<Proto, Pin, Mono, Cmd> Receiver<Proto, Pin, Mono, Cmd>
 where
-    Proto: ProtocolDecoder<Mono>,
+    Proto: ProtocolDecoderAdaptor<Mono>,
     Pin: InputPin,
     Mono: InfraMonotonic,
     Cmd: From<Proto::Cmd>,
@@ -231,7 +231,7 @@ where
     }
 }
 
-#[cfg(feature = "embedded-hal")]
+#[cfg(feature = "embedded")]
 impl<Proto, Pin, const HZ: u32, Cmd> Receiver<Proto, Pin, TimerInstantU32<HZ>, Cmd>
 where
     Proto: ProtocolDecoderAdaptor<TimerInstantU32<HZ>>,
@@ -269,7 +269,7 @@ where
 #[cfg(feature = "embedded-hal")]
 impl<Proto, Pin, Mono, Cmd> Receiver<Proto, Pin, Mono, Cmd>
 where
-    Proto: ProtocolDecoder<Mono>,
+    Proto: ProtocolDecoderAdaptor<Mono>,
     Pin: InputPin,
     Mono: InfraMonotonic,
     Cmd: From<Proto::Cmd>,

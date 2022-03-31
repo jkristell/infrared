@@ -1,5 +1,6 @@
 use core::ops::{Add, Sub};
 
+#[cfg(feature = "fugit")]
 mod fgt;
 mod primitives;
 
@@ -34,12 +35,11 @@ pub struct PulseSpans<Dur> {
 }
 
 impl<Dur> PulseSpans<Dur>
-    where
-        Dur: PartialOrd + Copy,
+where
+    Dur: PartialOrd + Copy,
 {
     pub fn get<P: From<usize>>(&self, pl: Dur) -> Option<P> {
-        self
-            .spans
+        self.spans
             .iter()
             .position(|v| v.contains(pl))
             .map(Into::into)

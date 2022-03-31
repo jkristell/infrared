@@ -1,16 +1,16 @@
-use crate::receiver::time::InfraMonotonic;
-use crate::{receiver::DecodingError, Protocol};
 use core::fmt::Debug;
 
 use super::time::PulseSpans;
+use crate::{
+    receiver::{time::InfraMonotonic, DecodingError},
+    Protocol,
+};
 
 pub trait ProtocolDecoderAdaptor<Mono: InfraMonotonic>: Protocol {
     type Decoder: ProtocolDecoder<Mono, <Self as Protocol>::Cmd>;
 
-
     const PULSE: [u32; 8];
     const TOL: [u32; 8];
-
 
     fn decoder(freq: u32) -> Self::Decoder;
 
@@ -28,28 +28,14 @@ pub trait ProtocolDecoderAdaptor<Mono: InfraMonotonic>: Protocol {
             ],
         }
     }
-
 }
-
 
 /// Protocol decode state machine
 pub trait ProtocolDecoder<Mono: InfraMonotonic, Cmd> {
-    //type Cmd = Cmd;
-    /// Decoder state
-    //type Decoder: DecoderData<Mono>;
-    // Internal State type
-    //type InternalState: Into<State>;
-    /// Create the resources
-    //fn decoder(freq: u32) -> Self::Decoder;
-
     /// Notify the state machine of a new event
     /// * `edge`: true = positive edge, false = negative edge
     /// * `dt` : Duration since last event
-    fn event(
-        &mut self,
-        edge: bool,
-        dt: Mono::Duration,
-    ) -> State;
+    fn event(&mut self, edge: bool, dt: Mono::Duration) -> State;
 
     /// Get the command
     /// Returns the data if State == Done, otherwise None
@@ -57,13 +43,8 @@ pub trait ProtocolDecoder<Mono: InfraMonotonic, Cmd> {
 
     fn reset(&mut self);
 
-}
-
-pub trait DecoderData<Mono: InfraMonotonic> {
-    type State;
-    fn reset(&mut self);
-    fn spans(&self) -> &PulseSpans<Mono::Duration>;
-    fn internal_state(&self) -> Self::State;
+    //fn spans(&self) -> &PulseSpans<Mono::Duration>;
+    //fn internal_state(&self) -> Self::State;
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]

@@ -9,13 +9,15 @@
 
 use core::convert::TryInto;
 
-use crate::receiver::time::InfraMonotonic;
 #[cfg(feature = "remotes")]
-use crate::receiver::{ProtocolDecoder, DecodingError, State};
+use crate::receiver::{DecodingError, ProtocolDecoder, State};
 use crate::{
     cmd::{AddressCommand, Command},
     protocol::Protocol,
-    receiver::{time::PulseSpans, DecoderData},
+    receiver::{
+        time::{InfraMonotonic, PulseSpans},
+        ProtocolDecoderAdaptor,
+    },
 };
 
 /// Samsung BluRay player protocol
@@ -25,22 +27,38 @@ impl Protocol for Sbp {
     type Cmd = SbpCommand;
 }
 
+impl<Mono: InfraMonotonic> ProtocolDecoderAdaptor<Mono> for Sbp {
+    type Decoder = SbpDecoder<Mono>;
+    const PULSE: [u32; 8] = [
+        (4500 + 4500),
+        (500 + 4500),
+        (500 + 500),
+        (500 + 1500),
+        0,
+        0,
+        0,
+        0,
+    ];
+    const TOL: [u32; 8] = [5, 5, 10, 10, 0, 0, 0, 0];
+
+    fn decoder(freq: u32) -> Self::Decoder {
+        SbpDecoder {
+            state: SbpState::Init,
+            address: 0,
+            command: 0,
+            since_rising: Mono::ZERO_DURATION,
+            spans: <Self as ProtocolDecoderAdaptor<Mono>>::create_pulsespans(freq),
+        }
+    }
+}
+
 /// Samsung Blu-ray protocol
-pub struct SbpData<Mono: InfraMonotonic> {
+pub struct SbpDecoder<Mono: InfraMonotonic> {
     state: SbpState,
     address: u16,
     command: u32,
     since_rising: Mono::Duration,
     spans: PulseSpans<Mono::Duration>,
-}
-
-impl<Mono: InfraMonotonic> DecoderData for SbpData<Mono> {
-    fn reset(&mut self) {
-        self.state = SbpState::Init;
-        self.address = 0;
-        self.command = 0;
-        self.since_rising = Mono::ZERO_DURATION;
-    }
 }
 
 #[derive(Debug)]
@@ -109,56 +127,32 @@ pub enum SbpState {
     Err(DecodingError),
 }
 
-impl<Mono: InfraMonotonic> ProtocolDecoder<Mono> for Sbp {
-    type Decoder = SbpData<Mono>;
-    type InternalState = SbpState;
-    const PULSE: [u32; 8] = [
-        (4500 + 4500),
-        (500 + 4500),
-        (500 + 500),
-        (500 + 1500),
-        0,
-        0,
-        0,
-        0,
-    ];
-    const TOL: [u32; 8] = [5, 5, 10, 10, 0, 0, 0, 0];
-
-    fn decoder(freq: u32) -> Self::Decoder {
-        SbpData {
-            state: SbpState::Init,
-            address: 0,
-            command: 0,
-            since_rising: Mono::ZERO_DURATION,
-            spans: <Self as ProtocolDecoder<Mono>>::create_pulsespans(freq)
-        }
-    }
-
+impl<Mono: InfraMonotonic> ProtocolDecoder<Mono, SbpCommand> for SbpDecoder<Mono> {
     #[rustfmt::skip]
-    fn event(self_: &mut Self::Decoder, rising: bool, dt: Mono::Duration) -> SbpState {
+    fn event(&mut self, rising: bool, dt: Mono::Duration) -> State {
         use SbpPulse::*;
         use SbpState::*;
 
         if rising {
-            let dt = self_.since_rising + dt;
-            let pulsewidth = self_.spans.get::<SbpPulse>(dt).unwrap_or(SbpPulse::NotAPulseWidth);
+            let dt = self.since_rising + dt;
+            let pulsewidth = self.spans.get::<SbpPulse>(dt).unwrap_or(SbpPulse::NotAPulseWidth);
 
-            self_.state = match (self_.state, pulsewidth) {
+            self.state = match (self.state, pulsewidth) {
                 (Init,          Sync)   => Address(0),
                 (Init,          _)      => Init,
 
-                (Address(15),   One)    => { self_.address |= 1 << 15; Divider }
+                (Address(15),   One)    => { self.address |= 1 << 15; Divider }
                 (Address(15),   Zero)   => Divider,
-                (Address(bit),  One)    => { self_.address |= 1 << bit; Address(bit + 1) }
+                (Address(bit),  One)    => { self.address |= 1 << bit; Address(bit + 1) }
                 (Address(bit),  Zero)   => Address(bit + 1),
                 (Address(_),    _)      => Err(DecodingError::Address),
 
                 (Divider,       Paus)   => Command(0),
                 (Divider,       _)      => Err(DecodingError::Data),
 
-                (Command(19),   One)    => { self_.command |= 1 << 19; Done }
+                (Command(19),   One)    => { self.command |= 1 << 19; Done }
                 (Command(19),   Zero)   => Done,
-                (Command(bit),  One)    => { self_.command |= 1 << bit; Command(bit + 1) }
+                (Command(bit),  One)    => { self.command |= 1 << bit; Command(bit + 1) }
                 (Command(bit),  Zero)   => Command(bit + 1),
                 (Command(_),    _)      => Err(DecodingError::Data),
 
@@ -166,14 +160,20 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Mono> for Sbp {
                 (Err(err),      _)      => Err(err),
             };
         } else {
-            self_.since_rising = dt;
+            self.since_rising = dt;
         }
 
-        self_.state
+        self.state.into()
+    }
+    fn command(&self) -> Option<SbpCommand> {
+        Some(SbpCommand::unpack(self.address, self.command))
     }
 
-    fn command(this_: &Self::Decoder) -> Option<Self::Cmd> {
-        Some(SbpCommand::unpack(this_.address, this_.command))
+    fn reset(&mut self) {
+        self.state = SbpState::Init;
+        self.address = 0;
+        self.command = 0;
+        self.since_rising = Mono::ZERO_DURATION;
     }
 }
 

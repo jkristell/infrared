@@ -1,7 +1,9 @@
-use crate::receiver::time::{InfraMonotonic, PulseSpans};
 use crate::{
     protocol::Protocol,
-    receiver::{DecoderData, ProtocolDecoder, State},
+    receiver::{
+        time::{InfraMonotonic, PulseSpans},
+        ProtocolDecoder, ProtocolDecoderAdaptor, State,
+    },
 };
 
 #[cfg(test)]
@@ -20,31 +22,8 @@ impl Protocol for Denon {
     type Cmd = DenonCommand;
 }
 
-pub struct DenonData<Mono: InfraMonotonic> {
-    state: DenonState,
-    buf: u64,
-    dt_save: Mono::Duration,
-    spans: PulseSpans<Mono::Duration>
-}
-
-impl<T: InfraMonotonic> DecoderData for DenonData<T> {
-    fn reset(&mut self) {
-        self.state = DenonState::Idle;
-        self.buf = 0;
-        self.dt_save = T::ZERO_DURATION;
-    }
-}
-
-#[derive(Debug)]
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub struct DenonCommand {
-    pub bits: u64,
-}
-
-impl<Mono: InfraMonotonic> ProtocolDecoder<Mono> for Denon {
-    type Decoder = DenonData<Mono>;
-    type InternalState = DenonState;
-
+impl<Mono: InfraMonotonic> ProtocolDecoderAdaptor<Mono> for Denon {
+    type Decoder = DenonDecoder<Mono>;
     const PULSE: [u32; 8] = [
         (HEADER_HIGH + HEADER_LOW),
         (DATA_HIGH + ZERO_LOW),
@@ -59,45 +38,66 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Mono> for Denon {
     const TOL: [u32; 8] = [8, 10, 10, 0, 0, 0, 0, 0];
 
     fn decoder(freq: u32) -> Self::Decoder {
-        DenonData {
+        DenonDecoder {
             state: DenonState::Idle,
             buf: 0,
             dt_save: Mono::ZERO_DURATION,
-            spans: <Self as ProtocolDecoder<Mono>>::create_pulsespans(freq),
+            spans: <Self as ProtocolDecoderAdaptor<Mono>>::create_pulsespans(freq),
         }
     }
+}
 
+pub struct DenonDecoder<Mono: InfraMonotonic> {
+    state: DenonState,
+    buf: u64,
+    dt_save: Mono::Duration,
+    spans: PulseSpans<Mono::Duration>,
+}
+
+#[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct DenonCommand {
+    pub bits: u64,
+}
+
+impl<Mono: InfraMonotonic> ProtocolDecoder<Mono, DenonCommand> for DenonDecoder<Mono> {
     #[rustfmt::skip]
-    fn event(self_: &mut Self::Decoder, rising: bool, dt: Mono::Duration) -> DenonState {
+    fn event(&mut self, rising: bool, dt: Mono::Duration) -> State {
 
         if rising {
-            let pulsewidth = self_.spans.get::<PulseWidth>( self_.dt_save + dt)
+            let pulsewidth = self.spans.get::<PulseWidth>( self.dt_save + dt)
                 .unwrap_or(PulseWidth::Fail);
 
-            self_.state = match (self_.state, pulsewidth) {
+            self.state = match (self.state, pulsewidth) {
                 (DenonState::Idle,          PulseWidth::Sync)   => DenonState::Data(0),
                 (DenonState::Idle,          _)                  => DenonState::Idle,
                 (DenonState::Data(47),      PulseWidth::Zero)   => DenonState::Done,
                 (DenonState::Data(47),      PulseWidth::One)    => DenonState::Done,
                 (DenonState::Data(idx),     PulseWidth::Zero)   => DenonState::Data(idx + 1),
-                (DenonState::Data(idx),     PulseWidth::One)    => { self_.buf |= 1 << idx; DenonState::Data(idx + 1) }
+                (DenonState::Data(idx),     PulseWidth::One)    => { self.buf |= 1 << idx; DenonState::Data(idx + 1) }
                 (DenonState::Data(_ix),     _)                  => DenonState::Idle,
                 (DenonState::Done,          _)                  => DenonState::Done,
             };
 
-            self_.dt_save = Mono::ZERO_DURATION;
+            self.dt_save = Mono::ZERO_DURATION;
         } else {
-            self_.dt_save = dt;
+            self.dt_save = dt;
         }
 
-        self_.state
+        self.state.into()
     }
-    fn command(state: &Self::Decoder) -> Option<Self::Cmd> {
-        if state.state == DenonState::Done {
-            Some(DenonCommand { bits: state.buf })
+
+    fn command(&self) -> Option<DenonCommand> {
+        if self.state == DenonState::Done {
+            Some(DenonCommand { bits: self.buf })
         } else {
             None
         }
+    }
+    fn reset(&mut self) {
+        self.state = DenonState::Idle;
+        self.buf = 0;
+        self.dt_save = Mono::ZERO_DURATION;
     }
 }
 

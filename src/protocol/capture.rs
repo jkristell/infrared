@@ -1,21 +1,18 @@
 use core::marker::PhantomData;
 
-use crate::receiver::time::{InfraMonotonic, PulseSpans};
 use crate::{
-    receiver::{DecoderData, ProtocolDecoder, State},
+    receiver::{time::InfraMonotonic, ProtocolDecoder, ProtocolDecoderAdaptor, State},
     Protocol,
 };
-use crate::receiver::ProtocolDecoderAdaptor;
 
-impl<Mono: InfraMonotonic> ProtocolDecoderAdaptor<Mono> for Capture<Mono>  {
+impl<Mono: InfraMonotonic> ProtocolDecoderAdaptor<Mono> for Capture<Mono> {
     type Decoder = CaptureDecoder<Mono>;
 
     const PULSE: [u32; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
     const TOL: [u32; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
 
-    fn decoder(freq: u32) -> Self::Decoder {
+    fn decoder(_freq: u32) -> Self::Decoder {
         CaptureDecoder {
-            data: freq,
             ts: [Mono::ZERO_DURATION; 96],
             pos: 0,
         }
@@ -27,10 +24,8 @@ pub struct Capture<Mono> {
 }
 
 pub struct CaptureDecoder<Mono: InfraMonotonic> {
-    data: u32,
     pub ts: [Mono::Duration; 96],
     pub pos: usize,
-
 }
 
 impl<Mono: InfraMonotonic> Protocol for Capture<Mono> {
@@ -40,11 +35,7 @@ impl<Mono: InfraMonotonic> Protocol for Capture<Mono> {
 impl<Mono: InfraMonotonic> ProtocolDecoder<Mono, [Mono::Duration; 96]> for CaptureDecoder<Mono> {
     //type Cmd = [Mono::Duration; 96];
     //type InternalState = State;
-    fn event(
-        &mut self,
-        _edge: bool,
-        dur: Mono::Duration,
-    ) -> State {
+    fn event(&mut self, _edge: bool, dur: Mono::Duration) -> State {
         if self.pos >= self.ts.len() {
             return State::Done;
         }

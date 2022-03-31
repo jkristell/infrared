@@ -1,8 +1,7 @@
-use crate::receiver::BufferInputReceiver;
-use crate::remotecontrol::Button;
 use crate::{
     protocol::{rc5::Rc5Command, Rc5},
-    remotecontrol::Action,
+    receiver::BufferInputReceiver,
+    remotecontrol::{Action, Button},
     sender::PulsedataBuffer,
 };
 

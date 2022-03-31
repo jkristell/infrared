@@ -1,8 +1,9 @@
-use crate::receiver::iter::BufferIterator;
-use crate::receiver::time::InfraMonotonic;
-use crate::receiver::{ProtocolDecoder, ProtocolDecoderAdaptor};
-use crate::{Protocol, Receiver};
 use core::marker::PhantomData;
+
+use crate::{
+    receiver::{iter::BufferIterator, time::InfraMonotonic, ProtocolDecoderAdaptor},
+    Protocol, Receiver,
+};
 
 pub struct BufferInputReceiver<
     Proto: ProtocolDecoderAdaptor<Mono>,

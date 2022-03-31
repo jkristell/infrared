@@ -1,11 +1,7 @@
-use crate::receiver::{ProtocolDecoder, NoPinInput, Receiver, ProtocolDecoderAdaptor};
 use core::marker::PhantomData;
 
 #[cfg(feature = "embedded-hal")]
 use embedded_hal::digital::v2::InputPin;
-
-#[cfg(feature = "nec")]
-use crate::protocol::{Nec, Nec16, NecApple, NecSamsung};
 
 #[cfg(feature = "denon")]
 use crate::protocol::Denon;
@@ -15,12 +11,15 @@ use crate::protocol::Rc5;
 use crate::protocol::Rc6;
 #[cfg(feature = "sbp")]
 use crate::protocol::Sbp;
-
-use crate::{protocol::DummyProtocol, Protocol};
-
-use crate::receiver::time::InfraMonotonic;
+#[cfg(feature = "nec")]
+use crate::protocol::{Nec, Nec16, NecApple, NecSamsung};
 #[cfg(feature = "remotes")]
 use crate::remotecontrol::{Button, RemoteControlModel};
+use crate::{
+    protocol::DummyProtocol,
+    receiver::{time::InfraMonotonic, NoPinInput, ProtocolDecoderAdaptor, Receiver},
+    Protocol,
+};
 
 /// Receiver Builder
 pub struct Builder<

@@ -1,5 +1,4 @@
-use crate::protocol::Denon;
-use crate::receiver::BufferInputReceiver;
+use crate::{protocol::Denon, receiver::BufferInputReceiver};
 
 #[test]
 fn denon() {

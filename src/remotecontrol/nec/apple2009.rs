@@ -1,9 +1,10 @@
+use Action::*;
+
 use crate::{
     protocol::NecAppleCommand,
     remotecontrol::{Action, DeviceType, RemoteControlModel},
     ProtocolId,
 };
-use Action::*;
 
 #[derive(Debug, Default)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]

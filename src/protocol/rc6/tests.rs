@@ -1,6 +1,6 @@
-use crate::receiver::BufferInputReceiver;
 use crate::{
     protocol::{rc6::Rc6Command, Rc6},
+    receiver::BufferInputReceiver,
     sender::PulsedataBuffer,
 };
 

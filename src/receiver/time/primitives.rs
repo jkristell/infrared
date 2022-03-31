@@ -1,5 +1,7 @@
-use crate::protocol::utils::scale_with_samplerate;
-use crate::receiver::time::{InfraMonotonic, Span};
+use crate::{
+    protocol::utils::scale_with_samplerate,
+    receiver::time::{InfraMonotonic, Span},
+};
 
 impl InfraMonotonic for u32 {
     type Instant = u32;

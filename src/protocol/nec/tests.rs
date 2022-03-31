@@ -1,13 +1,14 @@
-use crate::receiver::BufferInputReceiver;
+use fugit::{TimerDurationU32, TimerInstantU32};
+
 use crate::{
     protocol::{
         nec::{Nec16Command, NecAppleCommand, NecCommand, NecCommandVariant, NecSamsungCommand},
         Nec,
     },
+    receiver::BufferInputReceiver,
     sender::PulsedataBuffer,
     Receiver,
 };
-use fugit::{TimerDurationU32, TimerInstantU32};
 
 #[test]
 #[rustfmt::skip]
@@ -256,7 +257,6 @@ fn fugit() {
         .nec()
         .monotonic::<TimerInstantU32<1_000_000>>()
         .build();
-
 
     let mut cmds = std::vec::Vec::new();
 

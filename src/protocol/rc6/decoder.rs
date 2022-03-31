@@ -1,14 +1,15 @@
-use crate::receiver::time::{InfraMonotonic, PulseSpans};
 use crate::{
     protocol::{rc6::Rc6Command, Rc6},
-    receiver::{DecoderData, ProtocolDecoder, DecodingError, State},
+    receiver::{
+        time::{InfraMonotonic, PulseSpans},
+        DecodingError, ProtocolDecoder, ProtocolDecoderAdaptor, State,
+    },
 };
 
 const RC6_TIME_UNIT: u32 = 444;
 
-impl<Mono: InfraMonotonic> ProtocolDecoder<Mono> for Rc6 {
-    type Decoder = Rc6Data<Mono>;
-    type InternalState = Rc6State;
+impl<Mono: InfraMonotonic> ProtocolDecoderAdaptor<Mono> for Rc6 {
+    type Decoder = Rc6Decoder<Mono>;
     const PULSE: [u32; 8] = [
         RC6_TIME_UNIT,
         RC6_TIME_UNIT * 2,
@@ -22,42 +23,44 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Mono> for Rc6 {
     const TOL: [u32; 8] = [12, 12, 12, 12, 12, 12, 12, 12];
 
     fn decoder(freq: u32) -> Self::Decoder {
-        Self::Decoder {
+        Rc6Decoder {
             state: Rc6State::Idle,
             data: 0,
             headerdata: 0,
             toggle: false,
             clock: 0,
-            spans: <Self as ProtocolDecoder<Mono>>::create_pulsespans(freq),
+            spans: <Self as ProtocolDecoderAdaptor<Mono>>::create_pulsespans(freq),
         }
     }
+}
 
+impl<Mono: InfraMonotonic> ProtocolDecoder<Mono, Rc6Command> for Rc6Decoder<Mono> {
     #[rustfmt::skip]
-    fn event(self_: &mut Self::Decoder, rising: bool, dt: Mono::Duration) -> Self::InternalState {
+    fn event(&mut self, rising: bool, dt: Mono::Duration) -> State {
         use Rc6State::*;
 
         // Find the nbr of time unit ticks the dt represents
-        let ticks = self_.spans.get::<usize>(dt).map(|v| v + 1);
+        let ticks = self.spans.get::<usize>(dt).map(|v| v + 1);
 
         // Reconstruct the clock
         if let Some(ticks) = ticks {
-            self_.clock += ticks;
+            self.clock += ticks;
         } else {
-            self_.reset();
+            self.reset();
         }
 
-        let odd = self_.clock & 1 == 1;
+        let odd = self.clock & 1 == 1;
 
-        self_.state = match (self_.state, rising, ticks) {
+        self.state = match (self.state, rising, ticks) {
             (Idle,          false,    _)            => Idle,
-            (Idle,          true,     _)            => { self_.clock = 0; Leading },
+            (Idle,          true,     _)            => { self.clock = 0; Leading },
             (Leading,       false,    Some(6))      => LeadingPaus,
             (Leading,       _,        _)            => Idle,
             (LeadingPaus,   true,     Some(2))      => HeaderData(3),
             (LeadingPaus,   _,        _)            => Idle,
 
             (HeaderData(n), _,          Some(_)) if odd => {
-                self_.headerdata |= if rising { 0 } else { 1 } << n;
+                self.headerdata |= if rising { 0 } else { 1 } << n;
                 if n == 0 {
                     Trailing
                 } else {
@@ -68,16 +71,16 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Mono> for Rc6 {
             (HeaderData(n), _,          Some(_))    => HeaderData(n),
             (HeaderData(_), _,          None)       => Idle,
 
-            (Trailing,      false,      Some(3))    => { self_.toggle = true; Data(15) }
-            (Trailing,      true,       Some(2))    => { self_.toggle = false; Data(15) }
+            (Trailing,      false,      Some(3))    => { self.toggle = true; Data(15) }
+            (Trailing,      true,       Some(2))    => { self.toggle = false; Data(15) }
             (Trailing,      false,      Some(1))    => Trailing,
             (Trailing,      _,          _)          => Idle,
 
             (Data(0),       true,       Some(_)) if odd => Done,
-            (Data(0),       false,      Some(_)) if odd => { self_.data |= 1; Done }
+            (Data(0),       false,      Some(_)) if odd => { self.data |= 1; Done }
             (Data(0),       _,          Some(_))        => Data(0),
             (Data(n),       true,       Some(_)) if odd => Data(n - 1),
-            (Data(n),       false,      Some(_)) if odd => { self_.data |= 1 << n; Data(n - 1) }
+            (Data(n),       false,      Some(_)) if odd => { self.data |= 1 << n; Data(n - 1) }
             (Data(n),       _,          Some(_))        => Data(n),
             (Data(_),       _,          None)           => Rc6Err(DecodingError::Data),
 
@@ -85,31 +88,29 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Mono> for Rc6 {
             (Rc6Err(err),   _,          _)              => Rc6Err(err),
         };
 
-        self_.state
+        self.state.into()
 
     }
 
-    fn command(this_: &Self::Decoder) -> Option<Self::Cmd> {
-        Some(Rc6Command::from_bits(this_.data, this_.toggle))
+    fn command(&self) -> Option<Rc6Command> {
+        Some(Rc6Command::from_bits(self.data, self.toggle))
     }
-}
 
-pub struct Rc6Data<Mono: InfraMonotonic> {
-    pub(crate) state: Rc6State,
-    data: u16,
-    headerdata: u16,
-    toggle: bool,
-    clock: usize,
-    spans: PulseSpans<Mono::Duration>,
-}
-
-impl<Mono: InfraMonotonic> DecoderData for Rc6Data<Mono> {
     fn reset(&mut self) {
         self.state = Rc6State::Idle;
         self.data = 0;
         self.headerdata = 0;
         self.clock = 0;
     }
+}
+
+pub struct Rc6Decoder<Mono: InfraMonotonic> {
+    pub(crate) state: Rc6State,
+    data: u16,
+    headerdata: u16,
+    toggle: bool,
+    clock: usize,
+    spans: PulseSpans<Mono::Duration>,
 }
 
 #[derive(Clone, Copy, Debug)]

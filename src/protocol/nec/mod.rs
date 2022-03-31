@@ -11,7 +11,6 @@ mod standard;
 #[cfg(test)]
 mod tests;
 
-use crate::protocol::Protocol;
 use core::marker::PhantomData;
 
 pub use apple::NecAppleCommand;
@@ -19,6 +18,8 @@ pub use nec16::Nec16Command;
 pub use raw::NecDebugCmd;
 pub use samsung::NecSamsungCommand;
 pub use standard::NecCommand;
+
+use crate::protocol::Protocol;
 
 /// Nec Receiver with Nec standard bit encoding and Standard timing
 pub struct Nec<C: NecCommandVariant = NecCommand> {
