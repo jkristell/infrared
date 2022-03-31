@@ -9,7 +9,7 @@ use crate::protocol::Rc5Command;
 use crate::protocol::Rc6Command;
 #[cfg(feature = "nec")]
 use crate::protocol::{Nec16Command, NecAppleCommand, NecCommand, NecDebugCmd, NecSamsungCommand};
-use crate::receiver::{time::InfraMonotonic, NoPinInput, ProtocolDecoderAdaptor, Receiver};
+use crate::receiver::{time::InfraMonotonic, NoPinInput, DecoderAdapter, Receiver};
 
 pub struct MultiReceiver<
     const N: usize,
@@ -149,8 +149,8 @@ pub trait ReceiverWrapper<const N: usize, Mono: InfraMonotonic> {
 
 impl<P1, P2, Mono: InfraMonotonic> ReceiverWrapper<2, Mono> for (P1, P2)
 where
-    P1: ProtocolDecoderAdaptor<Mono>,
-    P2: ProtocolDecoderAdaptor<Mono>,
+    P1: DecoderAdapter<Mono>,
+    P2: DecoderAdapter<Mono>,
     P1::Cmd: Into<CmdEnum>,
     P2::Cmd: Into<CmdEnum>,
 {
@@ -173,9 +173,9 @@ where
 
 impl<P1, P2, P3, Mono: InfraMonotonic> ReceiverWrapper<3, Mono> for (P1, P2, P3)
 where
-    P1: ProtocolDecoderAdaptor<Mono>,
-    P2: ProtocolDecoderAdaptor<Mono>,
-    P3: ProtocolDecoderAdaptor<Mono>,
+    P1: DecoderAdapter<Mono>,
+    P2: DecoderAdapter<Mono>,
+    P3: DecoderAdapter<Mono>,
     P1::Cmd: Into<CmdEnum>,
     P2::Cmd: Into<CmdEnum>,
     P3::Cmd: Into<CmdEnum>,
@@ -201,10 +201,10 @@ where
 
 impl<P1, P2, P3, P4, Mono: InfraMonotonic> ReceiverWrapper<4, Mono> for (P1, P2, P3, P4)
 where
-    P1: ProtocolDecoderAdaptor<Mono>,
-    P2: ProtocolDecoderAdaptor<Mono>,
-    P3: ProtocolDecoderAdaptor<Mono>,
-    P4: ProtocolDecoderAdaptor<Mono>,
+    P1: DecoderAdapter<Mono>,
+    P2: DecoderAdapter<Mono>,
+    P3: DecoderAdapter<Mono>,
+    P4: DecoderAdapter<Mono>,
     P1::Cmd: Into<CmdEnum>,
     P2::Cmd: Into<CmdEnum>,
     P3::Cmd: Into<CmdEnum>,
@@ -238,11 +238,11 @@ where
 
 impl<P1, P2, P3, P4, P5, Mono: InfraMonotonic> ReceiverWrapper<5, Mono> for (P1, P2, P3, P4, P5)
 where
-    P1: ProtocolDecoderAdaptor<Mono>,
-    P2: ProtocolDecoderAdaptor<Mono>,
-    P3: ProtocolDecoderAdaptor<Mono>,
-    P4: ProtocolDecoderAdaptor<Mono>,
-    P5: ProtocolDecoderAdaptor<Mono>,
+    P1: DecoderAdapter<Mono>,
+    P2: DecoderAdapter<Mono>,
+    P3: DecoderAdapter<Mono>,
+    P4: DecoderAdapter<Mono>,
+    P5: DecoderAdapter<Mono>,
     P1::Cmd: Into<CmdEnum>,
     P2::Cmd: Into<CmdEnum>,
     P3::Cmd: Into<CmdEnum>,
@@ -281,12 +281,12 @@ where
 impl<P1, P2, P3, P4, P5, P6, Mono: InfraMonotonic> ReceiverWrapper<6, Mono>
     for (P1, P2, P3, P4, P5, P6)
 where
-    P1: ProtocolDecoderAdaptor<Mono>,
-    P2: ProtocolDecoderAdaptor<Mono>,
-    P3: ProtocolDecoderAdaptor<Mono>,
-    P4: ProtocolDecoderAdaptor<Mono>,
-    P5: ProtocolDecoderAdaptor<Mono>,
-    P6: ProtocolDecoderAdaptor<Mono>,
+    P1: DecoderAdapter<Mono>,
+    P2: DecoderAdapter<Mono>,
+    P3: DecoderAdapter<Mono>,
+    P4: DecoderAdapter<Mono>,
+    P5: DecoderAdapter<Mono>,
+    P6: DecoderAdapter<Mono>,
 
     P1::Cmd: Into<CmdEnum>,
     P2::Cmd: Into<CmdEnum>,

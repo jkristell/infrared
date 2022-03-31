@@ -5,29 +5,20 @@ use crate::{
     Protocol,
 };
 
-pub trait ProtocolDecoderAdaptor<Mono: InfraMonotonic>: Protocol {
+pub trait DecoderAdapter<Mono: InfraMonotonic>: Protocol {
     /// Type of the decoder
-    type Decoder: ProtocolDecoder<Mono, <Self as Protocol>::Cmd>;
+    type Decoder: ProtocolDecoder<Mono, Self::Cmd>;
 
+    /// Pulse lenghts
     const PULSE: [u32; 8];
+    /// Pulse length tolerances
     const TOL: [u32; 8];
 
     /// Create the decoder
     fn decoder(freq: u32) -> Self::Decoder;
 
-    fn create_pulsespans(freq: u32) -> PulseSpans<Mono::Duration> {
-        PulseSpans {
-            spans: [
-                Mono::create_span(freq, Self::PULSE[0], Self::TOL[0]),
-                Mono::create_span(freq, Self::PULSE[1], Self::TOL[1]),
-                Mono::create_span(freq, Self::PULSE[2], Self::TOL[2]),
-                Mono::create_span(freq, Self::PULSE[3], Self::TOL[3]),
-                Mono::create_span(freq, Self::PULSE[4], Self::TOL[4]),
-                Mono::create_span(freq, Self::PULSE[5], Self::TOL[5]),
-                Mono::create_span(freq, Self::PULSE[6], Self::TOL[6]),
-                Mono::create_span(freq, Self::PULSE[7], Self::TOL[7]),
-            ],
-        }
+    fn create_pulsespans(freq: u32) -> PulseSpans<Mono> {
+        PulseSpans::new(freq, &Self::PULSE, &Self::TOL)
     }
 }
 
@@ -42,9 +33,26 @@ pub trait ProtocolDecoder<Mono: InfraMonotonic, Cmd> {
     /// Returns the data if State == Done, otherwise None
     fn command(&self) -> Option<Cmd>;
 
+    /// Reset the decoder
     fn reset(&mut self);
 
-    fn spans(&self) -> &PulseSpans<Mono::Duration>;
+    /// Get the time spans
+    fn spans(&self) -> &PulseSpans<Mono>;
+
+    fn combined(&mut self, edge: bool, dt: Mono::Duration) -> Result<Option<Cmd>, DecodingError> {
+        match self.event(edge, dt) {
+            State::Idle | State::Receiving => Ok(None),
+            State::Done => {
+                let cmd = self.command();
+                self.reset();
+                Ok(cmd)
+            }
+            State::Error(err) => {
+                self.reset();
+                Err(err)
+            }
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]

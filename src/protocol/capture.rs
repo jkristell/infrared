@@ -3,12 +3,12 @@ use core::marker::PhantomData;
 use crate::{
     receiver::{
         time::{InfraMonotonic, PulseSpans},
-        ProtocolDecoder, ProtocolDecoderAdaptor, State,
+        ProtocolDecoder, DecoderAdapter, State,
     },
     Protocol,
 };
 
-impl<Mono: InfraMonotonic> ProtocolDecoderAdaptor<Mono> for Capture<Mono> {
+impl<Mono: InfraMonotonic> DecoderAdapter<Mono> for Capture<Mono> {
     type Decoder = CaptureDecoder<Mono>;
 
     const PULSE: [u32; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
@@ -57,7 +57,7 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Mono, [Mono::Duration; 96]> for Captu
         self.pos = 0;
     }
 
-    fn spans(&self) -> &PulseSpans<Mono::Duration> {
+    fn spans(&self) -> &PulseSpans<Mono> {
         todo!()
     }
 }

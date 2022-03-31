@@ -17,7 +17,7 @@ use crate::protocol::{Nec, Nec16, NecApple, NecSamsung};
 use crate::remotecontrol::{Button, RemoteControlModel};
 use crate::{
     protocol::DummyProtocol,
-    receiver::{time::InfraMonotonic, NoPinInput, ProtocolDecoderAdaptor, Receiver},
+    receiver::{time::InfraMonotonic, NoPinInput, DecoderAdapter, Receiver},
     Protocol,
 };
 
@@ -149,7 +149,7 @@ where
     /// Create the Receiver
     pub fn build(self) -> Receiver<Proto, Input, Mono, C>
     where
-        Proto: ProtocolDecoderAdaptor<Mono>,
+        Proto: DecoderAdapter<Mono>,
     {
         Receiver::with_input(self.resolution, self.input)
     }

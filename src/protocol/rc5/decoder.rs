@@ -2,13 +2,13 @@ use crate::{
     protocol::{rc5::Rc5Command, Rc5},
     receiver::{
         time::{InfraMonotonic, PulseSpans},
-        DecodingError, ProtocolDecoder, ProtocolDecoderAdaptor, State,
+        DecodingError, ProtocolDecoder, DecoderAdapter, State,
     },
 };
 
 const RC5_BASE_TIME: u32 = 889;
 
-impl<Mono: InfraMonotonic> ProtocolDecoderAdaptor<Mono> for Rc5 {
+impl<Mono: InfraMonotonic> DecoderAdapter<Mono> for Rc5 {
     type Decoder = Rc5Decoder<Mono>;
 
     const PULSE: [u32; 8] = [RC5_BASE_TIME, 2 * RC5_BASE_TIME, 0, 0, 0, 0, 0, 0];
@@ -19,7 +19,7 @@ impl<Mono: InfraMonotonic> ProtocolDecoderAdaptor<Mono> for Rc5 {
             state: Rc5State::Idle,
             bitbuf: 0,
             clock: 0,
-            spans: <Self as ProtocolDecoderAdaptor<Mono>>::create_pulsespans(freq),
+            spans: <Self as DecoderAdapter<Mono>>::create_pulsespans(freq),
         }
     }
 }
@@ -78,7 +78,7 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Mono, Rc5Command> for Rc5Decoder<Mono
         self.clock = 0;
     }
 
-    fn spans(&self) -> &PulseSpans<Mono::Duration> {
+    fn spans(&self) -> &PulseSpans<Mono> {
         &self.spans
     }
 }
@@ -87,7 +87,7 @@ pub struct Rc5Decoder<Mono: InfraMonotonic> {
     pub(crate) state: Rc5State,
     bitbuf: u16,
     pub(crate) clock: usize,
-    spans: PulseSpans<Mono::Duration>,
+    spans: PulseSpans<Mono>,
 }
 
 #[derive(Clone, Copy, Debug)]

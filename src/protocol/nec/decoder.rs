@@ -7,11 +7,11 @@ use crate::{
     },
     receiver::{
         time::{InfraMonotonic, PulseSpans},
-        DecodingError, ProtocolDecoder, ProtocolDecoderAdaptor, State,
+        DecodingError, ProtocolDecoder, DecoderAdapter, State,
     },
 };
 
-impl<Mono: InfraMonotonic, Cmd: NecCommandVariant> ProtocolDecoderAdaptor<Mono> for Nec<Cmd> {
+impl<Mono: InfraMonotonic, Cmd: NecCommandVariant> DecoderAdapter<Mono> for Nec<Cmd> {
     type Decoder = NecDecoder<Mono, Cmd>;
     const PULSE: [u32; 8] = [
         Cmd::PULSE_DISTANCE.header_high + Cmd::PULSE_DISTANCE.header_low,
@@ -32,7 +32,7 @@ impl<Mono: InfraMonotonic, Cmd: NecCommandVariant> ProtocolDecoderAdaptor<Mono> 
             bitbuf: 0,
             cmd_type: Default::default(),
             dt_save: Mono::ZERO_DURATION,
-            pulsespans: <Self as ProtocolDecoderAdaptor<Mono>>::create_pulsespans(freq),
+            pulsespans: <Self as DecoderAdapter<Mono>>::create_pulsespans(freq),
         }
     }
 }
@@ -47,7 +47,7 @@ pub struct NecDecoder<Mono: InfraMonotonic, C = NecCommand> {
     // Saved dt
     dt_save: Mono::Duration,
 
-    pulsespans: PulseSpans<Mono::Duration>,
+    pulsespans: PulseSpans<Mono>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -146,7 +146,7 @@ where
         self.dt_save = Mono::ZERO_DURATION;
     }
 
-    fn spans(&self) -> &PulseSpans<Mono::Duration> {
+    fn spans(&self) -> &PulseSpans<Mono> {
         &self.pulsespans
     }
 }

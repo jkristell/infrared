@@ -16,7 +16,7 @@ use crate::{
     protocol::Protocol,
     receiver::{
         time::{InfraMonotonic, PulseSpans},
-        ProtocolDecoderAdaptor,
+        DecoderAdapter,
     },
 };
 
@@ -27,7 +27,7 @@ impl Protocol for Sbp {
     type Cmd = SbpCommand;
 }
 
-impl<Mono: InfraMonotonic> ProtocolDecoderAdaptor<Mono> for Sbp {
+impl<Mono: InfraMonotonic> DecoderAdapter<Mono> for Sbp {
     type Decoder = SbpDecoder<Mono>;
     const PULSE: [u32; 8] = [
         (4500 + 4500),
@@ -47,7 +47,7 @@ impl<Mono: InfraMonotonic> ProtocolDecoderAdaptor<Mono> for Sbp {
             address: 0,
             command: 0,
             since_rising: Mono::ZERO_DURATION,
-            spans: <Self as ProtocolDecoderAdaptor<Mono>>::create_pulsespans(freq),
+            spans: <Self as DecoderAdapter<Mono>>::create_pulsespans(freq),
         }
     }
 }
@@ -58,7 +58,7 @@ pub struct SbpDecoder<Mono: InfraMonotonic> {
     address: u16,
     command: u32,
     since_rising: Mono::Duration,
-    spans: PulseSpans<Mono::Duration>,
+    spans: PulseSpans<Mono>,
 }
 
 #[derive(Debug)]
@@ -176,7 +176,7 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Mono, SbpCommand> for SbpDecoder<Mono
         self.since_rising = Mono::ZERO_DURATION;
     }
 
-    fn spans(&self) -> &PulseSpans<Mono::Duration> {
+    fn spans(&self) -> &PulseSpans<Mono> {
         &self.spans
     }
 }

@@ -128,7 +128,7 @@ pub mod time;
 
 pub use bufferinputreceiver::BufferInputReceiver;
 pub use builder::Builder;
-pub use decoder::{ProtocolDecoder, ProtocolDecoderAdaptor, State};
+pub use decoder::{ProtocolDecoder, DecoderAdapter, State};
 pub use error::{DecodingError, Error};
 pub use multireceiver::MultiReceiver;
 pub use ppoll::PeriodicPoll;
@@ -136,7 +136,7 @@ pub use ppoll::PeriodicPoll;
 pub struct NoPinInput;
 
 pub struct Receiver<
-    Proto: ProtocolDecoderAdaptor<Mono>,
+    Proto: DecoderAdapter<Mono>,
     Pin = NoPinInput,
     Mono: InfraMonotonic = u32,
     Cmd: From<Proto::Cmd> = <Proto as Protocol>::Cmd,
@@ -158,7 +158,7 @@ impl Receiver<Capture<u32>> {
 
 impl<Proto, Mono, Cmd> Receiver<Proto, NoPinInput, Mono, Cmd>
 where
-    Proto: ProtocolDecoderAdaptor<Mono>,
+    Proto: DecoderAdapter<Mono>,
     Mono: InfraMonotonic,
     Cmd: From<Proto::Cmd>,
 {
@@ -176,7 +176,7 @@ where
 
 impl<Proto, Input, Mono, Cmd> Receiver<Proto, Input, Mono, Cmd>
 where
-    Proto: ProtocolDecoderAdaptor<Mono>,
+    Proto: DecoderAdapter<Mono>,
     Mono: InfraMonotonic,
     Cmd: From<Proto::Cmd>,
 {
@@ -219,7 +219,7 @@ where
 #[cfg(feature = "embedded-hal")]
 impl<Proto, Pin, Mono, Cmd> Receiver<Proto, Pin, Mono, Cmd>
 where
-    Proto: ProtocolDecoderAdaptor<Mono>,
+    Proto: DecoderAdapter<Mono>,
     Pin: InputPin,
     Mono: InfraMonotonic,
     Cmd: From<Proto::Cmd>,
@@ -233,7 +233,7 @@ where
 #[cfg(feature = "embedded")]
 impl<Proto, Pin, const HZ: u32, Cmd> Receiver<Proto, Pin, TimerInstantU32<HZ>, Cmd>
 where
-    Proto: ProtocolDecoderAdaptor<TimerInstantU32<HZ>>,
+    Proto: DecoderAdapter<TimerInstantU32<HZ>>,
     Pin: InputPin,
     Cmd: From<Proto::Cmd>,
 {
@@ -245,7 +245,7 @@ where
 
 impl<Proto, Mono, Cmd> Receiver<Proto, NoPinInput, Mono, Cmd>
 where
-    Proto: ProtocolDecoderAdaptor<Mono>,
+    Proto: DecoderAdapter<Mono>,
     Mono: InfraMonotonic,
     Cmd: From<Proto::Cmd>,
 {
@@ -268,7 +268,7 @@ where
 #[cfg(feature = "embedded-hal")]
 impl<Proto, Pin, Mono, Cmd> Receiver<Proto, Pin, Mono, Cmd>
 where
-    Proto: ProtocolDecoderAdaptor<Mono>,
+    Proto: DecoderAdapter<Mono>,
     Pin: InputPin,
     Mono: InfraMonotonic,
     Cmd: From<Proto::Cmd>,

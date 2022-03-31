@@ -2,7 +2,7 @@ use crate::{
     protocol::Protocol,
     receiver::{
         time::{InfraMonotonic, PulseSpans},
-        ProtocolDecoder, ProtocolDecoderAdaptor, State,
+        ProtocolDecoder, DecoderAdapter, State,
     },
 };
 
@@ -22,7 +22,7 @@ impl Protocol for Denon {
     type Cmd = DenonCommand;
 }
 
-impl<Mono: InfraMonotonic> ProtocolDecoderAdaptor<Mono> for Denon {
+impl<Mono: InfraMonotonic> DecoderAdapter<Mono> for Denon {
     type Decoder = DenonDecoder<Mono>;
     const PULSE: [u32; 8] = [
         (HEADER_HIGH + HEADER_LOW),
@@ -42,7 +42,7 @@ impl<Mono: InfraMonotonic> ProtocolDecoderAdaptor<Mono> for Denon {
             state: DenonState::Idle,
             buf: 0,
             dt_save: Mono::ZERO_DURATION,
-            spans: <Self as ProtocolDecoderAdaptor<Mono>>::create_pulsespans(freq),
+            spans: <Self as DecoderAdapter<Mono>>::create_pulsespans(freq),
         }
     }
 }
@@ -51,7 +51,7 @@ pub struct DenonDecoder<Mono: InfraMonotonic> {
     state: DenonState,
     buf: u64,
     dt_save: Mono::Duration,
-    spans: PulseSpans<Mono::Duration>,
+    spans: PulseSpans<Mono>,
 }
 
 #[derive(Debug)]
@@ -100,7 +100,7 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Mono, DenonCommand> for DenonDecoder<
         self.dt_save = Mono::ZERO_DURATION;
     }
 
-    fn spans(&self) -> &PulseSpans<Mono::Duration> {
+    fn spans(&self) -> &PulseSpans<Mono> {
         &self.spans
     }
 }

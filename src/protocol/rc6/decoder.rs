@@ -2,13 +2,13 @@ use crate::{
     protocol::{rc6::Rc6Command, Rc6},
     receiver::{
         time::{InfraMonotonic, PulseSpans},
-        DecodingError, ProtocolDecoder, ProtocolDecoderAdaptor, State,
+        DecodingError, ProtocolDecoder, DecoderAdapter, State,
     },
 };
 
 const RC6_TIME_UNIT: u32 = 444;
 
-impl<Mono: InfraMonotonic> ProtocolDecoderAdaptor<Mono> for Rc6 {
+impl<Mono: InfraMonotonic> DecoderAdapter<Mono> for Rc6 {
     type Decoder = Rc6Decoder<Mono>;
     const PULSE: [u32; 8] = [
         RC6_TIME_UNIT,
@@ -29,7 +29,7 @@ impl<Mono: InfraMonotonic> ProtocolDecoderAdaptor<Mono> for Rc6 {
             headerdata: 0,
             toggle: false,
             clock: 0,
-            spans: <Self as ProtocolDecoderAdaptor<Mono>>::create_pulsespans(freq),
+            spans: <Self as DecoderAdapter<Mono>>::create_pulsespans(freq),
         }
     }
 }
@@ -103,7 +103,7 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Mono, Rc6Command> for Rc6Decoder<Mono
         self.clock = 0;
     }
 
-    fn spans(&self) -> &PulseSpans<Mono::Duration> {
+    fn spans(&self) -> &PulseSpans<Mono> {
         &self.spans
     }
 }
@@ -114,7 +114,7 @@ pub struct Rc6Decoder<Mono: InfraMonotonic> {
     headerdata: u16,
     toggle: bool,
     clock: usize,
-    spans: PulseSpans<Mono::Duration>,
+    spans: PulseSpans<Mono>,
 }
 
 #[derive(Clone, Copy, Debug)]

@@ -1,14 +1,14 @@
 use core::marker::PhantomData;
 use crate::{
     receiver::{
-        time::InfraMonotonic, ProtocolDecoder, ProtocolDecoderAdaptor, State,
+        time::InfraMonotonic, ProtocolDecoder, DecoderAdapter, State,
     },
     Protocol,
 };
 
 pub struct BufferIterator<'a, Proto, Mono, Cmd>
 where
-    Proto: ProtocolDecoderAdaptor<Mono>,
+    Proto: DecoderAdapter<Mono>,
     Mono: InfraMonotonic,
     Cmd: From<<Proto as Protocol>::Cmd>,
 {
@@ -20,7 +20,7 @@ where
 
 impl<'a, Proto, Mono, Cmd> BufferIterator<'a, Proto, Mono, Cmd>
     where
-        Proto: ProtocolDecoderAdaptor<Mono>,
+        Proto: DecoderAdapter<Mono>,
         Mono: InfraMonotonic,
         Cmd: From<<Proto as Protocol>::Cmd>,
 {
@@ -36,7 +36,7 @@ impl<'a, Proto, Mono, Cmd> BufferIterator<'a, Proto, Mono, Cmd>
 
 impl<'a, Proto, Mono, Cmd> Iterator for BufferIterator<'a, Proto, Mono, Cmd>
 where
-    Proto: ProtocolDecoderAdaptor<Mono>,
+    Proto: DecoderAdapter<Mono>,
     Mono: InfraMonotonic,
     Cmd: From<<Proto as Protocol>::Cmd>,
 {

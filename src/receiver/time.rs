@@ -30,15 +30,30 @@ pub struct Span<Dur> {
 }
 
 #[derive(Debug)]
-pub struct PulseSpans<Dur> {
-    pub(crate) spans: [Span<Dur>; 8],
+pub struct PulseSpans<Mono: InfraMonotonic> {
+    pub(crate) spans: [Span<Mono::Duration>; 8],
 }
 
-impl<Dur> PulseSpans<Dur>
+impl<Mono> PulseSpans<Mono>
 where
-    Dur: PartialOrd + Copy,
+    Mono: InfraMonotonic,
 {
-    pub fn get<P: From<usize>>(&self, pl: Dur) -> Option<P> {
+    pub fn new(freq: u32, pulse: &[u32; 8], tolerance: &[u32; 8]) -> Self {
+        PulseSpans {
+            spans: [
+                Mono::create_span(freq, pulse[0], tolerance[0]),
+                Mono::create_span(freq, pulse[1], tolerance[1]),
+                Mono::create_span(freq, pulse[2], tolerance[2]),
+                Mono::create_span(freq, pulse[3], tolerance[3]),
+                Mono::create_span(freq, pulse[4], tolerance[4]),
+                Mono::create_span(freq, pulse[5], tolerance[5]),
+                Mono::create_span(freq, pulse[6], tolerance[6]),
+                Mono::create_span(freq, pulse[7], tolerance[7]),
+            ],
+        }
+    }
+
+    pub fn get<P: From<usize>>(&self, pl: Mono::Duration) -> Option<P> {
         self.spans
             .iter()
             .position(|v| v.contains(pl))
