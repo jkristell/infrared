@@ -102,6 +102,10 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Mono, Rc6Command> for Rc6Decoder<Mono
         self.headerdata = 0;
         self.clock = 0;
     }
+
+    fn spans(&self) -> &PulseSpans<Mono::Duration> {
+        &self.spans
+    }
 }
 
 pub struct Rc6Decoder<Mono: InfraMonotonic> {

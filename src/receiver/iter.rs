@@ -1,28 +1,46 @@
+use core::marker::PhantomData;
 use crate::{
     receiver::{
-        time::InfraMonotonic, NoPinInput, ProtocolDecoder, ProtocolDecoderAdaptor, Receiver, State,
+        time::InfraMonotonic, ProtocolDecoder, ProtocolDecoderAdaptor, State,
     },
     Protocol,
 };
 
-pub struct BufferIterator<'a, SM, Monotonic, C>
+pub struct BufferIterator<'a, Proto, Mono, Cmd>
 where
-    SM: ProtocolDecoderAdaptor<Monotonic>,
-    Monotonic: InfraMonotonic,
-    C: From<<SM as Protocol>::Cmd>,
+    Proto: ProtocolDecoderAdaptor<Mono>,
+    Mono: InfraMonotonic,
+    Cmd: From<<Proto as Protocol>::Cmd>,
 {
-    pub(crate) pos: usize,
-    pub(crate) buf: &'a [Monotonic::Duration],
-    pub(crate) receiver: Receiver<SM, NoPinInput, Monotonic, C>,
+    pos: usize,
+    buf: &'a [Mono::Duration],
+    decoder: Proto::Decoder,
+    cmd: PhantomData<Cmd>,
 }
 
-impl<'a, SM, Monotonic, C> Iterator for BufferIterator<'a, SM, Monotonic, C>
-where
-    SM: ProtocolDecoderAdaptor<Monotonic>,
-    Monotonic: InfraMonotonic,
-    C: From<<SM as Protocol>::Cmd>,
+impl<'a, Proto, Mono, Cmd> BufferIterator<'a, Proto, Mono, Cmd>
+    where
+        Proto: ProtocolDecoderAdaptor<Mono>,
+        Mono: InfraMonotonic,
+        Cmd: From<<Proto as Protocol>::Cmd>,
 {
-    type Item = C;
+    pub fn new(freq: u32, buf: &'a[Mono::Duration]) -> Self {
+        BufferIterator {
+            pos: 0,
+            buf,
+            decoder: Proto::decoder(freq),
+            cmd: PhantomData,
+        }
+    }
+}
+
+impl<'a, Proto, Mono, Cmd> Iterator for BufferIterator<'a, Proto, Mono, Cmd>
+where
+    Proto: ProtocolDecoderAdaptor<Mono>,
+    Mono: InfraMonotonic,
+    Cmd: From<<Proto as Protocol>::Cmd>,
+{
+    type Item = Cmd;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -34,19 +52,19 @@ where
             let dt_us = self.buf[self.pos];
             self.pos += 1;
 
-            let state: State = self.receiver.decoder.event(pos_edge, dt_us).into();
+            let state = self.decoder.event(pos_edge, dt_us);
 
             match state {
                 State::Idle | State::Receiving => {
                     continue;
                 }
                 State::Done => {
-                    let cmd = self.receiver.decoder.command();
-                    self.receiver.decoder.reset();
+                    let cmd = self.decoder.command();
+                    self.decoder.reset();
                     break cmd.map(|r| r.into());
                 }
                 State::Error(_) => {
-                    self.receiver.decoder.reset();
+                    self.decoder.reset();
                     break None;
                 }
             }

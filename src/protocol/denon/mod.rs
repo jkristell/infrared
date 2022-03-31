@@ -99,6 +99,10 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Mono, DenonCommand> for DenonDecoder<
         self.buf = 0;
         self.dt_save = Mono::ZERO_DURATION;
     }
+
+    fn spans(&self) -> &PulseSpans<Mono::Duration> {
+        &self.spans
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

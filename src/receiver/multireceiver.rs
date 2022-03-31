@@ -1,4 +1,5 @@
-use crate::receiver::{ProtocolDecoder, NoPinInput, Receiver};
+#[cfg(feature = "embedded-hal")]
+use embedded_hal::digital::v2::InputPin;
 
 #[cfg(feature = "denon")]
 use crate::protocol::DenonCommand;
@@ -8,11 +9,7 @@ use crate::protocol::Rc5Command;
 use crate::protocol::Rc6Command;
 #[cfg(feature = "nec")]
 use crate::protocol::{Nec16Command, NecAppleCommand, NecCommand, NecDebugCmd, NecSamsungCommand};
-
-#[cfg(feature = "embedded-hal")]
-use embedded_hal::digital::v2::InputPin;
-
-use super::time::InfraMonotonic;
+use crate::receiver::{time::InfraMonotonic, NoPinInput, ProtocolDecoderAdaptor, Receiver};
 
 pub struct MultiReceiver<
     const N: usize,
@@ -24,8 +21,8 @@ pub struct MultiReceiver<
     input: Input,
 }
 
-impl<const N: usize, Receivers: ReceiverWrapper<N, Time>, Input, Time: InfraMonotonic>
-    MultiReceiver<N, Receivers, Input, Time>
+impl<const N: usize, Receivers: ReceiverWrapper<N, Mono>, Input, Mono: InfraMonotonic>
+    MultiReceiver<N, Receivers, Input, Mono>
 {
     pub fn new(res: u32, input: Input) -> Self {
         MultiReceiver {
@@ -34,13 +31,13 @@ impl<const N: usize, Receivers: ReceiverWrapper<N, Time>, Input, Time: InfraMono
         }
     }
 
-    pub fn event_generic(&mut self, dt: Time::Duration, edge: bool) -> [Option<CmdEnum>; N] {
+    pub fn event_generic(&mut self, dt: Mono::Duration, edge: bool) -> [Option<CmdEnum>; N] {
         Receivers::event(&mut self.receivers, dt, edge)
     }
 
     pub fn event_generic_iter(
         &mut self,
-        dt: Time::Duration,
+        dt: Mono::Duration,
         flank: bool,
     ) -> impl Iterator<Item = CmdEnum> {
         let arr = self.event_generic(dt, flank);
@@ -49,19 +46,19 @@ impl<const N: usize, Receivers: ReceiverWrapper<N, Time>, Input, Time: InfraMono
 }
 
 #[cfg(feature = "embedded-hal")]
-impl<const N: usize, Receivers, Pin: InputPin, Time: InfraMonotonic>
-    MultiReceiver<N, Receivers, Pin, Time>
+impl<const N: usize, Receivers, Pin: InputPin, Mono: InfraMonotonic>
+    MultiReceiver<N, Receivers, Pin, Mono>
 where
-    Receivers: ReceiverWrapper<N, Time>,
+    Receivers: ReceiverWrapper<N, Mono>,
 {
-    pub fn event(&mut self, dt: Time::Duration) -> Result<[Option<CmdEnum>; N], Pin::Error> {
+    pub fn event(&mut self, dt: Mono::Duration) -> Result<[Option<CmdEnum>; N], Pin::Error> {
         let edge = self.input.is_low()?;
         Ok(self.event_generic(dt, edge))
     }
 
     pub fn event_iter(
         &mut self,
-        dt: Time::Duration,
+        dt: Mono::Duration,
     ) -> Result<impl Iterator<Item = CmdEnum>, Pin::Error> {
         let arr = self.event(dt)?;
         Ok(arr.into_iter().flatten())
@@ -142,31 +139,31 @@ impl From<DenonCommand> for CmdEnum {
     }
 }
 
-pub trait ReceiverWrapper<const N: usize, Time: InfraMonotonic> {
+pub trait ReceiverWrapper<const N: usize, Mono: InfraMonotonic> {
     type Receivers;
 
     fn make(res: u32) -> Self::Receivers;
 
-    fn event(rs: &mut Self::Receivers, dt: Time::Duration, flank: bool) -> [Option<CmdEnum>; N];
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, flank: bool) -> [Option<CmdEnum>; N];
 }
 
-impl<P1, P2, Time: InfraMonotonic> ReceiverWrapper<2, Time> for (P1, P2)
+impl<P1, P2, Mono: InfraMonotonic> ReceiverWrapper<2, Mono> for (P1, P2)
 where
-    P1: ProtocolDecoder<Time>,
-    P2: ProtocolDecoder<Time>,
+    P1: ProtocolDecoderAdaptor<Mono>,
+    P2: ProtocolDecoderAdaptor<Mono>,
     P1::Cmd: Into<CmdEnum>,
     P2::Cmd: Into<CmdEnum>,
 {
     type Receivers = (
-        Receiver<P1, NoPinInput, Time>,
-        Receiver<P2, NoPinInput, Time>,
+        Receiver<P1, NoPinInput, Mono>,
+        Receiver<P2, NoPinInput, Mono>,
     );
 
     fn make(res: u32) -> Self::Receivers {
         (Receiver::new(res), Receiver::new(res))
     }
 
-    fn event(rs: &mut Self::Receivers, dt: Time::Duration, edge: bool) -> [Option<CmdEnum>; 2] {
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<CmdEnum>; 2] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -174,26 +171,26 @@ where
     }
 }
 
-impl<P1, P2, P3, Time: InfraMonotonic> ReceiverWrapper<3, Time> for (P1, P2, P3)
+impl<P1, P2, P3, Mono: InfraMonotonic> ReceiverWrapper<3, Mono> for (P1, P2, P3)
 where
-    P1: ProtocolDecoder<Time>,
-    P2: ProtocolDecoder<Time>,
-    P3: ProtocolDecoder<Time>,
+    P1: ProtocolDecoderAdaptor<Mono>,
+    P2: ProtocolDecoderAdaptor<Mono>,
+    P3: ProtocolDecoderAdaptor<Mono>,
     P1::Cmd: Into<CmdEnum>,
     P2::Cmd: Into<CmdEnum>,
     P3::Cmd: Into<CmdEnum>,
 {
     type Receivers = (
-        Receiver<P1, NoPinInput, Time>,
-        Receiver<P2, NoPinInput, Time>,
-        Receiver<P3, NoPinInput, Time>,
+        Receiver<P1, NoPinInput, Mono>,
+        Receiver<P2, NoPinInput, Mono>,
+        Receiver<P3, NoPinInput, Mono>,
     );
 
     fn make(res: u32) -> Self::Receivers {
         (Receiver::new(res), Receiver::new(res), Receiver::new(res))
     }
 
-    fn event(rs: &mut Self::Receivers, dt: Time::Duration, edge: bool) -> [Option<CmdEnum>; 3] {
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<CmdEnum>; 3] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -202,22 +199,22 @@ where
     }
 }
 
-impl<P1, P2, P3, P4, Time: InfraMonotonic> ReceiverWrapper<4, Time> for (P1, P2, P3, P4)
+impl<P1, P2, P3, P4, Mono: InfraMonotonic> ReceiverWrapper<4, Mono> for (P1, P2, P3, P4)
 where
-    P1: ProtocolDecoder<Time>,
-    P2: ProtocolDecoder<Time>,
-    P3: ProtocolDecoder<Time>,
-    P4: ProtocolDecoder<Time>,
+    P1: ProtocolDecoderAdaptor<Mono>,
+    P2: ProtocolDecoderAdaptor<Mono>,
+    P3: ProtocolDecoderAdaptor<Mono>,
+    P4: ProtocolDecoderAdaptor<Mono>,
     P1::Cmd: Into<CmdEnum>,
     P2::Cmd: Into<CmdEnum>,
     P3::Cmd: Into<CmdEnum>,
     P4::Cmd: Into<CmdEnum>,
 {
     type Receivers = (
-        Receiver<P1, NoPinInput, Time>,
-        Receiver<P2, NoPinInput, Time>,
-        Receiver<P3, NoPinInput, Time>,
-        Receiver<P4, NoPinInput, Time>,
+        Receiver<P1, NoPinInput, Mono>,
+        Receiver<P2, NoPinInput, Mono>,
+        Receiver<P3, NoPinInput, Mono>,
+        Receiver<P4, NoPinInput, Mono>,
     );
 
     fn make(res: u32) -> Self::Receivers {
@@ -229,7 +226,7 @@ where
         )
     }
 
-    fn event(rs: &mut Self::Receivers, dt: Time::Duration, edge: bool) -> [Option<CmdEnum>; 4] {
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<CmdEnum>; 4] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -239,13 +236,13 @@ where
     }
 }
 
-impl<P1, P2, P3, P4, P5, Time: InfraMonotonic> ReceiverWrapper<5, Time> for (P1, P2, P3, P4, P5)
+impl<P1, P2, P3, P4, P5, Mono: InfraMonotonic> ReceiverWrapper<5, Mono> for (P1, P2, P3, P4, P5)
 where
-    P1: ProtocolDecoder<Time>,
-    P2: ProtocolDecoder<Time>,
-    P3: ProtocolDecoder<Time>,
-    P4: ProtocolDecoder<Time>,
-    P5: ProtocolDecoder<Time>,
+    P1: ProtocolDecoderAdaptor<Mono>,
+    P2: ProtocolDecoderAdaptor<Mono>,
+    P3: ProtocolDecoderAdaptor<Mono>,
+    P4: ProtocolDecoderAdaptor<Mono>,
+    P5: ProtocolDecoderAdaptor<Mono>,
     P1::Cmd: Into<CmdEnum>,
     P2::Cmd: Into<CmdEnum>,
     P3::Cmd: Into<CmdEnum>,
@@ -253,11 +250,11 @@ where
     P5::Cmd: Into<CmdEnum>,
 {
     type Receivers = (
-        Receiver<P1, NoPinInput, Time>,
-        Receiver<P2, NoPinInput, Time>,
-        Receiver<P3, NoPinInput, Time>,
-        Receiver<P4, NoPinInput, Time>,
-        Receiver<P5, NoPinInput, Time>,
+        Receiver<P1, NoPinInput, Mono>,
+        Receiver<P2, NoPinInput, Mono>,
+        Receiver<P3, NoPinInput, Mono>,
+        Receiver<P4, NoPinInput, Mono>,
+        Receiver<P5, NoPinInput, Mono>,
     );
 
     fn make(res: u32) -> Self::Receivers {
@@ -270,7 +267,7 @@ where
         )
     }
 
-    fn event(rs: &mut Self::Receivers, dt: Time::Duration, edge: bool) -> [Option<CmdEnum>; 5] {
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<CmdEnum>; 5] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -281,15 +278,15 @@ where
     }
 }
 
-impl<P1, P2, P3, P4, P5, P6, Time: InfraMonotonic> ReceiverWrapper<6, Time>
+impl<P1, P2, P3, P4, P5, P6, Mono: InfraMonotonic> ReceiverWrapper<6, Mono>
     for (P1, P2, P3, P4, P5, P6)
 where
-    P1: ProtocolDecoder<Time>,
-    P2: ProtocolDecoder<Time>,
-    P3: ProtocolDecoder<Time>,
-    P4: ProtocolDecoder<Time>,
-    P5: ProtocolDecoder<Time>,
-    P6: ProtocolDecoder<Time>,
+    P1: ProtocolDecoderAdaptor<Mono>,
+    P2: ProtocolDecoderAdaptor<Mono>,
+    P3: ProtocolDecoderAdaptor<Mono>,
+    P4: ProtocolDecoderAdaptor<Mono>,
+    P5: ProtocolDecoderAdaptor<Mono>,
+    P6: ProtocolDecoderAdaptor<Mono>,
 
     P1::Cmd: Into<CmdEnum>,
     P2::Cmd: Into<CmdEnum>,
@@ -299,12 +296,12 @@ where
     P6::Cmd: Into<CmdEnum>,
 {
     type Receivers = (
-        Receiver<P1, NoPinInput, Time>,
-        Receiver<P2, NoPinInput, Time>,
-        Receiver<P3, NoPinInput, Time>,
-        Receiver<P4, NoPinInput, Time>,
-        Receiver<P5, NoPinInput, Time>,
-        Receiver<P6, NoPinInput, Time>,
+        Receiver<P1, NoPinInput, Mono>,
+        Receiver<P2, NoPinInput, Mono>,
+        Receiver<P3, NoPinInput, Mono>,
+        Receiver<P4, NoPinInput, Mono>,
+        Receiver<P5, NoPinInput, Mono>,
+        Receiver<P6, NoPinInput, Mono>,
     );
 
     fn make(res: u32) -> Self::Receivers {
@@ -318,7 +315,7 @@ where
         )
     }
 
-    fn event(rs: &mut Self::Receivers, dt: Time::Duration, edge: bool) -> [Option<CmdEnum>; 6] {
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<CmdEnum>; 6] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),

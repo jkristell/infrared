@@ -46,15 +46,31 @@ where
     }
 
     pub fn check_overlaps(&self) -> bool {
+        for i in 0..self.spans.len() {
+            for j in 0..self.spans.len() {
+                if i == j {
+                    continue;
+                }
+
+                if self.spans[i].overlaps(&self.spans[j]) {
+                    return true;
+                }
+            }
+        }
+
         false
     }
 }
 
 impl<Dur> Span<Dur>
 where
-    Dur: PartialOrd,
+    Dur: PartialOrd + Copy,
 {
     fn contains(&self, other: Dur) -> bool {
         self.low <= other && other <= self.high
+    }
+
+    fn overlaps(&self, other: &Span<Dur>) -> bool {
+        self.contains(other.low) || self.contains(other.high)
     }
 }

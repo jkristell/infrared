@@ -1,7 +1,10 @@
 use core::marker::PhantomData;
 
 use crate::{
-    receiver::{time::InfraMonotonic, ProtocolDecoder, ProtocolDecoderAdaptor, State},
+    receiver::{
+        time::{InfraMonotonic, PulseSpans},
+        ProtocolDecoder, ProtocolDecoderAdaptor, State,
+    },
     Protocol,
 };
 
@@ -52,5 +55,9 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Mono, [Mono::Duration; 96]> for Captu
 
     fn reset(&mut self) {
         self.pos = 0;
+    }
+
+    fn spans(&self) -> &PulseSpans<Mono::Duration> {
+        todo!()
     }
 }

@@ -77,6 +77,10 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Mono, Rc5Command> for Rc5Decoder<Mono
         self.bitbuf = 0;
         self.clock = 0;
     }
+
+    fn spans(&self) -> &PulseSpans<Mono::Duration> {
+        &self.spans
+    }
 }
 
 pub struct Rc5Decoder<Mono: InfraMonotonic> {

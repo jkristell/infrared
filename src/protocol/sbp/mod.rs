@@ -175,6 +175,10 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Mono, SbpCommand> for SbpDecoder<Mono
         self.command = 0;
         self.since_rising = Mono::ZERO_DURATION;
     }
+
+    fn spans(&self) -> &PulseSpans<Mono::Duration> {
+        &self.spans
+    }
 }
 
 impl From<SbpState> for State {

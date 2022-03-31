@@ -122,7 +122,7 @@ mod builder;
 mod decoder;
 mod error;
 mod iter;
-//mod multireceiver;
+mod multireceiver;
 mod ppoll;
 pub mod time;
 
@@ -130,7 +130,7 @@ pub use bufferinputreceiver::BufferInputReceiver;
 pub use builder::Builder;
 pub use decoder::{ProtocolDecoder, ProtocolDecoderAdaptor, State};
 pub use error::{DecodingError, Error};
-//pub use multireceiver::MultiReceiver;
+pub use multireceiver::MultiReceiver;
 pub use ppoll::PeriodicPoll;
 
 pub struct NoPinInput;
@@ -197,8 +197,7 @@ where
         edge: bool,
     ) -> Result<Option<Cmd>, DecodingError> {
         // Update state machine
-        //let state: State = Proto::event(&mut self.decoder, edge, dt).into();
-        let state: State = self.decoder.event(edge, dt).into();
+        let state = self.decoder.event(edge, dt);
 
         trace!("dt: {:?}, edge: {} s: {:?}", dt, edge, state);
 

@@ -1,17 +1,18 @@
 use core::fmt::Debug;
 
-use super::time::PulseSpans;
 use crate::{
-    receiver::{time::InfraMonotonic, DecodingError},
+    receiver::{time::InfraMonotonic, DecodingError, time::PulseSpans},
     Protocol,
 };
 
 pub trait ProtocolDecoderAdaptor<Mono: InfraMonotonic>: Protocol {
+    /// Type of the decoder
     type Decoder: ProtocolDecoder<Mono, <Self as Protocol>::Cmd>;
 
     const PULSE: [u32; 8];
     const TOL: [u32; 8];
 
+    /// Create the decoder
     fn decoder(freq: u32) -> Self::Decoder;
 
     fn create_pulsespans(freq: u32) -> PulseSpans<Mono::Duration> {
@@ -43,8 +44,7 @@ pub trait ProtocolDecoder<Mono: InfraMonotonic, Cmd> {
 
     fn reset(&mut self);
 
-    //fn spans(&self) -> &PulseSpans<Mono::Duration>;
-    //fn internal_state(&self) -> Self::State;
+    fn spans(&self) -> &PulseSpans<Mono::Duration>;
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]

@@ -145,6 +145,10 @@ where
         self.state = NecState::Init;
         self.dt_save = Mono::ZERO_DURATION;
     }
+
+    fn spans(&self) -> &PulseSpans<Mono::Duration> {
+        &self.pulsespans
+    }
 }
 
 #[derive(Debug, Copy, Clone)]

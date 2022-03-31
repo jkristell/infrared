@@ -2,7 +2,7 @@ use core::marker::PhantomData;
 
 use crate::{
     receiver::{iter::BufferIterator, time::InfraMonotonic, ProtocolDecoderAdaptor},
-    Protocol, Receiver,
+    Protocol,
 };
 
 pub struct BufferInputReceiver<
@@ -52,11 +52,7 @@ where
     }
 
     pub fn iter<'a>(&'a mut self, buf: &'a [Mono::Duration]) -> BufferIterator<Proto, Mono, Cmd> {
-        BufferIterator {
-            pos: 0,
-            buf,
-            receiver: Receiver::new(self.resolution),
-        }
+        BufferIterator::new(self.resolution, buf)
     }
 
     pub fn iter_with<'a, P, M, C>(
@@ -69,10 +65,6 @@ where
         M: InfraMonotonic,
         C: From<<P as Protocol>::Cmd>,
     {
-        BufferIterator {
-            pos: 0,
-            buf,
-            receiver: Receiver::new(resolution),
-        }
+        BufferIterator::new(resolution, buf)
     }
 }
