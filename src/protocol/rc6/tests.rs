@@ -1,11 +1,12 @@
 use crate::{
     protocol::{rc6::Rc6Command, Rc6},
-    receiver::Builder,
+    receiver::{BufferInputReceiver, ProtocolDecoder},
     sender::PulsedataBuffer,
+    Receiver,
 };
 
 #[test]
-fn newpulse() {
+fn state_debug() {
     let cmd = Rc6Command::new(70, 20);
 
     const SAMPLE_RATE: u32 = 1_000_000;
@@ -19,55 +20,45 @@ fn newpulse() {
 
     let mut edge = false;
 
-    let mut recv = Builder::new().rc6().resolution(SAMPLE_RATE).build();
+    let mut recv = Receiver::<Rc6>::new(SAMPLE_RATE);
 
-    let mut res_cmd = None;
+    let mut res = None;
 
     for dist in &b[..len] {
         edge = !edge;
 
-        let s0 = recv.state.state;
+        let s0 = recv.decoder.state;
         let cmd = recv.event(*dist, edge);
 
         println!(
             "{} ({}): {:?} -> {:?}",
-            edge as u32, dist, s0, recv.state.state
+            edge as u32, dist, s0, recv.decoder.state
         );
 
         if let Ok(Some(cmd)) = cmd {
-            res_cmd = Some(cmd);
+            res = Some(cmd);
         }
     }
 
-    let res_cmd = res_cmd.unwrap();
+    let res_cmd = res.unwrap();
     assert_eq!(res_cmd, cmd)
 }
 
 #[test]
 #[rustfmt::skip]
-fn basic() {
+fn decode_buffer() {
     let dists = [
-        /*
-        0, 108, 34, 19, 34, 19, 16, 20, 16, 19, 34, 36, 16, 37, 34, 20, 16, 19, 16, 37, 17, 19, 34,
-        19, 17, 19, 16, 19, 17, 19, 16, 20, 16, 19, 16, 37, 34, 20,
-        */
-
         0, 106, 35, 17, 35, 17, 17, 17, 17, 17, 35, 35, 17, 35, 35, 17, 17, 17, 17, 35, 17, 17, 35,
         17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 35, 35, 35,
-/*
-        0, 108, 34, 19, 34, 19, 16, 20, 16, 19, 34, 36, 16, 37, 34, 20, 16, 19, 16, 37, 17, 19, 34,
-        19, 17, 19, 16, 19, 17, 19, 16, 20, 16, 19, 16, 37, 34, 20,
-         */
-
     ];
 
-    let mut recv = Builder::new()
-        .rc6()
-        .resolution(40_000)
-        .buffer(&dists)
-        .build();
+    let mut recv = BufferInputReceiver::<Rc6>::with_frequenzy(40_000);
 
-    let cmds = recv.iter().collect::<std::vec::Vec<_>>();
+    let iter = recv.iter(&dists);
+
+    println!("{:?}", iter.decoder.spans());
+
+    let cmds = iter.collect::<std::vec::Vec<_>>();
 
     assert_eq!(cmds.len(), 1);
 
@@ -80,22 +71,18 @@ fn basic() {
 #[test]
 fn all_commands() {
     let mut ptb = PulsedataBuffer::<96>::new();
-    const SAMPLE_RATE: u32 = 40_000;
+    const FREQ: u32 = 40_000;
 
     for address in 0..255 {
         for cmdnum in 0..255 {
             ptb.reset();
 
             let cmd = Rc6Command::new(address, cmdnum);
-            ptb.load::<Rc6, SAMPLE_RATE>(&cmd);
+            ptb.load::<Rc6, FREQ>(&cmd);
 
-            let mut recv = Builder::new()
-                .rc6()
-                .resolution(SAMPLE_RATE)
-                .buffer(&ptb.buf)
-                .build();
+            let mut recv = BufferInputReceiver::<Rc6>::with_frequenzy(FREQ);
 
-            let cmdres = recv.iter().next().unwrap();
+            let cmdres = recv.iter(&ptb.buf).next().unwrap();
 
             assert_eq!(cmd.addr, cmdres.addr);
             assert_eq!(cmd.cmd, cmdres.cmd);

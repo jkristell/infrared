@@ -1,54 +1,66 @@
-use crate::{receiver::DecodingError, Protocol};
 use core::fmt::Debug;
 
+use crate::{
+    receiver::{
+        time::{InfraMonotonic, PulseSpans},
+        DecodingError,
+    },
+    Protocol,
+};
+
+/// Used to create a Decoder for a protocol
+///
+/// Handles the creation of the pulse spans for the protocol
+pub trait DecoderFactory<Mono: InfraMonotonic>: Protocol {
+    /// Type of the decoder
+    type Decoder: ProtocolDecoder<Mono, Self::Cmd>;
+
+    /// Create the decoder
+    fn decoder(freq: u32) -> Self::Decoder;
+}
+
 /// Protocol decode state machine
-pub trait DecoderStateMachine: Protocol {
-    /// Decoder state
-    type State: DecoderState;
-    /// The pulsewidth ranges
-    type RangeData: Debug;
-
-    /// Internal State
-    type InternalStatus: Into<Status>;
-
-    /// Create the resources
-    fn state() -> Self::State;
-
-    /// Create the timer dependent ranges
-    /// `resolution`: Timer resolution
-    fn ranges(resolution: u32) -> Self::RangeData;
-
+pub trait ProtocolDecoder<Mono: InfraMonotonic, Cmd> {
     /// Notify the state machine of a new event
     /// * `edge`: true = positive edge, false = negative edge
-    /// * `dt` : Time in micro seconds since last transition
-    fn event_full(
-        res: &mut Self::State,
-        rd: &Self::RangeData,
-        edge: bool,
-        delta_t: u32,
-    ) -> Self::InternalStatus;
+    /// * `dt` : Duration since last event
+    fn event(&mut self, edge: bool, dt: Mono::Duration) -> State;
 
     /// Get the command
     /// Returns the data if State == Done, otherwise None
-    fn command(state: &Self::State) -> Option<Self::Cmd>;
-}
+    fn command(&self) -> Option<Cmd>;
 
-pub trait ConstDecodeStateMachine<const R: u32>: DecoderStateMachine {
-    const RANGES: Self::RangeData;
-
-    fn event(res: &mut Self::State, delta_samples: u32, edge: bool) -> Self::InternalStatus {
-        Self::event_full(res, &Self::RANGES, edge, delta_samples)
-    }
-}
-
-pub trait DecoderState {
+    /// Reset the decoder
     fn reset(&mut self);
+
+    /// Get the time spans
+    fn spans(&self) -> &PulseSpans<Mono>;
+
+    /// I don't care about the details, just give me a command (or an error)!
+    fn event_total(
+        &mut self,
+        edge: bool,
+        dt: Mono::Duration,
+    ) -> Result<Option<Cmd>, DecodingError> {
+        match self.event(edge, dt) {
+            State::Idle | State::Receiving => Ok(None),
+            State::Done => {
+                let cmd = self.command();
+                self.reset();
+                Ok(cmd)
+            }
+            State::Error(err) => {
+                self.reset();
+                Err(err)
+            }
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 /// Protocol decoder status
-pub enum Status {
+pub enum State {
     /// Idle
     Idle,
     /// Receiving data

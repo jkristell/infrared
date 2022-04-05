@@ -1,6 +1,6 @@
 //! Nec Raw variant. Useful for debugging
 
-use crate::protocol::nec::{NecCommandVariant, NecPulseDistance, NEC_STANDARD_TIMING};
+use crate::protocol::nec::{NecCommandVariant, NecPulseLen, NEC_STANDARD_TIMING};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -10,7 +10,7 @@ pub struct NecDebugCmd {
 }
 
 impl NecCommandVariant for NecDebugCmd {
-    const PULSE_DISTANCE: &'static NecPulseDistance = NEC_STANDARD_TIMING;
+    const PULSE_DISTANCE: &'static NecPulseLen = NEC_STANDARD_TIMING;
 
     fn validate(_bits: u32) -> bool {
         true

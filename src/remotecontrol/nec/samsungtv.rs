@@ -1,10 +1,10 @@
+use Action::*;
+
 use crate::{
+    protocol::NecSamsungCommand,
     remotecontrol::{Action, DeviceType, RemoteControlModel},
     ProtocolId,
 };
-
-use crate::protocol::NecSamsungCommand;
-use Action::*;
 
 #[derive(Debug, Default)]
 pub struct SamsungTv;

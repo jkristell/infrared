@@ -2,9 +2,13 @@
 #![no_main]
 
 use bluepill_examples as _;
-use defmt::{Debug2Format, info};
-
 use cortex_m_rt::entry;
+use defmt::info;
+use infrared::{
+    protocol::{Rc6, Rc6Command},
+    remotecontrol::{Action, Button, DeviceType, RemoteControlModel},
+    ProtocolId,
+};
 use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Floating, Input},
     pac::{self, interrupt, TIM2},
@@ -12,24 +16,17 @@ use stm32f1xx_hal::{
     timer::{CounterHz, Event, Timer},
 };
 
-use infrared::{
-    protocol::{Rc6, Rc6Command},
-    receiver::{PinInput, Poll},
-    remotecontrol::{Action, Button, DeviceType, RemoteControlModel},
-    ProtocolId, Receiver,
-};
-
 // Sample rate
-const TIMER_FREQ: u32 = 100_000;
+const TIMER_FREQ: u32 = 40_000;
 
 // Our receivertype
-type IrReceiver = Receiver<Rc6, Poll, PinInput<PB8<Input<Floating>>>, Button<Rc6Tv>>;
+type IrReceiver = infrared::PeriodicPoll<Rc6, PB8<Input<Floating>>, Button<Rc6Tv>>;
 
 // Globals
 static mut TIMER: Option<CounterHz<TIM2>> = None;
 static mut RECEIVER: Option<IrReceiver> = None;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, defmt::Format)]
 struct Rc6Tv;
 
 impl RemoteControlModel for Rc6Tv {
@@ -78,7 +75,7 @@ fn main() -> ! {
     timer.start(TIMER_FREQ.Hz()).unwrap();
     timer.listen(Event::Update);
 
-    let receiver = Receiver::with_pin(TIMER_FREQ, pin);
+    let receiver = infrared::PeriodicPoll::with_pin(TIMER_FREQ, pin);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
@@ -108,7 +105,7 @@ fn TIM2() {
         match cmd.action() {
             Some(Teletext) => info!("Teletext!"),
             Some(Power) => info!("Power on/off"),
-            _ => info!("cmd: {:?}", Debug2Format(&cmd)),
+            _ => info!("cmd: {:?}", cmd),
         };
     }
 

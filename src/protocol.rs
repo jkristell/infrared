@@ -1,5 +1,7 @@
 //! Infrared protocol
 
+mod capture;
+
 #[cfg(feature = "denon")]
 mod denon;
 #[cfg(feature = "nec")]
@@ -11,14 +13,15 @@ mod rc6;
 #[cfg(feature = "sbp")]
 mod sbp;
 
+pub use capture::Capture;
 #[cfg(feature = "denon")]
 #[doc(inline)]
 pub use denon::{Denon, DenonCommand};
 #[cfg(feature = "nec")]
 #[doc(inline)]
 pub use nec::{
-    Nec, Nec16, Nec16Command, NecApple, NecAppleCommand, NecCommand, NecDebug, NecDebugCmd,
-    NecSamsung, NecSamsungCommand,
+    AppleNec, AppleNecCommand, Nec, Nec16, Nec16Command, NecCommand, NecDebug, NecDebugCmd,
+    NecSamsungCommand, SamsungNec,
 };
 #[cfg(feature = "rc5")]
 #[doc(inline)]
@@ -30,19 +33,11 @@ pub use rc6::{Rc6, Rc6Command};
 #[doc(inline)]
 pub use sbp::{Sbp, SbpCommand};
 
-pub mod capture;
-
 pub(crate) mod utils;
 
 /// Infrared protocol
 pub trait Protocol {
     type Cmd;
-}
-
-pub struct DummyProtocol {}
-
-impl Protocol for DummyProtocol {
-    type Cmd = ();
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]

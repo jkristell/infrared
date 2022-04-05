@@ -10,7 +10,7 @@
 //!
 //! ## Examples
 //!
-//! The [infrared-examples](https://github.com/jkristell/infrared-examples) github repo contains
+//! The [infrared](https://github.com/jkristell/infrared) github repo contains
 //! examples of both Event driven and poll based Receivers, with and without RTIC.
 //!
 
@@ -26,10 +26,10 @@ pub mod sender;
 #[cfg(feature = "remotes")]
 pub mod remotecontrol;
 
-pub use receiver::{ConstReceiver, Receiver};
-
 #[doc(inline)]
 pub use protocol::{Protocol, ProtocolId};
+#[doc(inline)]
+pub use receiver::{BufferInputReceiver, PeriodicPoll, Receiver};
 
 #[cfg(test)]
 #[macro_use]

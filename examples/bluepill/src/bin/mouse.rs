@@ -2,26 +2,21 @@
 #![no_std]
 
 use bluepill_examples as _;
-
-use defmt::{info, Debug2Format};
+use defmt::info;
 use defmt_rtt as _; // global logger
-use panic_probe as _;
-
 use infrared::{
-    protocol::NecApple,
-    receiver::{Event, PinInput},
+    protocol::AppleNec,
     remotecontrol::{nec::Apple2009, Action, Button},
     Receiver,
 };
+use panic_probe as _;
 use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Edge, ExtiPin, Floating, Input},
     pac,
     prelude::*,
+    timer::fugit::TimerInstantU32,
     usb::{Peripheral, UsbBus, UsbBusType},
 };
-
-use stm32f1xx_hal::timer::fugit::TimerInstantU32;
-
 use usb_device::{bus, prelude::*};
 use usbd_hid::{
     descriptor::{generator_prelude::*, MouseReport},
@@ -35,10 +30,10 @@ mod app {
     const MONOTIMER_FREQ: u32 = 100_000;
 
     /// The pin connected to the infrared receiver module
-    type RxPin = PB8<Input<Floating>>;
-    type IrProto = NecApple;
+    type IrPin = PB8<Input<Floating>>;
+    type IrProto = AppleNec;
     type IrRemote = Apple2009;
-    type IrReceiver = Receiver<IrProto, Event, PinInput<RxPin>, Button<IrRemote>>;
+    type IrReceiver = Receiver<IrProto, IrPin, TimerInstantU32<MONOTIMER_FREQ>, Button<IrRemote>>;
 
     #[monotonic(binds = TIM3, default = true)]
     type Monotonic = stm32f1xx_hal::timer::MonoTimer<pac::TIM3, MONOTIMER_FREQ>;
@@ -52,7 +47,6 @@ mod app {
     #[local]
     struct Local {
         ir_rx: IrReceiver,
-        last_edge_ts: TimerInstantU32<{ app::MONOTIMER_FREQ }>,
     }
 
     #[init(
@@ -104,24 +98,12 @@ mod app {
             pin
         };
 
-        // Run the receiver with native resolution and let embedded time to the conversion
-        let ir_rx = infrared::Receiver::with_pin(1_000_000, rx_pin);
-        //NOTE: Or use the builder:
-        // infrared::Receiver::builder()
-        //      .nec_apple()
-        //      .resolution(1_000_000)
-        //      .remote_control(IrRemote::default())
-        //      .pin(rx_pin)
-        //      .build();
-
+        let ir_rx = infrared::Receiver::with_fugit(rx_pin);
         let mono = cx.device.TIM3.monotonic(&clocks);
 
         let shared = Shared { usb_dev, usb_hid };
 
-        let local = Local {
-            ir_rx,
-            last_edge_ts: Monotonic::zero(),
-        };
+        let local = Local { ir_rx };
 
         (shared, local, init::Monotonics(mono))
     }
@@ -134,24 +116,17 @@ mod app {
         }
     }
 
-    #[task(binds = EXTI9_5, priority = 2, local = [ir_rx, last_edge_ts])]
+    #[task(binds = EXTI9_5, priority = 2, local = [ir_rx])]
     fn ir_rx(cx: ir_rx::Context) {
-        let last_event = cx.local.last_edge_ts;
         let ir_rx = cx.local.ir_rx;
 
         let now = monotonics::Monotonic::now();
-        let dt = now
-            .checked_duration_since(*last_event)
-            .map(|v| v.to_micros());
 
-        if let Some(us) = dt {
-            if let Ok(Some(button)) = ir_rx.event(us) {
-                let _ = process_ir_cmd::spawn(button).ok();
-            }
+        if let Ok(Some(button)) = ir_rx.event_instant(now) {
+            let _ = process_ir_cmd::spawn(button).ok();
         }
 
-        ir_rx.pin().clear_interrupt_pending_bit();
-        *last_event = now;
+        ir_rx.pin_mut().clear_interrupt_pending_bit();
     }
 
     #[task(
@@ -166,10 +141,9 @@ mod app {
         }
         *repeats += 1;
 
-        info!("Received: {:?}, repeat: {}", Debug2Format(&button), *repeats);
+        info!("Received: {:?}, repeat: {}", button, *repeats);
         if let Some(action) = button.action() {
             let report = super::button_to_mousereport(action, *repeats);
-            info!("{:?}", Debug2Format(&report));
             keydown::spawn(report).unwrap()
         }
     }

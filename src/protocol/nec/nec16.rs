@@ -1,6 +1,6 @@
 //! NEC variant with 16 bit addresses and 8 bit data
 
-use crate::protocol::nec::{NecCommandVariant, NecPulseDistance, NEC_STANDARD_TIMING};
+use crate::protocol::nec::{NecCommandVariant, NecPulseLen, NEC_STANDARD_TIMING};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -12,7 +12,7 @@ pub struct Nec16Command {
 }
 
 impl NecCommandVariant for Nec16Command {
-    const PULSE_DISTANCE: &'static NecPulseDistance = NEC_STANDARD_TIMING;
+    const PULSE_DISTANCE: &'static NecPulseLen = NEC_STANDARD_TIMING;
 
     fn validate(bits: u32) -> bool {
         ((bits >> 24) ^ (bits >> 16)) & 0xFF == 0xFF

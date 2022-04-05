@@ -11,9 +11,9 @@ pub mod rc6;
 #[cfg(feature = "sbp")]
 pub mod sbp;
 
-use crate::{cmd::AddressCommand, ProtocolId};
-
 pub use mapper::Button;
+
+use crate::{cmd::AddressCommand, ProtocolId};
 
 /// A trait describing a Remote Control
 pub trait RemoteControlModel: Default {

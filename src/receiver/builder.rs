@@ -1,14 +1,7 @@
-use crate::receiver::{
-    BufferInput, ConstDecodeStateMachine, ConstReceiver, DecoderStateMachine, DefaultInput, Event,
-    PinInput, Poll, Receiver,
-};
 use core::marker::PhantomData;
 
 #[cfg(feature = "embedded-hal")]
 use embedded_hal::digital::v2::InputPin;
-
-#[cfg(feature = "nec")]
-use crate::protocol::{Nec, Nec16, NecApple, NecSamsung};
 
 #[cfg(feature = "denon")]
 use crate::protocol::Denon;
@@ -18,172 +11,148 @@ use crate::protocol::Rc5;
 use crate::protocol::Rc6;
 #[cfg(feature = "sbp")]
 use crate::protocol::Sbp;
-
-use crate::{protocol::DummyProtocol, Protocol};
-
+#[cfg(feature = "nec")]
+use crate::protocol::{AppleNec, Nec, Nec16, SamsungNec};
 #[cfg(feature = "remotes")]
 use crate::remotecontrol::{Button, RemoteControlModel};
+use crate::{
+    protocol::NecCommand,
+    receiver::{time::InfraMonotonic, DecoderFactory, NoPin, Receiver},
+    PeriodicPoll, Protocol,
+};
 
 /// Receiver Builder
-pub struct Builder<
-    SM: Protocol = DummyProtocol,
-    S = Event,
-    IN = DefaultInput,
-    C = <SM as Protocol>::Cmd,
-> {
-    pub(crate) proto: PhantomData<SM>,
-    pub(crate) input: IN,
-    pub(crate) method: PhantomData<S>,
-    pub(crate) resolution: u32,
-    pub(crate) output: PhantomData<C>,
+pub struct Builder<Proto = (), Pin = NoPin, Mono: InfraMonotonic = u32, Cmd = ()> {
+    pub(crate) proto: PhantomData<Proto>,
+    pub(crate) pin: Pin,
+    pub(crate) freq: u32,
+    pub(crate) cmd: PhantomData<Cmd>,
+    pub(crate) monotonic: PhantomData<Mono>,
 }
 
-impl Builder<DummyProtocol, Event, DefaultInput, ()> {
-    pub fn new() -> Builder<DummyProtocol, Event, DefaultInput> {
+impl Default for Builder<(), NoPin, u32, ()> {
+    fn default() -> Self {
         Builder {
             proto: PhantomData,
-            input: DefaultInput {},
-            method: PhantomData,
-            resolution: 1_000_000,
-            output: PhantomData,
+            pin: NoPin,
+            freq: 1_000_000,
+            cmd: PhantomData,
+            monotonic: PhantomData,
         }
     }
 }
 
-impl<SM, S, IN, C> Builder<SM, S, IN, C>
+impl<Proto, Input, Mono, Cmd> Builder<Proto, Input, Mono, Cmd>
 where
-    S: Default,
-    SM: Protocol,
-    C: From<<SM as Protocol>::Cmd>,
+    Mono: InfraMonotonic,
 {
-    pub fn protocol<Proto: Protocol>(self) -> Builder<Proto, S, IN> {
+    /// Set the monotonic clock type to use
+    pub fn monotonic<NewMono: InfraMonotonic>(self) -> Builder<Proto, Input, NewMono, Cmd> {
         Builder {
-            resolution: self.resolution,
+            freq: self.freq,
             proto: PhantomData,
-            input: self.input,
-            method: PhantomData,
-            output: PhantomData,
+            pin: self.pin,
+            cmd: PhantomData,
+            monotonic: PhantomData,
+        }
+    }
+
+    pub fn protocol<NewProto: Protocol>(self) -> Builder<NewProto, Input, Mono, NewProto::Cmd> {
+        Builder {
+            freq: self.freq,
+            proto: PhantomData,
+            pin: self.pin,
+            cmd: PhantomData,
+            monotonic: PhantomData,
         }
     }
 
     #[cfg(feature = "nec")]
-    pub fn nec(self) -> Builder<Nec, S, IN> {
+    pub fn nec(self) -> Builder<Nec, Input, Mono, NecCommand> {
         self.protocol()
     }
 
     #[cfg(feature = "nec")]
-    pub fn nec16(self) -> Builder<Nec16, S, IN> {
+    pub fn nec16(self) -> Builder<Nec16, Input, Mono, <Nec16 as Protocol>::Cmd> {
         self.protocol()
     }
 
     #[cfg(feature = "nec")]
-    pub fn nec_samsung(self) -> Builder<NecSamsung, S, IN> {
+    pub fn nec_samsung(self) -> Builder<SamsungNec, Input, Mono, <SamsungNec as Protocol>::Cmd> {
         self.protocol()
     }
 
     #[cfg(feature = "nec")]
-    pub fn nec_apple(self) -> Builder<NecApple, S, IN> {
+    pub fn nec_apple(self) -> Builder<AppleNec, Input, Mono, <AppleNec as Protocol>::Cmd> {
         self.protocol()
     }
 
     #[cfg(feature = "rc5")]
-    pub fn rc5(self) -> Builder<Rc5, S, IN> {
+    pub fn rc5(self) -> Builder<Rc5, Input, Mono, <Rc5 as Protocol>::Cmd> {
         self.protocol()
     }
 
     #[cfg(feature = "rc6")]
-    pub fn rc6(self) -> Builder<Rc6, S, IN> {
+    pub fn rc6(self) -> Builder<Rc6, Input, Mono, <Rc6 as Protocol>::Cmd> {
         self.protocol()
     }
 
     #[cfg(feature = "sbp")]
-    pub fn samsung_bluray(self) -> Builder<Sbp, S, IN> {
+    pub fn samsung_bluray(self) -> Builder<Sbp, Input, Mono, <Sbp as Protocol>::Cmd> {
         self.protocol()
     }
 
     #[cfg(feature = "denon")]
-    pub fn denon(self) -> Builder<Denon, S, IN> {
+    pub fn denon(self) -> Builder<Denon, Input, Mono, <Denon as Protocol>::Cmd> {
         self.protocol()
     }
 
     #[cfg(feature = "remotes")]
     /// Use Remote control
-    pub fn remotecontrol<Remote>(self, _: Remote) -> Builder<SM, S, IN, Button<Remote>>
+    pub fn remotecontrol<Remote>(self, _: Remote) -> Builder<Proto, Input, Mono, Button<Remote>>
     where
         Remote: RemoteControlModel,
     {
         Builder {
-            resolution: self.resolution,
+            freq: self.freq,
             proto: PhantomData,
-            input: self.input,
-            method: PhantomData,
-            output: PhantomData,
+            pin: self.pin,
+            cmd: PhantomData,
+            monotonic: PhantomData,
         }
     }
 
     #[cfg(feature = "embedded-hal")]
     /// The Receiver use `pin` as input
-    pub fn pin<PIN: InputPin>(self, pin: PIN) -> Builder<SM, S, PinInput<PIN>, C> {
+    pub fn pin<NewPin: InputPin>(self, pin: NewPin) -> Builder<Proto, NewPin, Mono, Cmd> {
         Builder {
-            resolution: self.resolution,
+            freq: self.freq,
             proto: PhantomData,
-            input: PinInput(pin),
-            method: PhantomData,
-            output: PhantomData,
+            pin,
+            monotonic: PhantomData,
+            cmd: PhantomData,
         }
     }
 
-    /// The Receiver should read the data from a data buffer
-    pub fn buffer(self, buf: &[u32]) -> Builder<SM, Event, BufferInput<'_>, C> {
-        Builder {
-            resolution: self.resolution,
-            proto: PhantomData,
-            input: BufferInput(buf),
-            method: PhantomData,
-            output: PhantomData,
-        }
-    }
-
-    pub fn resolution(mut self, hz: u32) -> Self {
-        self.resolution = hz;
+    pub fn frequency(mut self, hz: u32) -> Self {
+        self.freq = hz;
         self
     }
 
-    /// Periodic Polled
-    pub fn polled(self) -> Builder<SM, Poll, IN, C> {
-        Builder {
-            resolution: self.resolution,
-            proto: PhantomData,
-            input: self.input,
-            method: PhantomData,
-            output: PhantomData,
-        }
-    }
-
-    /// Event driven
-    pub fn event_driven(self) -> Builder<SM, Event, IN, C> {
-        Builder {
-            resolution: self.resolution,
-            proto: PhantomData,
-            input: self.input,
-            method: PhantomData,
-            output: PhantomData,
-        }
-    }
-
-    /// Create a Receiver with resolution known at build time
-    pub fn build_const<const R: u32>(self) -> ConstReceiver<SM, S, IN, R>
-    where
-        SM: ConstDecodeStateMachine<R>,
-    {
-        ConstReceiver::with_input(self.input)
-    }
-
     /// Create the Receiver
-    pub fn build(self) -> Receiver<SM, S, IN, C>
+    pub fn build(self) -> Receiver<Proto, Input, Mono, Cmd>
     where
-        SM: DecoderStateMachine,
+        Proto: DecoderFactory<Mono>,
+        Cmd: From<<Proto as Protocol>::Cmd>,
     {
-        Receiver::with_input(self.resolution, self.input)
+        Receiver::with_input(self.freq, self.pin)
+    }
+
+    pub fn build_polled(self) -> PeriodicPoll<Proto, Input, Cmd>
+    where
+        Proto: DecoderFactory<u32>,
+        Cmd: From<<Proto as Protocol>::Cmd>,
+    {
+        PeriodicPoll::with_input(self.freq, self.pin)
     }
 }
