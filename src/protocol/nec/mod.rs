@@ -16,7 +16,7 @@ use core::marker::PhantomData;
 pub use apple::AppleNecCommand;
 pub use nec16::Nec16Command;
 pub use raw::NecDebugCmd;
-pub use samsung::NecSamsungCommand;
+pub use samsung::SamsungNecCommand;
 pub use standard::NecCommand;
 
 use crate::protocol::Protocol;
@@ -32,7 +32,7 @@ impl<C: NecCommandVariant> Protocol for Nec<C> {
 }
 
 /// Nec variant with Samsung bit encoding and Samsung timing
-pub type SamsungNec = Nec<NecSamsungCommand>;
+pub type SamsungNec = Nec<SamsungNecCommand>;
 
 /// Nec variant with 16 bit address and Nec standard timing
 pub type Nec16 = Nec<Nec16Command>;
@@ -57,7 +57,7 @@ pub trait NecCommandVariant: Sized {
     fn pack(&self) -> u32;
 }
 
-pub(crate) const NEC_STANDARD_TIMING: &NecPulseLen = &NecPulseLen {
+const NEC_STANDARD_TIMING: &NecPulseLen = &NecPulseLen {
     header_high: 9000,
     header_low: 4500,
     repeat_low: 2250,
@@ -66,7 +66,7 @@ pub(crate) const NEC_STANDARD_TIMING: &NecPulseLen = &NecPulseLen {
     data_one_low: 1690,
 };
 
-pub(crate) const NEC_SAMSUNG_TIMING: &NecPulseLen = &NecPulseLen {
+const NEC_SAMSUNG_TIMING: &NecPulseLen = &NecPulseLen {
     header_high: 4500,
     header_low: 4500,
     repeat_low: 2250,

@@ -2,7 +2,7 @@
 #[test]
 fn polled_rc5() {
     use infrared::{
-        protocol::{Rc5, Rc5Command},
+        protocol::{Rc5, rc5::Rc5Command},
         PeriodicPoll, Receiver,
     };
 

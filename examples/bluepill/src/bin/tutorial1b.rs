@@ -5,7 +5,7 @@ use bluepill_examples as _;
 use cortex_m_rt::entry;
 use defmt::info;
 use infrared::{
-    protocol::{Rc6, Rc6Command},
+    protocol::{Rc6, rc6::Rc6Command},
     remotecontrol::{Action, Button, DeviceType, RemoteControlModel},
     ProtocolId,
 };

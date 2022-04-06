@@ -1,14 +1,6 @@
 #[cfg(feature = "embedded-hal")]
 use embedded_hal::digital::v2::InputPin;
 
-#[cfg(feature = "denon")]
-use crate::protocol::DenonCommand;
-#[cfg(feature = "rc5")]
-use crate::protocol::Rc5Command;
-#[cfg(feature = "rc6")]
-use crate::protocol::Rc6Command;
-#[cfg(feature = "nec")]
-use crate::protocol::{AppleNecCommand, Nec16Command, NecCommand, NecDebugCmd, NecSamsungCommand};
 use crate::receiver::{time::InfraMonotonic, DecoderFactory, NoPin, Receiver};
 
 /// Multi Receiver
@@ -82,68 +74,68 @@ where
 /// MultiReceiver Command
 pub enum MultiReceiverCommand {
     #[cfg(feature = "nec")]
-    Nec(NecCommand),
+    Nec(crate::protocol::nec::NecCommand),
     #[cfg(feature = "nec")]
-    Nec16(Nec16Command),
+    Nec16(crate::protocol::nec::Nec16Command),
     #[cfg(feature = "nec")]
-    NecSamsung(NecSamsungCommand),
+    NecSamsung(crate::protocol::nec::SamsungNecCommand),
     #[cfg(feature = "nec")]
-    NecApple(AppleNecCommand),
+    NecApple(crate::protocol::nec::AppleNecCommand),
     #[cfg(feature = "nec")]
-    NecDebug(NecDebugCmd),
+    NecDebug(crate::protocol::nec::NecDebugCmd),
     #[cfg(feature = "rc5")]
-    Rc5(Rc5Command),
+    Rc5(crate::protocol::rc5::Rc5Command),
     #[cfg(feature = "rc6")]
-    Rc6(Rc6Command),
+    Rc6(crate::protocol::rc6::Rc6Command),
     #[cfg(feature = "denon")]
-    Denon(DenonCommand),
+    Denon(crate::protocol::denon::DenonCommand),
 }
 
 #[cfg(feature = "nec")]
-impl From<NecCommand> for MultiReceiverCommand {
-    fn from(cmd: NecCommand) -> MultiReceiverCommand {
+impl From<crate::protocol::nec::NecCommand> for MultiReceiverCommand {
+    fn from(cmd: crate::protocol::nec::NecCommand) -> MultiReceiverCommand {
         MultiReceiverCommand::Nec(cmd)
     }
 }
 #[cfg(feature = "nec")]
-impl From<Nec16Command> for MultiReceiverCommand {
-    fn from(cmd: Nec16Command) -> MultiReceiverCommand {
+impl From<crate::protocol::nec::Nec16Command> for MultiReceiverCommand {
+    fn from(cmd: crate::protocol::nec::Nec16Command) -> MultiReceiverCommand {
         MultiReceiverCommand::Nec16(cmd)
     }
 }
 #[cfg(feature = "nec")]
-impl From<NecSamsungCommand> for MultiReceiverCommand {
-    fn from(cmd: NecSamsungCommand) -> MultiReceiverCommand {
+impl From<crate::protocol::nec::SamsungNecCommand> for MultiReceiverCommand {
+    fn from(cmd: crate::protocol::nec::SamsungNecCommand) -> MultiReceiverCommand {
         MultiReceiverCommand::NecSamsung(cmd)
     }
 }
 #[cfg(feature = "nec")]
-impl From<AppleNecCommand> for MultiReceiverCommand {
-    fn from(cmd: AppleNecCommand) -> MultiReceiverCommand {
+impl From<crate::protocol::nec::AppleNecCommand> for MultiReceiverCommand {
+    fn from(cmd: crate::protocol::nec::AppleNecCommand) -> MultiReceiverCommand {
         MultiReceiverCommand::NecApple(cmd)
     }
 }
 #[cfg(feature = "nec")]
-impl From<NecDebugCmd> for MultiReceiverCommand {
-    fn from(cmd: NecDebugCmd) -> MultiReceiverCommand {
+impl From<crate::protocol::nec::NecDebugCmd> for MultiReceiverCommand {
+    fn from(cmd: crate::protocol::nec::NecDebugCmd) -> MultiReceiverCommand {
         MultiReceiverCommand::NecDebug(cmd)
     }
 }
 #[cfg(feature = "rc5")]
-impl From<Rc5Command> for MultiReceiverCommand {
-    fn from(cmd: Rc5Command) -> MultiReceiverCommand {
+impl From<crate::protocol::rc5::Rc5Command> for MultiReceiverCommand {
+    fn from(cmd: crate::protocol::rc5::Rc5Command) -> MultiReceiverCommand {
         MultiReceiverCommand::Rc5(cmd)
     }
 }
 #[cfg(feature = "rc6")]
-impl From<Rc6Command> for MultiReceiverCommand {
-    fn from(cmd: Rc6Command) -> MultiReceiverCommand {
+impl From<crate::protocol::rc6::Rc6Command> for MultiReceiverCommand {
+    fn from(cmd: crate::protocol::rc6::Rc6Command) -> MultiReceiverCommand {
         MultiReceiverCommand::Rc6(cmd)
     }
 }
 #[cfg(feature = "denon")]
-impl From<DenonCommand> for MultiReceiverCommand {
-    fn from(cmd: DenonCommand) -> MultiReceiverCommand {
+impl From<crate::protocol::denon::DenonCommand> for MultiReceiverCommand {
+    fn from(cmd: crate::protocol::denon::DenonCommand) -> MultiReceiverCommand {
         MultiReceiverCommand::Denon(cmd)
     }
 }

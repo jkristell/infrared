@@ -5,8 +5,8 @@
 //! Example:
 //! ```
 //! use infrared::{Receiver,
-//!     receiver::Builder, remotecontrol::rc5::CdPlayer, cmd::AddressCommand,
-//!     protocol::Rc5Command,
+//!     remotecontrol::rc5::CdPlayer, cmd::AddressCommand,
+//!     protocol::rc5::Rc5Command,
 //! };
 //! use dummy_pin::DummyPin;
 //!

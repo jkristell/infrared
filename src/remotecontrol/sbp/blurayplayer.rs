@@ -1,7 +1,7 @@
 use Action::*;
 
 use crate::{
-    protocol::SbpCommand,
+    protocol::sbp::SbpCommand,
     remotecontrol::{Action, DeviceType, RemoteControlModel},
     ProtocolId,
 };

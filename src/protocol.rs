@@ -3,35 +3,34 @@
 mod capture;
 
 #[cfg(feature = "denon")]
-mod denon;
+pub mod denon;
 #[cfg(feature = "nec")]
-mod nec;
+pub mod nec;
 #[cfg(feature = "rc5")]
-mod rc5;
+pub mod rc5;
 #[cfg(feature = "rc6")]
-mod rc6;
+pub mod rc6;
 #[cfg(feature = "sbp")]
-mod sbp;
+pub mod sbp;
 
 pub use capture::Capture;
 #[cfg(feature = "denon")]
 #[doc(inline)]
-pub use denon::{Denon, DenonCommand};
+pub use denon::{Denon};
 #[cfg(feature = "nec")]
 #[doc(inline)]
 pub use nec::{
-    AppleNec, AppleNecCommand, Nec, Nec16, Nec16Command, NecCommand, NecDebug, NecDebugCmd,
-    NecSamsungCommand, SamsungNec,
+    AppleNec, Nec, Nec16, NecDebug, SamsungNec,
 };
 #[cfg(feature = "rc5")]
 #[doc(inline)]
-pub use rc5::{Rc5, Rc5Command};
+pub use rc5::{Rc5};
 #[cfg(feature = "rc6")]
 #[doc(inline)]
-pub use rc6::{Rc6, Rc6Command};
+pub use rc6::{Rc6, };
 #[cfg(feature = "sbp")]
 #[doc(inline)]
-pub use sbp::{Sbp, SbpCommand};
+pub use sbp::{Sbp};
 
 pub(crate) mod utils;
 

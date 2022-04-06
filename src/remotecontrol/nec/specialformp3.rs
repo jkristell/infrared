@@ -1,7 +1,7 @@
 use Action::*;
 
 use crate::{
-    protocol::NecCommand,
+    protocol::nec::NecCommand,
     remotecontrol::{Action, DeviceType, RemoteControlModel},
     ProtocolId,
 };

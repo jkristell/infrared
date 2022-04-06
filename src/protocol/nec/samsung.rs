@@ -7,13 +7,13 @@ use crate::{
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub struct NecSamsungCommand {
+pub struct SamsungNecCommand {
     pub addr: u8,
     pub cmd: u8,
     pub repeat: bool,
 }
 
-impl NecCommandVariant for NecSamsungCommand {
+impl NecCommandVariant for SamsungNecCommand {
     const PULSE_DISTANCE: &'static NecPulseLen = NEC_SAMSUNG_TIMING;
 
     fn validate(bits: u32) -> bool {
@@ -23,7 +23,7 @@ impl NecCommandVariant for NecSamsungCommand {
     fn unpack(bits: u32, repeat: bool) -> Option<Self> {
         let addr = (bits & 0xFF) as u8;
         let cmd = ((bits >> 16) & 0xFF) as u8;
-        Some(NecSamsungCommand { addr, cmd, repeat })
+        Some(SamsungNecCommand { addr, cmd, repeat })
     }
 
     fn pack(&self) -> u32 {
@@ -33,13 +33,13 @@ impl NecCommandVariant for NecSamsungCommand {
     }
 }
 
-impl Command for NecSamsungCommand {
+impl Command for SamsungNecCommand {
     fn is_repeat(&self) -> bool {
         self.repeat
     }
 }
 
-impl AddressCommand for NecSamsungCommand {
+impl AddressCommand for SamsungNecCommand {
     fn address(&self) -> u32 {
         self.addr.into()
     }
@@ -49,7 +49,7 @@ impl AddressCommand for NecSamsungCommand {
     }
 
     fn create(addr: u32, cmd: u32) -> Option<Self> {
-        Some(NecSamsungCommand {
+        Some(SamsungNecCommand {
             addr: addr as u8,
             cmd: cmd as u8,
             repeat: false,

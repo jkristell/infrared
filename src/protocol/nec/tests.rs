@@ -2,7 +2,7 @@ use fugit::{TimerDurationU32, TimerInstantU32};
 
 use crate::{
     protocol::{
-        nec::{AppleNecCommand, Nec16Command, NecCommand, NecCommandVariant, NecSamsungCommand},
+        nec::{AppleNecCommand, Nec16Command, NecCommand, NecCommandVariant, SamsungNecCommand},
         Nec,
     },
     receiver::BufferInputReceiver,
@@ -60,20 +60,20 @@ fn cmd_standard() {
 
 #[test]
 fn cmd_samsumg() {
-    let cmd = NecSamsungCommand {
+    let cmd = SamsungNecCommand {
         addr: 7,
         cmd: 44,
         repeat: false,
     };
 
     let bits = cmd.pack();
-    NecSamsungCommand::validate(bits);
+    SamsungNecCommand::validate(bits);
 
     assert_eq!(bits, 0xD32C0707);
     assert_eq!((bits >> 24) & 0xFF, (!(bits >> 16) & 0xFF));
     assert_eq!((bits >> 8) & 0xFF, (bits & 0xFF));
 
-    let cmd2 = NecSamsungCommand::unpack(bits, false).unwrap();
+    let cmd2 = SamsungNecCommand::unpack(bits, false).unwrap();
     assert_eq!(cmd, cmd2);
 }
 

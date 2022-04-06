@@ -1,7 +1,7 @@
 use Action::*;
 
 use crate::{
-    protocol::Rc5Command,
+    protocol::rc5::Rc5Command,
     remotecontrol::{Action, DeviceType, RemoteControlModel},
     ProtocolId,
 };

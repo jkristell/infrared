@@ -1,7 +1,7 @@
 use Action::*;
 
 use crate::{
-    protocol::AppleNecCommand,
+    protocol::nec::AppleNecCommand,
     remotecontrol::{Action, DeviceType, RemoteControlModel},
     ProtocolId,
 };
