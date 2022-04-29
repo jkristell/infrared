@@ -11,6 +11,7 @@ use crate::protocol::Rc6Command;
 use crate::protocol::{AppleNecCommand, Nec16Command, NecCommand, NecDebugCmd, NecSamsungCommand};
 use crate::receiver::{time::InfraMonotonic, DecoderFactory, NoPin, Receiver};
 
+/// Multi Receiver
 pub struct MultiReceiver<
     const N: usize,
     Receivers: ReceiverWrapper<N, Time>,
@@ -31,7 +32,11 @@ impl<const N: usize, Receivers: ReceiverWrapper<N, Mono>, Input, Mono: InfraMono
         }
     }
 
-    pub fn event_generic(&mut self, dt: Mono::Duration, edge: bool) -> [Option<CmdEnum>; N] {
+    pub fn event_generic(
+        &mut self,
+        dt: Mono::Duration,
+        edge: bool,
+    ) -> [Option<MultiReceiverCommand>; N] {
         Receivers::event(&mut self.receivers, dt, edge)
     }
 
@@ -39,7 +44,7 @@ impl<const N: usize, Receivers: ReceiverWrapper<N, Mono>, Input, Mono: InfraMono
         &mut self,
         dt: Mono::Duration,
         flank: bool,
-    ) -> impl Iterator<Item = CmdEnum> {
+    ) -> impl Iterator<Item = MultiReceiverCommand> {
         let arr = self.event_generic(dt, flank);
         arr.into_iter().flatten()
     }
@@ -51,7 +56,10 @@ impl<const N: usize, Receivers, Pin: InputPin, Mono: InfraMonotonic>
 where
     Receivers: ReceiverWrapper<N, Mono>,
 {
-    pub fn event(&mut self, dt: Mono::Duration) -> Result<[Option<CmdEnum>; N], Pin::Error> {
+    pub fn event(
+        &mut self,
+        dt: Mono::Duration,
+    ) -> Result<[Option<MultiReceiverCommand>; N], Pin::Error> {
         let edge = self.input.is_low()?;
         Ok(self.event_generic(dt, edge))
     }
@@ -59,7 +67,7 @@ where
     pub fn event_iter(
         &mut self,
         dt: Mono::Duration,
-    ) -> Result<impl Iterator<Item = CmdEnum>, Pin::Error> {
+    ) -> Result<impl Iterator<Item = MultiReceiverCommand>, Pin::Error> {
         let arr = self.event(dt)?;
         Ok(arr.into_iter().flatten())
     }
@@ -71,7 +79,8 @@ where
 
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub enum CmdEnum {
+/// MultiReceiver Command
+pub enum MultiReceiverCommand {
     #[cfg(feature = "nec")]
     Nec(NecCommand),
     #[cfg(feature = "nec")]
@@ -91,51 +100,51 @@ pub enum CmdEnum {
 }
 
 #[cfg(feature = "nec")]
-impl From<NecCommand> for CmdEnum {
-    fn from(cmd: NecCommand) -> CmdEnum {
-        CmdEnum::Nec(cmd)
+impl From<NecCommand> for MultiReceiverCommand {
+    fn from(cmd: NecCommand) -> MultiReceiverCommand {
+        MultiReceiverCommand::Nec(cmd)
     }
 }
 #[cfg(feature = "nec")]
-impl From<Nec16Command> for CmdEnum {
-    fn from(cmd: Nec16Command) -> CmdEnum {
-        CmdEnum::Nec16(cmd)
+impl From<Nec16Command> for MultiReceiverCommand {
+    fn from(cmd: Nec16Command) -> MultiReceiverCommand {
+        MultiReceiverCommand::Nec16(cmd)
     }
 }
 #[cfg(feature = "nec")]
-impl From<NecSamsungCommand> for CmdEnum {
-    fn from(cmd: NecSamsungCommand) -> CmdEnum {
-        CmdEnum::NecSamsung(cmd)
+impl From<NecSamsungCommand> for MultiReceiverCommand {
+    fn from(cmd: NecSamsungCommand) -> MultiReceiverCommand {
+        MultiReceiverCommand::NecSamsung(cmd)
     }
 }
 #[cfg(feature = "nec")]
-impl From<AppleNecCommand> for CmdEnum {
-    fn from(cmd: AppleNecCommand) -> CmdEnum {
-        CmdEnum::NecApple(cmd)
+impl From<AppleNecCommand> for MultiReceiverCommand {
+    fn from(cmd: AppleNecCommand) -> MultiReceiverCommand {
+        MultiReceiverCommand::NecApple(cmd)
     }
 }
 #[cfg(feature = "nec")]
-impl From<NecDebugCmd> for CmdEnum {
-    fn from(cmd: NecDebugCmd) -> CmdEnum {
-        CmdEnum::NecDebug(cmd)
+impl From<NecDebugCmd> for MultiReceiverCommand {
+    fn from(cmd: NecDebugCmd) -> MultiReceiverCommand {
+        MultiReceiverCommand::NecDebug(cmd)
     }
 }
 #[cfg(feature = "rc5")]
-impl From<Rc5Command> for CmdEnum {
-    fn from(cmd: Rc5Command) -> CmdEnum {
-        CmdEnum::Rc5(cmd)
+impl From<Rc5Command> for MultiReceiverCommand {
+    fn from(cmd: Rc5Command) -> MultiReceiverCommand {
+        MultiReceiverCommand::Rc5(cmd)
     }
 }
 #[cfg(feature = "rc6")]
-impl From<Rc6Command> for CmdEnum {
-    fn from(cmd: Rc6Command) -> CmdEnum {
-        CmdEnum::Rc6(cmd)
+impl From<Rc6Command> for MultiReceiverCommand {
+    fn from(cmd: Rc6Command) -> MultiReceiverCommand {
+        MultiReceiverCommand::Rc6(cmd)
     }
 }
 #[cfg(feature = "denon")]
-impl From<DenonCommand> for CmdEnum {
-    fn from(cmd: DenonCommand) -> CmdEnum {
-        CmdEnum::Denon(cmd)
+impl From<DenonCommand> for MultiReceiverCommand {
+    fn from(cmd: DenonCommand) -> MultiReceiverCommand {
+        MultiReceiverCommand::Denon(cmd)
     }
 }
 
@@ -144,15 +153,19 @@ pub trait ReceiverWrapper<const N: usize, Mono: InfraMonotonic> {
 
     fn make(res: u32) -> Self::Receivers;
 
-    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, flank: bool) -> [Option<CmdEnum>; N];
+    fn event(
+        rs: &mut Self::Receivers,
+        dt: Mono::Duration,
+        flank: bool,
+    ) -> [Option<MultiReceiverCommand>; N];
 }
 
 impl<P1, P2, Mono: InfraMonotonic> ReceiverWrapper<2, Mono> for (P1, P2)
 where
     P1: DecoderFactory<Mono>,
     P2: DecoderFactory<Mono>,
-    P1::Cmd: Into<CmdEnum>,
-    P2::Cmd: Into<CmdEnum>,
+    P1::Cmd: Into<MultiReceiverCommand>,
+    P2::Cmd: Into<MultiReceiverCommand>,
 {
     type Receivers = (Receiver<P1, NoPin, Mono>, Receiver<P2, NoPin, Mono>);
 
@@ -160,7 +173,11 @@ where
         (Receiver::new(res), Receiver::new(res))
     }
 
-    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<CmdEnum>; 2] {
+    fn event(
+        rs: &mut Self::Receivers,
+        dt: Mono::Duration,
+        edge: bool,
+    ) -> [Option<MultiReceiverCommand>; 2] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -173,9 +190,9 @@ where
     P1: DecoderFactory<Mono>,
     P2: DecoderFactory<Mono>,
     P3: DecoderFactory<Mono>,
-    P1::Cmd: Into<CmdEnum>,
-    P2::Cmd: Into<CmdEnum>,
-    P3::Cmd: Into<CmdEnum>,
+    P1::Cmd: Into<MultiReceiverCommand>,
+    P2::Cmd: Into<MultiReceiverCommand>,
+    P3::Cmd: Into<MultiReceiverCommand>,
 {
     type Receivers = (
         Receiver<P1, NoPin, Mono>,
@@ -187,7 +204,11 @@ where
         (Receiver::new(res), Receiver::new(res), Receiver::new(res))
     }
 
-    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<CmdEnum>; 3] {
+    fn event(
+        rs: &mut Self::Receivers,
+        dt: Mono::Duration,
+        edge: bool,
+    ) -> [Option<MultiReceiverCommand>; 3] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -202,10 +223,10 @@ where
     P2: DecoderFactory<Mono>,
     P3: DecoderFactory<Mono>,
     P4: DecoderFactory<Mono>,
-    P1::Cmd: Into<CmdEnum>,
-    P2::Cmd: Into<CmdEnum>,
-    P3::Cmd: Into<CmdEnum>,
-    P4::Cmd: Into<CmdEnum>,
+    P1::Cmd: Into<MultiReceiverCommand>,
+    P2::Cmd: Into<MultiReceiverCommand>,
+    P3::Cmd: Into<MultiReceiverCommand>,
+    P4::Cmd: Into<MultiReceiverCommand>,
 {
     type Receivers = (
         Receiver<P1, NoPin, Mono>,
@@ -223,7 +244,11 @@ where
         )
     }
 
-    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<CmdEnum>; 4] {
+    fn event(
+        rs: &mut Self::Receivers,
+        dt: Mono::Duration,
+        edge: bool,
+    ) -> [Option<MultiReceiverCommand>; 4] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -240,11 +265,11 @@ where
     P3: DecoderFactory<Mono>,
     P4: DecoderFactory<Mono>,
     P5: DecoderFactory<Mono>,
-    P1::Cmd: Into<CmdEnum>,
-    P2::Cmd: Into<CmdEnum>,
-    P3::Cmd: Into<CmdEnum>,
-    P4::Cmd: Into<CmdEnum>,
-    P5::Cmd: Into<CmdEnum>,
+    P1::Cmd: Into<MultiReceiverCommand>,
+    P2::Cmd: Into<MultiReceiverCommand>,
+    P3::Cmd: Into<MultiReceiverCommand>,
+    P4::Cmd: Into<MultiReceiverCommand>,
+    P5::Cmd: Into<MultiReceiverCommand>,
 {
     type Receivers = (
         Receiver<P1, NoPin, Mono>,
@@ -264,7 +289,11 @@ where
         )
     }
 
-    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<CmdEnum>; 5] {
+    fn event(
+        rs: &mut Self::Receivers,
+        dt: Mono::Duration,
+        edge: bool,
+    ) -> [Option<MultiReceiverCommand>; 5] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -285,12 +314,12 @@ where
     P5: DecoderFactory<Mono>,
     P6: DecoderFactory<Mono>,
 
-    P1::Cmd: Into<CmdEnum>,
-    P2::Cmd: Into<CmdEnum>,
-    P3::Cmd: Into<CmdEnum>,
-    P4::Cmd: Into<CmdEnum>,
-    P5::Cmd: Into<CmdEnum>,
-    P6::Cmd: Into<CmdEnum>,
+    P1::Cmd: Into<MultiReceiverCommand>,
+    P2::Cmd: Into<MultiReceiverCommand>,
+    P3::Cmd: Into<MultiReceiverCommand>,
+    P4::Cmd: Into<MultiReceiverCommand>,
+    P5::Cmd: Into<MultiReceiverCommand>,
+    P6::Cmd: Into<MultiReceiverCommand>,
 {
     type Receivers = (
         Receiver<P1, NoPin, Mono>,
@@ -312,7 +341,11 @@ where
         )
     }
 
-    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<CmdEnum>; 6] {
+    fn event(
+        rs: &mut Self::Receivers,
+        dt: Mono::Duration,
+        edge: bool,
+    ) -> [Option<MultiReceiverCommand>; 6] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
