@@ -12,7 +12,7 @@ license = "MIT OR Apache-2.0"
 
 [workspace]
 members = ["examples/vcd-parser"]
-exclude = ["examples/bluepill", "examples/rp2040"]
+exclude = ["examples/bluepill", "examples/rp-pico"]
 
 [features]
 default = ["nec", "rc5", "rc6", "sbp", "denon", "remotes", "embedded"]
