@@ -112,8 +112,6 @@ use core::marker::PhantomData;
 
 #[cfg(feature = "embedded-hal")]
 use embedded_hal::digital::v2::InputPin;
-#[cfg(feature = "fugit")]
-use fugit::TimerInstantU32;
 
 use crate::{protocol::Capture, receiver::time::InfraMonotonic, Protocol};
 
@@ -233,14 +231,27 @@ where
 }
 
 #[cfg(feature = "embedded")]
-impl<Proto, Pin, const HZ: u32, Cmd> Receiver<Proto, Pin, TimerInstantU32<HZ>, Cmd>
+impl<Proto, Pin, const HZ: u32, Cmd> Receiver<Proto, Pin, fugit::TimerInstantU32<HZ>, Cmd>
 where
-    Proto: DecoderFactory<TimerInstantU32<HZ>>,
+    Proto: DecoderFactory<fugit::TimerInstantU32<HZ>>,
     Pin: InputPin,
     Cmd: From<Proto::Cmd>,
 {
     /// Create a `Receiver` with `pin` as input
     pub fn with_fugit(pin: Pin) -> Self {
+        Self::with_input(HZ, pin)
+    }
+}
+
+#[cfg(feature = "embedded")]
+impl<Proto, Pin, const HZ: u32, Cmd> Receiver<Proto, Pin, fugit::TimerInstantU64<HZ>, Cmd>
+where
+    Proto: DecoderFactory<fugit::TimerInstantU64<HZ>>,
+    Pin: InputPin,
+    Cmd: From<Proto::Cmd>,
+{
+    /// Create a `Receiver` with `pin` as input
+    pub fn with_fugit64(pin: Pin) -> Self {
         Self::with_input(HZ, pin)
     }
 }
