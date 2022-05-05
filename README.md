@@ -12,15 +12,10 @@ such as input capture, and be useful in host applications (such as Blipper).
 
 ### Supported protocols
  - The NEC Protocol and the Samsung variant of it
- - Philips Rc5
- - Philips Rc6
+ - Philips Rc5 and Rc6
  - "Samsung BluRay Player protocol". Please let know if you know what it really is called :)
  - Denon 48 bit protocol
 
-### Examples
- - The [infrared-examples](https://github.com/jkristell/infrared-examples) repo contains various examples for receiving and transmitting infrared with the
-  blue pill board
-  
 ## Tested with
  - Tested with bluepill board
  - Vishay TSOP382 IR receiver
