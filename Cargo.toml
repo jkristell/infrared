@@ -1,6 +1,6 @@
 [package]
 name = "infrared"
-version = "0.13.0"
+version = "0.14.0"
 authors = ["Johan Kristell <johan@jott.se>"]
 edition = "2021"
 description = "Infrared remote control library"
