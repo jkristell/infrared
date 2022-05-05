@@ -199,8 +199,6 @@ where
         // Update state machine
         let state = self.decoder.event(edge, dt);
 
-        trace!("dt: {:?}, edge: {} s: {:?}", dt, edge, state);
-
         match state {
             State::Done => {
                 let cmd = self.decoder.command().map(Into::into);
