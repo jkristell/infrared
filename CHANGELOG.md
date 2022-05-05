@@ -1,10 +1,11 @@
 # Changelog
 
-## [0.14.0] - 2022-04-05
+## [0.14.0] - 2022-05-05
  - Added support fugit and made reworked the time handling
  - Lots of internal updates
  - Removed the ConstReceiver type. Use a Receiver with Fugit instead.
  - Renamed NecApple to AppleNec and NecSamsung to SamsungNec
+ - Added rp-pico example.
 
 ## [0.13.0] - 2021-09-28
  - Added the ability to specify a remote control with a Receiver
