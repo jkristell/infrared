@@ -1,0 +1,34 @@
+[package]
+name = "infrared-examples"
+version = "0.8.0"
+authors = ["Johan Kristell <johan@jott.se>"]
+publish = false
+edition = "2018"
+
+[dependencies]
+panic-halt = "0.2.0"
+ufmt = "0.1.0"
+embedded-hal = "0.2.3"
+infrared = { path = "../.." }
+
+[dependencies.arduino-hal]
+git = "https://github.com/rahix/avr-hal"
+features = ["arduino-uno"]
+
+[dependencies.avr-device]
+version = "0.3"
+
+[profile.dev]
+panic = "abort"
+lto = true
+opt-level = "s"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+debug = true
+lto = true
+opt-level = "s"
+
+[patch.crates-io]
+ufmt = { git = "https://github.com/Rahix/ufmt.git", rev = "12225dc1678e42fecb0e8635bf80f501e24817d9" }
