@@ -1,3 +1,5 @@
+use crate::ProtocolId;
+
 /// Command
 pub trait Command {
     /// True if command is a repeat
@@ -12,4 +14,13 @@ pub trait AddressCommand: Command + Sized {
     fn command(&self) -> u32;
     /// Create
     fn create(addr: u32, cmd: u32) -> Option<Self>;
+}
+
+
+#[derive(Debug)]
+pub struct AnyCommand {
+    pub protocol: ProtocolId,
+    pub address: u32,
+    pub command: u32,
+    pub repeat: bool,
 }
