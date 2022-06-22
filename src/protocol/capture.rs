@@ -32,8 +32,6 @@ impl<Mono: InfraMonotonic> Protocol for Capture<Mono> {
 }
 
 impl<Mono: InfraMonotonic> ProtocolDecoder<Mono, [Mono::Duration; 96]> for CaptureDecoder<Mono> {
-    //type Cmd = [Mono::Duration; 96];
-    //type InternalState = State;
     fn event(&mut self, _edge: bool, dur: Mono::Duration) -> State {
         if self.pos >= self.ts.len() {
             return State::Done;

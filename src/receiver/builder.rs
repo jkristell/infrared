@@ -12,7 +12,7 @@ use crate::protocol::Rc6;
 #[cfg(feature = "sbp")]
 use crate::protocol::Sbp;
 #[cfg(feature = "nec")]
-use crate::protocol::{AppleNec, Nec, Nec16, SamsungNec, nec::NecCommand};
+use crate::protocol::{nec::NecCommand, AppleNec, Nec, Nec16, SamsungNec};
 #[cfg(feature = "remotes")]
 use crate::remotecontrol::{Button, RemoteControlModel};
 use crate::{

@@ -16,21 +16,19 @@ pub mod sbp;
 pub use capture::Capture;
 #[cfg(feature = "denon")]
 #[doc(inline)]
-pub use denon::{Denon};
+pub use denon::Denon;
 #[cfg(feature = "nec")]
 #[doc(inline)]
-pub use nec::{
-    AppleNec, Nec, Nec16, NecDebug, SamsungNec,
-};
+pub use nec::{AppleNec, Nec, Nec16, NecDebug, SamsungNec};
 #[cfg(feature = "rc5")]
 #[doc(inline)]
-pub use rc5::{Rc5};
+pub use rc5::Rc5;
 #[cfg(feature = "rc6")]
 #[doc(inline)]
-pub use rc6::{Rc6, };
+pub use rc6::Rc6;
 #[cfg(feature = "sbp")]
 #[doc(inline)]
-pub use sbp::{Sbp};
+pub use sbp::Sbp;
 
 pub(crate) mod utils;
 
