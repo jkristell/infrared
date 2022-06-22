@@ -2,7 +2,7 @@ use crate::{
     protocol::{rc5::Rc5Command, Rc5},
     receiver::{
         time::{InfraMonotonic, PulseSpans},
-        DecoderFactory, DecodingError, ProtocolDecoder, State,
+        DecoderBuilder, DecodingError, ProtocolDecoder, State,
     },
 };
 
@@ -10,10 +10,10 @@ const RC5_BASE_TIME: u32 = 889;
 const PULSE: [u32; 8] = [RC5_BASE_TIME, 2 * RC5_BASE_TIME, 0, 0, 0, 0, 0, 0];
 const TOL: [u32; 8] = [12, 10, 0, 0, 0, 0, 0, 0];
 
-impl<Mono: InfraMonotonic> DecoderFactory<Mono> for Rc5 {
+impl<Mono: InfraMonotonic> DecoderBuilder<Mono> for Rc5 {
     type Decoder = Rc5Decoder<Mono>;
 
-    fn decoder(freq: u32) -> Self::Decoder {
+    fn build(freq: u32) -> Self::Decoder {
         Rc5Decoder {
             state: Rc5State::Idle,
             bitbuf: 0,
@@ -23,7 +23,7 @@ impl<Mono: InfraMonotonic> DecoderFactory<Mono> for Rc5 {
     }
 }
 
-impl<Mono: InfraMonotonic> ProtocolDecoder<Mono, Rc5Command> for Rc5Decoder<Mono> {
+impl<Mono: InfraMonotonic> ProtocolDecoder<Rc5, Mono> for Rc5Decoder<Mono> {
     fn event(&mut self, rising: bool, delta_t: Mono::Duration) -> State {
         use Rc5State::*;
 
@@ -89,19 +89,14 @@ pub struct Rc5Decoder<Mono: InfraMonotonic> {
     spans: PulseSpans<Mono>,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Rc5State {
+    #[default]
     Idle,
     Data(u8),
     Done,
     Err(DecodingError),
-}
-
-impl Default for Rc5State {
-    fn default() -> Self {
-        Rc5State::Idle
-    }
 }
 
 impl From<Rc5State> for State {

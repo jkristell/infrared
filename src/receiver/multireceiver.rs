@@ -1,7 +1,7 @@
 #[cfg(feature = "embedded-hal")]
 use embedded_hal::digital::v2::InputPin;
 
-use crate::receiver::{time::InfraMonotonic, DecoderFactory, NoPin, Receiver};
+use crate::receiver::{time::InfraMonotonic, DecoderBuilder, NoPin, Receiver};
 
 /// Multi Receiver
 pub struct MultiReceiver<
@@ -154,8 +154,8 @@ pub trait ReceiverWrapper<const N: usize, Mono: InfraMonotonic> {
 
 impl<P1, P2, Mono: InfraMonotonic> ReceiverWrapper<2, Mono> for (P1, P2)
 where
-    P1: DecoderFactory<Mono>,
-    P2: DecoderFactory<Mono>,
+    P1: DecoderBuilder<Mono>,
+    P2: DecoderBuilder<Mono>,
     P1::Cmd: Into<MultiReceiverCommand>,
     P2::Cmd: Into<MultiReceiverCommand>,
 {
@@ -179,9 +179,9 @@ where
 
 impl<P1, P2, P3, Mono: InfraMonotonic> ReceiverWrapper<3, Mono> for (P1, P2, P3)
 where
-    P1: DecoderFactory<Mono>,
-    P2: DecoderFactory<Mono>,
-    P3: DecoderFactory<Mono>,
+    P1: DecoderBuilder<Mono>,
+    P2: DecoderBuilder<Mono>,
+    P3: DecoderBuilder<Mono>,
     P1::Cmd: Into<MultiReceiverCommand>,
     P2::Cmd: Into<MultiReceiverCommand>,
     P3::Cmd: Into<MultiReceiverCommand>,
@@ -211,10 +211,10 @@ where
 
 impl<P1, P2, P3, P4, Mono: InfraMonotonic> ReceiverWrapper<4, Mono> for (P1, P2, P3, P4)
 where
-    P1: DecoderFactory<Mono>,
-    P2: DecoderFactory<Mono>,
-    P3: DecoderFactory<Mono>,
-    P4: DecoderFactory<Mono>,
+    P1: DecoderBuilder<Mono>,
+    P2: DecoderBuilder<Mono>,
+    P3: DecoderBuilder<Mono>,
+    P4: DecoderBuilder<Mono>,
     P1::Cmd: Into<MultiReceiverCommand>,
     P2::Cmd: Into<MultiReceiverCommand>,
     P3::Cmd: Into<MultiReceiverCommand>,
@@ -252,11 +252,11 @@ where
 
 impl<P1, P2, P3, P4, P5, Mono: InfraMonotonic> ReceiverWrapper<5, Mono> for (P1, P2, P3, P4, P5)
 where
-    P1: DecoderFactory<Mono>,
-    P2: DecoderFactory<Mono>,
-    P3: DecoderFactory<Mono>,
-    P4: DecoderFactory<Mono>,
-    P5: DecoderFactory<Mono>,
+    P1: DecoderBuilder<Mono>,
+    P2: DecoderBuilder<Mono>,
+    P3: DecoderBuilder<Mono>,
+    P4: DecoderBuilder<Mono>,
+    P5: DecoderBuilder<Mono>,
     P1::Cmd: Into<MultiReceiverCommand>,
     P2::Cmd: Into<MultiReceiverCommand>,
     P3::Cmd: Into<MultiReceiverCommand>,
@@ -299,12 +299,12 @@ where
 impl<P1, P2, P3, P4, P5, P6, Mono: InfraMonotonic> ReceiverWrapper<6, Mono>
     for (P1, P2, P3, P4, P5, P6)
 where
-    P1: DecoderFactory<Mono>,
-    P2: DecoderFactory<Mono>,
-    P3: DecoderFactory<Mono>,
-    P4: DecoderFactory<Mono>,
-    P5: DecoderFactory<Mono>,
-    P6: DecoderFactory<Mono>,
+    P1: DecoderBuilder<Mono>,
+    P2: DecoderBuilder<Mono>,
+    P3: DecoderBuilder<Mono>,
+    P4: DecoderBuilder<Mono>,
+    P5: DecoderBuilder<Mono>,
+    P6: DecoderBuilder<Mono>,
 
     P1::Cmd: Into<MultiReceiverCommand>,
     P2::Cmd: Into<MultiReceiverCommand>,

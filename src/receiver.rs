@@ -20,7 +20,7 @@
 //! // Resolution of the clock used
 //! const RESOLUTION: u32 = 1_000_000;
 //!
-//! let mut receiver = Receiver::builder()
+//! let mut receiver = infrared::receiver()
 //!     .rc5()
 //!     .frequency(RESOLUTION)
 //!     .pin(input_pin)
@@ -113,7 +113,7 @@ use core::marker::PhantomData;
 #[cfg(feature = "embedded-hal")]
 use embedded_hal::digital::v2::InputPin;
 
-use crate::{protocol::Capture, receiver::time::InfraMonotonic, Protocol};
+use crate::{receiver::time::InfraMonotonic, Protocol};
 
 mod bufferinputreceiver;
 mod builder;
@@ -126,7 +126,7 @@ pub mod time;
 
 pub use bufferinputreceiver::BufferInputReceiver;
 pub use builder::Builder;
-pub use decoder::{DecoderFactory, ProtocolDecoder, State};
+pub use decoder::{DecoderBuilder, ProtocolDecoder, State};
 pub use error::{DecodingError, Error};
 pub use multireceiver::{MultiReceiver, MultiReceiverCommand};
 pub use ppoll::PeriodicPoll;
@@ -136,7 +136,7 @@ pub struct NoPin;
 
 /// Event based Receiver
 pub struct Receiver<
-    Proto: DecoderFactory<Mono>,
+    Proto: DecoderBuilder<Mono>,
     Pin = NoPin,
     Mono: InfraMonotonic = u32,
     Cmd: From<Proto::Cmd> = <Proto as Protocol>::Cmd,
@@ -150,20 +150,22 @@ pub struct Receiver<
     pub(crate) cmd: PhantomData<Cmd>,
 }
 
+/* 
 impl Receiver<Capture<u32>> {
     pub fn builder() -> Builder {
         Builder::default()
     }
 }
+*/
 
 impl<Proto, Mono, Cmd> Receiver<Proto, NoPin, Mono, Cmd>
 where
-    Proto: DecoderFactory<Mono>,
+    Proto: DecoderBuilder<Mono>,
     Mono: InfraMonotonic,
     Cmd: From<Proto::Cmd>,
 {
     pub fn new(freq: u32) -> Receiver<Proto, NoPin, Mono, Cmd> {
-        let decoder = Proto::decoder(freq);
+        let decoder = Proto::build(freq);
 
         Receiver {
             decoder,
@@ -176,12 +178,12 @@ where
 
 impl<Proto, Input, Mono, Cmd> Receiver<Proto, Input, Mono, Cmd>
 where
-    Proto: DecoderFactory<Mono>,
+    Proto: DecoderBuilder<Mono>,
     Mono: InfraMonotonic,
     Cmd: From<Proto::Cmd>,
 {
     pub fn with_input(freq: u32, input: Input) -> Self {
-        let decoder = Proto::decoder(freq);
+        let decoder = Proto::build(freq);
 
         Receiver {
             decoder,
@@ -217,7 +219,7 @@ where
 #[cfg(feature = "embedded-hal")]
 impl<Proto, Pin, Mono, Cmd> Receiver<Proto, Pin, Mono, Cmd>
 where
-    Proto: DecoderFactory<Mono>,
+    Proto: DecoderBuilder<Mono>,
     Pin: InputPin,
     Mono: InfraMonotonic,
     Cmd: From<Proto::Cmd>,
@@ -231,7 +233,7 @@ where
 #[cfg(feature = "embedded")]
 impl<Proto, Pin, const HZ: u32, Cmd> Receiver<Proto, Pin, fugit::TimerInstantU32<HZ>, Cmd>
 where
-    Proto: DecoderFactory<fugit::TimerInstantU32<HZ>>,
+    Proto: DecoderBuilder<fugit::TimerInstantU32<HZ>>,
     Pin: InputPin,
     Cmd: From<Proto::Cmd>,
 {
@@ -244,7 +246,7 @@ where
 #[cfg(feature = "embedded")]
 impl<Proto, Pin, const HZ: u32, Cmd> Receiver<Proto, Pin, fugit::TimerInstantU64<HZ>, Cmd>
 where
-    Proto: DecoderFactory<fugit::TimerInstantU64<HZ>>,
+    Proto: DecoderBuilder<fugit::TimerInstantU64<HZ>>,
     Pin: InputPin,
     Cmd: From<Proto::Cmd>,
 {
@@ -256,7 +258,7 @@ where
 
 impl<Proto, Mono, Cmd> Receiver<Proto, NoPin, Mono, Cmd>
 where
-    Proto: DecoderFactory<Mono>,
+    Proto: DecoderBuilder<Mono>,
     Mono: InfraMonotonic,
     Cmd: From<Proto::Cmd>,
 {
@@ -279,7 +281,7 @@ where
 #[cfg(feature = "embedded-hal")]
 impl<Proto, Pin, Mono, Cmd> Receiver<Proto, Pin, Mono, Cmd>
 where
-    Proto: DecoderFactory<Mono>,
+    Proto: DecoderBuilder<Mono>,
     Pin: InputPin,
     Mono: InfraMonotonic,
     Cmd: From<Proto::Cmd>,

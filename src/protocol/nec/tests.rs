@@ -7,7 +7,6 @@ use crate::{
     },
     receiver::BufferInputReceiver,
     sender::PulsedataBuffer,
-    Receiver,
 };
 
 #[test]
@@ -221,7 +220,7 @@ fn fugit() {
         97387
     ];
 
-    let mut receiver = Receiver::builder()
+    let mut receiver = crate::receiver()
         .nec()
         .monotonic::<TimerInstantU32<1_000_000>>()
         .build();

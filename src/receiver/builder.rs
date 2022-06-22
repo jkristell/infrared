@@ -16,7 +16,7 @@ use crate::protocol::{nec::NecCommand, AppleNec, Nec, Nec16, SamsungNec};
 #[cfg(feature = "remotes")]
 use crate::remotecontrol::{Button, RemoteControlModel};
 use crate::{
-    receiver::{time::InfraMonotonic, DecoderFactory, NoPin, Receiver},
+    receiver::{time::InfraMonotonic, DecoderBuilder, NoPin, Receiver},
     PeriodicPoll, Protocol,
 };
 
@@ -141,7 +141,7 @@ where
     /// Create the Receiver
     pub fn build(self) -> Receiver<Proto, Input, Mono, Cmd>
     where
-        Proto: DecoderFactory<Mono>,
+        Proto: DecoderBuilder<Mono>,
         Cmd: From<<Proto as Protocol>::Cmd>,
     {
         Receiver::with_input(self.freq, self.pin)
@@ -149,7 +149,7 @@ where
 
     pub fn build_polled(self) -> PeriodicPoll<Proto, Input, Cmd>
     where
-        Proto: DecoderFactory<u32>,
+        Proto: DecoderBuilder<u32>,
         Cmd: From<<Proto as Protocol>::Cmd>,
     {
         PeriodicPoll::with_input(self.freq, self.pin)

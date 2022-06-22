@@ -1,7 +1,5 @@
 //! Infrared protocol
 
-mod capture;
-
 #[cfg(feature = "denon")]
 pub mod denon;
 #[cfg(feature = "nec")]
@@ -13,7 +11,7 @@ pub mod rc6;
 #[cfg(feature = "sbp")]
 pub mod sbp;
 
-pub use capture::Capture;
+//pub use capture::Capture;
 #[cfg(feature = "denon")]
 #[doc(inline)]
 pub use denon::Denon;

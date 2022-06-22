@@ -11,16 +11,20 @@ use crate::{
 /// Used to create a Decoder for a protocol
 ///
 /// Handles the creation of the pulse spans for the protocol
-pub trait DecoderFactory<Mono: InfraMonotonic>: Protocol {
+pub trait DecoderBuilder<Mono: InfraMonotonic>: Protocol + Sized {
     /// Type of the decoder
-    type Decoder: ProtocolDecoder<Mono, Self::Cmd>;
+    type Decoder: ProtocolDecoder<Self, Mono>;
 
     /// Create the decoder
-    fn decoder(freq: u32) -> Self::Decoder;
+    fn build(freq: u32) -> Self::Decoder;
 }
 
 /// Protocol decode state machine
-pub trait ProtocolDecoder<Mono: InfraMonotonic, Cmd> {
+pub trait ProtocolDecoder<Proto, Mono>
+where
+    Proto: Protocol + ?Sized,
+    Mono: InfraMonotonic,
+{
     /// Notify the state machine of a new event
     /// * `edge`: true = positive edge, false = negative edge
     /// * `dt` : Duration since last event
@@ -28,7 +32,7 @@ pub trait ProtocolDecoder<Mono: InfraMonotonic, Cmd> {
 
     /// Get the command
     /// Returns the data if State == Done, otherwise None
-    fn command(&self) -> Option<Cmd>;
+    fn command(&self) -> Option<Proto::Cmd>;
 
     /// Reset the decoder
     fn reset(&mut self);
@@ -41,7 +45,7 @@ pub trait ProtocolDecoder<Mono: InfraMonotonic, Cmd> {
         &mut self,
         edge: bool,
         dt: Mono::Duration,
-    ) -> Result<Option<Cmd>, DecodingError> {
+    ) -> Result<Option<Proto::Cmd>, DecodingError> {
         match self.event(edge, dt) {
             State::Idle | State::Receiving => Ok(None),
             State::Done => {

@@ -2,7 +2,7 @@ use crate::{
     protocol::Protocol,
     receiver::{
         time::{InfraMonotonic, PulseSpans},
-        DecoderFactory, ProtocolDecoder, State,
+        DecoderBuilder, ProtocolDecoder, State,
     },
 };
 
@@ -34,10 +34,10 @@ impl Protocol for Denon {
     type Cmd = DenonCommand;
 }
 
-impl<Mono: InfraMonotonic> DecoderFactory<Mono> for Denon {
+impl<Mono: InfraMonotonic> DecoderBuilder<Mono> for Denon {
     type Decoder = DenonDecoder<Mono>;
 
-    fn decoder(freq: u32) -> Self::Decoder {
+    fn build(freq: u32) -> Self::Decoder {
         DenonDecoder {
             state: DenonState::Idle,
             buf: 0,
@@ -60,7 +60,7 @@ pub struct DenonCommand {
     pub bits: u64,
 }
 
-impl<Mono: InfraMonotonic> ProtocolDecoder<Mono, DenonCommand> for DenonDecoder<Mono> {
+impl<Mono: InfraMonotonic> ProtocolDecoder<Denon, Mono> for DenonDecoder<Mono> {
     #[rustfmt::skip]
     fn event(&mut self, rising: bool, dt: Mono::Duration) -> State {
 

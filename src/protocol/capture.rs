@@ -3,14 +3,14 @@ use core::marker::PhantomData;
 use crate::{
     receiver::{
         time::{InfraMonotonic, PulseSpans},
-        DecoderFactory, ProtocolDecoder, State,
+        DecoderBuilder, ProtocolDecoder, State,
     },
     Protocol,
 };
 
-impl<Mono: InfraMonotonic> DecoderFactory<Mono> for Capture<Mono> {
+impl<Mono: InfraMonotonic> DecoderBuilder<Mono> for Capture<Mono> {
     type Decoder = CaptureDecoder<Mono>;
-    fn decoder(_freq: u32) -> Self::Decoder {
+    fn build(_freq: u32) -> Self::Decoder {
         CaptureDecoder {
             ts: [Mono::ZERO_DURATION; 96],
             pos: 0,
@@ -31,7 +31,9 @@ impl<Mono: InfraMonotonic> Protocol for Capture<Mono> {
     type Cmd = [Mono::Duration; 96];
 }
 
-impl<Mono: InfraMonotonic> ProtocolDecoder<Mono, [Mono::Duration; 96]> for CaptureDecoder<Mono> {
+impl<Mono: InfraMonotonic> ProtocolDecoder<Capture<Mono>, Mono> for CaptureDecoder<Mono> {
+    //type Cmd = [Mono::Duration; 96];
+    //type InternalState = State;
     fn event(&mut self, _edge: bool, dur: Mono::Duration) -> State {
         if self.pos >= self.ts.len() {
             return State::Done;

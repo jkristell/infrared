@@ -2,7 +2,7 @@ use crate::{
     protocol::{rc6::Rc6Command, Rc6},
     receiver::{
         time::{InfraMonotonic, PulseSpans},
-        DecoderFactory, DecodingError, ProtocolDecoder, State,
+        DecoderBuilder, DecodingError, ProtocolDecoder, State,
     },
 };
 
@@ -19,10 +19,10 @@ const PULSE: [u32; 8] = [
 ];
 const TOL: [u32; 8] = [12, 12, 12, 12, 12, 12, 12, 12];
 
-impl<Mono: InfraMonotonic> DecoderFactory<Mono> for Rc6 {
+impl<Mono: InfraMonotonic> DecoderBuilder<Mono> for Rc6 {
     type Decoder = Rc6Decoder<Mono>;
 
-    fn decoder(freq: u32) -> Self::Decoder {
+    fn build(freq: u32) -> Self::Decoder {
         Rc6Decoder {
             state: Rc6State::Idle,
             data: 0,
@@ -34,7 +34,7 @@ impl<Mono: InfraMonotonic> DecoderFactory<Mono> for Rc6 {
     }
 }
 
-impl<Mono: InfraMonotonic> ProtocolDecoder<Mono, Rc6Command> for Rc6Decoder<Mono> {
+impl<Mono: InfraMonotonic> ProtocolDecoder<Rc6, Mono> for Rc6Decoder<Mono> {
     #[rustfmt::skip]
     fn event(&mut self, rising: bool, dt: Mono::Duration) -> State {
         use Rc6State::*;

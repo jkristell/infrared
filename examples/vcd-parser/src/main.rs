@@ -4,7 +4,6 @@ use std::{
     path::Path,
 };
 
-use infrared::Receiver;
 
 fn main() -> io::Result<()> {
     let mut args = std::env::args();
@@ -19,7 +18,7 @@ fn main() -> io::Result<()> {
 
     println!("Samples captured at: {:?} Hz", resolution);
 
-    let mut ir_recv = Receiver::builder()
+    let mut ir_recv = infrared::receiver()
         .frequency(resolution)
         .monotonic::<u64>()
         .nec_samsung()

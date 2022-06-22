@@ -16,7 +16,7 @@ use crate::{
     protocol::Protocol,
     receiver::{
         time::{InfraMonotonic, PulseSpans},
-        DecoderFactory,
+        DecoderBuilder,
     },
 };
 
@@ -39,10 +39,10 @@ const PULSE: [u32; 8] = [
 ];
 const TOL: [u32; 8] = [5, 5, 10, 10, 0, 0, 0, 0];
 
-impl<Mono: InfraMonotonic> DecoderFactory<Mono> for Sbp {
+impl<Mono: InfraMonotonic> DecoderBuilder<Mono> for Sbp {
     type Decoder = SbpDecoder<Mono>;
 
-    fn decoder(freq: u32) -> Self::Decoder {
+    fn build(freq: u32) -> Self::Decoder {
         SbpDecoder {
             state: SbpState::Init,
             address: 0,
@@ -128,7 +128,7 @@ pub enum SbpState {
     Err(DecodingError),
 }
 
-impl<Mono: InfraMonotonic> ProtocolDecoder<Mono, SbpCommand> for SbpDecoder<Mono> {
+impl<Mono: InfraMonotonic> ProtocolDecoder<Sbp, Mono> for SbpDecoder<Mono> {
     #[rustfmt::skip]
     fn event(&mut self, rising: bool, dt: Mono::Duration) -> State {
         use SbpPulse::*;

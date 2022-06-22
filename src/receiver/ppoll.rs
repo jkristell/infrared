@@ -4,13 +4,13 @@ use core::marker::PhantomData;
 use embedded_hal::digital::v2::InputPin;
 
 use crate::{
-    receiver::{DecoderFactory, DecodingError, Error, NoPin, ProtocolDecoder},
+    receiver::{DecoderBuilder, DecodingError, Error, NoPin, ProtocolDecoder},
     Protocol,
 };
 
 /// Period poll Receiver
 pub struct PeriodicPoll<
-    Proto: DecoderFactory<u32>,
+    Proto: DecoderBuilder<u32>,
     Input = NoPin,
     Cmd: From<<Proto as Protocol>::Cmd> = <Proto as Protocol>::Cmd,
 > {
@@ -30,12 +30,12 @@ pub struct PeriodicPoll<
 
 impl<Proto, Input, Cmd> PeriodicPoll<Proto, Input, Cmd>
 where
-    Proto: DecoderFactory<u32>,
+    Proto: DecoderBuilder<u32>,
     Cmd: From<<Proto as Protocol>::Cmd>,
 {
     pub fn with_input(freq: u32, input: Input) -> Self {
         Self {
-            decoder: Proto::decoder(freq),
+            decoder: Proto::build(freq),
             input,
             clock: 0,
             edge: false,
@@ -63,7 +63,7 @@ where
 
 impl<Proto, Cmd> PeriodicPoll<Proto, NoPin, Cmd>
 where
-    Proto: DecoderFactory<u32>,
+    Proto: DecoderBuilder<u32>,
     Cmd: From<<Proto as Protocol>::Cmd>,
 {
     pub fn new(freq: u32) -> Self {
@@ -78,7 +78,7 @@ where
 #[cfg(feature = "embedded-hal")]
 impl<Proto, Pin, Cmd> PeriodicPoll<Proto, Pin, Cmd>
 where
-    Proto: DecoderFactory<u32>,
+    Proto: DecoderBuilder<u32>,
     Pin: InputPin,
     Cmd: From<<Proto as Protocol>::Cmd>,
 {
