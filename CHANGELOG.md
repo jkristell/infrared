@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.14.2] - 2023-01-22
+ - add a to_str() method on Action
+
 ## [0.14.0] - 2022-05-05
  - Added support fugit and made reworked the time handling
  - Lots of internal updates
