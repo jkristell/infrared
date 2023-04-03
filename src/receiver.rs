@@ -150,14 +150,6 @@ pub struct Receiver<
     pub(crate) cmd: PhantomData<Cmd>,
 }
 
-/* 
-impl Receiver<Capture<u32>> {
-    pub fn builder() -> Builder {
-        Builder::default()
-    }
-}
-*/
-
 impl<Proto, Mono, Cmd> Receiver<Proto, NoPin, Mono, Cmd>
 where
     Proto: DecoderBuilder<Mono>,

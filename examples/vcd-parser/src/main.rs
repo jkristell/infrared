@@ -4,7 +4,6 @@ use std::{
     path::Path,
 };
 
-
 fn main() -> io::Result<()> {
     let mut args = std::env::args();
     let _ = args.next();

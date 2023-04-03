@@ -11,7 +11,6 @@ pub mod rc6;
 #[cfg(feature = "sbp")]
 pub mod sbp;
 
-//pub use capture::Capture;
 #[cfg(feature = "denon")]
 #[doc(inline)]
 pub use denon::Denon;
