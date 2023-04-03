@@ -3,7 +3,7 @@
 fn polled_rc5() {
     use infrared::{
         protocol::{rc5::Rc5Command, Rc5},
-        PeriodicPoll, Receiver,
+        PeriodicPoll,
     };
 
     // Rc5 cmd data sampled at 40 kHz
@@ -13,7 +13,7 @@ fn polled_rc5() {
         71, 36,
     ];
 
-    let mut recv: PeriodicPoll<Rc5> = Receiver::builder().rc5().frequency(40_000).build_polled();
+    let mut recv: PeriodicPoll<Rc5> = infrared::receiver().rc5().frequency(40_000).build_polled();
 
     let mut pinstate = false;
 

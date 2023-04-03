@@ -7,11 +7,11 @@ use crate::{
     },
     receiver::{
         time::{InfraMonotonic, PulseSpans},
-        DecoderFactory, DecodingError, ProtocolDecoder, State,
+        DecoderBuilder, DecodingError, ProtocolDecoder, State,
     },
 };
 
-fn pulselens<Cmd: NecCommandVariant>() -> [u32; 8] {
+const fn pulselens<Cmd: NecCommandVariant>() -> [u32; 8] {
     [
         Cmd::PULSE_DISTANCE.header_high + Cmd::PULSE_DISTANCE.header_low,
         Cmd::PULSE_DISTANCE.header_high + Cmd::PULSE_DISTANCE.repeat_low,
@@ -26,10 +26,10 @@ fn pulselens<Cmd: NecCommandVariant>() -> [u32; 8] {
 
 const TOL: [u32; 8] = [7, 7, 5, 5, 0, 0, 0, 0];
 
-impl<Mono: InfraMonotonic, Cmd: NecCommandVariant> DecoderFactory<Mono> for Nec<Cmd> {
+impl<Mono: InfraMonotonic, Cmd: NecCommandVariant> DecoderBuilder<Mono> for Nec<Cmd> {
     type Decoder = NecDecoder<Mono, Cmd>;
 
-    fn decoder(freq: u32) -> Self::Decoder {
+    fn build(freq: u32) -> Self::Decoder {
         NecDecoder {
             state: NecState::Init,
             bitbuf: 0,
@@ -81,17 +81,13 @@ impl From<NecState> for State {
     }
 }
 
-impl<Mono, Cmd> ProtocolDecoder<Mono, Cmd> for NecDecoder<Mono, Cmd>
+impl<Mono, Cmd> ProtocolDecoder<Nec<Cmd>, Mono> for NecDecoder<Mono, Cmd>
 where
     Mono: InfraMonotonic,
     Cmd: NecCommandVariant,
 {
     #[rustfmt::skip]
-    fn event(
-        &mut self,
-        rising: bool,
-        dur: Mono::Duration,
-    ) -> State {
+    fn event(&mut self, rising: bool, dur: Mono::Duration) -> State {
 
         use NecState::*;
         use PulseWidth::*;
@@ -136,6 +132,7 @@ where
 
         self.state.into()
     }
+
     fn command(&self) -> Option<Cmd> {
         match self.state {
             NecState::Done => Cmd::unpack(self.bitbuf, false),

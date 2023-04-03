@@ -31,6 +31,11 @@ pub use protocol::{Protocol, ProtocolId};
 #[doc(inline)]
 pub use receiver::{BufferInputReceiver, PeriodicPoll, Receiver};
 
+/// Create a receiver builder
+pub fn receiver() -> receiver::Builder {
+    receiver::Builder::default()
+}
+
 #[cfg(test)]
 #[macro_use]
 extern crate std;
