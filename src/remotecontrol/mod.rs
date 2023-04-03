@@ -47,7 +47,7 @@ pub trait RemoteControlModel: Default {
         Self::BUTTONS
             .iter()
             .find(|(_, b)| b == button)
-            .and_then(|(c, _)| Self::Cmd::create(Self::ADDRESS, *c as u32))
+            .and_then(|(c, _)| Self::Cmd::create(Self::ADDRESS, *c))
     }
 }
 
