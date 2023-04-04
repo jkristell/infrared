@@ -1,7 +1,10 @@
 #[cfg(feature = "embedded-hal")]
 use embedded_hal::digital::v2::InputPin;
 
-use crate::receiver::{time::InfraMonotonic, DecoderBuilder, NoPin, Receiver};
+use crate::{
+    cmd::AnyCommand,
+    receiver::{time::InfraMonotonic, DecoderBuilder, NoPin, Receiver},
+};
 
 /// Multi Receiver
 pub struct MultiReceiver<
@@ -24,11 +27,7 @@ impl<const N: usize, Receivers: ReceiverWrapper<N, Mono>, Input, Mono: InfraMono
         }
     }
 
-    pub fn event_generic(
-        &mut self,
-        dt: Mono::Duration,
-        edge: bool,
-    ) -> [Option<MultiReceiverCommand>; N] {
+    pub fn event_generic(&mut self, dt: Mono::Duration, edge: bool) -> [Option<AnyCommand>; N] {
         Receivers::event(&mut self.receivers, dt, edge)
     }
 
@@ -36,7 +35,7 @@ impl<const N: usize, Receivers: ReceiverWrapper<N, Mono>, Input, Mono: InfraMono
         &mut self,
         dt: Mono::Duration,
         flank: bool,
-    ) -> impl Iterator<Item = MultiReceiverCommand> {
+    ) -> impl Iterator<Item = AnyCommand> {
         let arr = self.event_generic(dt, flank);
         arr.into_iter().flatten()
     }
@@ -48,10 +47,7 @@ impl<const N: usize, Receivers, Pin: InputPin, Mono: InfraMonotonic>
 where
     Receivers: ReceiverWrapper<N, Mono>,
 {
-    pub fn event(
-        &mut self,
-        dt: Mono::Duration,
-    ) -> Result<[Option<MultiReceiverCommand>; N], Pin::Error> {
+    pub fn event(&mut self, dt: Mono::Duration) -> Result<[Option<AnyCommand>; N], Pin::Error> {
         let edge = self.input.is_low()?;
         Ok(self.event_generic(dt, edge))
     }
@@ -59,7 +55,7 @@ where
     pub fn event_iter(
         &mut self,
         dt: Mono::Duration,
-    ) -> Result<impl Iterator<Item = MultiReceiverCommand>, Pin::Error> {
+    ) -> Result<impl Iterator<Item = AnyCommand>, Pin::Error> {
         let arr = self.event(dt)?;
         Ok(arr.into_iter().flatten())
     }
@@ -69,6 +65,7 @@ where
     }
 }
 
+/*
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 /// MultiReceiver Command
@@ -91,6 +88,9 @@ pub enum MultiReceiverCommand {
     Denon(crate::protocol::denon::DenonCommand),
 }
 
+ */
+
+/*
 #[cfg(feature = "nec")]
 impl From<crate::protocol::nec::NecCommand> for MultiReceiverCommand {
     fn from(cmd: crate::protocol::nec::NecCommand) -> MultiReceiverCommand {
@@ -140,24 +140,22 @@ impl From<crate::protocol::denon::DenonCommand> for MultiReceiverCommand {
     }
 }
 
+ */
+
 pub trait ReceiverWrapper<const N: usize, Mono: InfraMonotonic> {
     type Receivers;
 
     fn make(res: u32) -> Self::Receivers;
 
-    fn event(
-        rs: &mut Self::Receivers,
-        dt: Mono::Duration,
-        flank: bool,
-    ) -> [Option<MultiReceiverCommand>; N];
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, flank: bool) -> [Option<AnyCommand>; N];
 }
 
 impl<P1, P2, Mono: InfraMonotonic> ReceiverWrapper<2, Mono> for (P1, P2)
 where
     P1: DecoderBuilder<Mono>,
     P2: DecoderBuilder<Mono>,
-    P1::Cmd: Into<MultiReceiverCommand>,
-    P2::Cmd: Into<MultiReceiverCommand>,
+    P1::Cmd: Into<AnyCommand>,
+    P2::Cmd: Into<AnyCommand>,
 {
     type Receivers = (Receiver<P1, NoPin, Mono>, Receiver<P2, NoPin, Mono>);
 
@@ -165,11 +163,7 @@ where
         (Receiver::new(res), Receiver::new(res))
     }
 
-    fn event(
-        rs: &mut Self::Receivers,
-        dt: Mono::Duration,
-        edge: bool,
-    ) -> [Option<MultiReceiverCommand>; 2] {
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<AnyCommand>; 2] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -182,9 +176,9 @@ where
     P1: DecoderBuilder<Mono>,
     P2: DecoderBuilder<Mono>,
     P3: DecoderBuilder<Mono>,
-    P1::Cmd: Into<MultiReceiverCommand>,
-    P2::Cmd: Into<MultiReceiverCommand>,
-    P3::Cmd: Into<MultiReceiverCommand>,
+    P1::Cmd: Into<AnyCommand>,
+    P2::Cmd: Into<AnyCommand>,
+    P3::Cmd: Into<AnyCommand>,
 {
     type Receivers = (
         Receiver<P1, NoPin, Mono>,
@@ -196,11 +190,7 @@ where
         (Receiver::new(res), Receiver::new(res), Receiver::new(res))
     }
 
-    fn event(
-        rs: &mut Self::Receivers,
-        dt: Mono::Duration,
-        edge: bool,
-    ) -> [Option<MultiReceiverCommand>; 3] {
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<AnyCommand>; 3] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -215,10 +205,10 @@ where
     P2: DecoderBuilder<Mono>,
     P3: DecoderBuilder<Mono>,
     P4: DecoderBuilder<Mono>,
-    P1::Cmd: Into<MultiReceiverCommand>,
-    P2::Cmd: Into<MultiReceiverCommand>,
-    P3::Cmd: Into<MultiReceiverCommand>,
-    P4::Cmd: Into<MultiReceiverCommand>,
+    P1::Cmd: Into<AnyCommand>,
+    P2::Cmd: Into<AnyCommand>,
+    P3::Cmd: Into<AnyCommand>,
+    P4::Cmd: Into<AnyCommand>,
 {
     type Receivers = (
         Receiver<P1, NoPin, Mono>,
@@ -236,11 +226,7 @@ where
         )
     }
 
-    fn event(
-        rs: &mut Self::Receivers,
-        dt: Mono::Duration,
-        edge: bool,
-    ) -> [Option<MultiReceiverCommand>; 4] {
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<AnyCommand>; 4] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -257,11 +243,11 @@ where
     P3: DecoderBuilder<Mono>,
     P4: DecoderBuilder<Mono>,
     P5: DecoderBuilder<Mono>,
-    P1::Cmd: Into<MultiReceiverCommand>,
-    P2::Cmd: Into<MultiReceiverCommand>,
-    P3::Cmd: Into<MultiReceiverCommand>,
-    P4::Cmd: Into<MultiReceiverCommand>,
-    P5::Cmd: Into<MultiReceiverCommand>,
+    P1::Cmd: Into<AnyCommand>,
+    P2::Cmd: Into<AnyCommand>,
+    P3::Cmd: Into<AnyCommand>,
+    P4::Cmd: Into<AnyCommand>,
+    P5::Cmd: Into<AnyCommand>,
 {
     type Receivers = (
         Receiver<P1, NoPin, Mono>,
@@ -281,11 +267,7 @@ where
         )
     }
 
-    fn event(
-        rs: &mut Self::Receivers,
-        dt: Mono::Duration,
-        edge: bool,
-    ) -> [Option<MultiReceiverCommand>; 5] {
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<AnyCommand>; 5] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -306,12 +288,12 @@ where
     P5: DecoderBuilder<Mono>,
     P6: DecoderBuilder<Mono>,
 
-    P1::Cmd: Into<MultiReceiverCommand>,
-    P2::Cmd: Into<MultiReceiverCommand>,
-    P3::Cmd: Into<MultiReceiverCommand>,
-    P4::Cmd: Into<MultiReceiverCommand>,
-    P5::Cmd: Into<MultiReceiverCommand>,
-    P6::Cmd: Into<MultiReceiverCommand>,
+    P1::Cmd: Into<AnyCommand>,
+    P2::Cmd: Into<AnyCommand>,
+    P3::Cmd: Into<AnyCommand>,
+    P4::Cmd: Into<AnyCommand>,
+    P5::Cmd: Into<AnyCommand>,
+    P6::Cmd: Into<AnyCommand>,
 {
     type Receivers = (
         Receiver<P1, NoPin, Mono>,
@@ -333,11 +315,7 @@ where
         )
     }
 
-    fn event(
-        rs: &mut Self::Receivers,
-        dt: Mono::Duration,
-        edge: bool,
-    ) -> [Option<MultiReceiverCommand>; 6] {
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<AnyCommand>; 6] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
