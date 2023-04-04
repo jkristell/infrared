@@ -57,11 +57,12 @@ impl<const S: usize> PulsedataSender<S> {
     }
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone, Default)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 /// Sender state
 pub enum Status {
     /// Sender is ready for transmitting
+    #[default]
     Idle,
     /// Transmitting
     Transmit(bool),
