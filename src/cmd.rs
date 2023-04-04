@@ -16,7 +16,6 @@ pub trait AddressCommand: Command + Sized {
     fn create(addr: u32, cmd: u32) -> Option<Self>;
 }
 
-
 #[derive(Debug)]
 pub struct AnyCommand {
     pub protocol: ProtocolId,

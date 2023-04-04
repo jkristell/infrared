@@ -3,8 +3,11 @@
 use core::convert::TryInto;
 
 pub mod decoder;
-use crate::{cmd::{AddressCommand, Command}, protocol::Protocol, ProtocolId};
-use crate::cmd::AnyCommand;
+use crate::{
+    cmd::{AddressCommand, AnyCommand, Command},
+    protocol::Protocol,
+    ProtocolId,
+};
 
 pub mod encoder;
 
@@ -90,7 +93,6 @@ impl AddressCommand for Rc5Command {
         Some(Rc5Command::new(addr, cmd, false))
     }
 }
-
 
 impl From<Rc5Command> for AnyCommand {
     fn from(cmd: Rc5Command) -> Self {

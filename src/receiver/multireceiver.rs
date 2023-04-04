@@ -1,8 +1,10 @@
-
 #[cfg(feature = "embedded-hal")]
 use embedded_hal::digital::v2::InputPin;
 
-use crate::{receiver::{time::InfraMonotonic, DecoderBuilder, NoPin, Receiver}, cmd::AnyCommand};
+use crate::{
+    cmd::AnyCommand,
+    receiver::{time::InfraMonotonic, DecoderBuilder, NoPin, Receiver},
+};
 
 /// Multi Receiver
 pub struct MultiReceiver<
@@ -25,11 +27,7 @@ impl<const N: usize, Receivers: ReceiverWrapper<N, Mono>, Input, Mono: InfraMono
         }
     }
 
-    pub fn event_generic(
-        &mut self,
-        dt: Mono::Duration,
-        edge: bool,
-    ) -> [Option<AnyCommand>; N] {
+    pub fn event_generic(&mut self, dt: Mono::Duration, edge: bool) -> [Option<AnyCommand>; N] {
         Receivers::event(&mut self.receivers, dt, edge)
     }
 
@@ -49,10 +47,7 @@ impl<const N: usize, Receivers, Pin: InputPin, Mono: InfraMonotonic>
 where
     Receivers: ReceiverWrapper<N, Mono>,
 {
-    pub fn event(
-        &mut self,
-        dt: Mono::Duration,
-    ) -> Result<[Option<AnyCommand>; N], Pin::Error> {
+    pub fn event(&mut self, dt: Mono::Duration) -> Result<[Option<AnyCommand>; N], Pin::Error> {
         let edge = self.input.is_low()?;
         Ok(self.event_generic(dt, edge))
     }
@@ -152,11 +147,7 @@ pub trait ReceiverWrapper<const N: usize, Mono: InfraMonotonic> {
 
     fn make(res: u32) -> Self::Receivers;
 
-    fn event(
-        rs: &mut Self::Receivers,
-        dt: Mono::Duration,
-        flank: bool,
-    ) -> [Option<AnyCommand>; N];
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, flank: bool) -> [Option<AnyCommand>; N];
 }
 
 impl<P1, P2, Mono: InfraMonotonic> ReceiverWrapper<2, Mono> for (P1, P2)
@@ -172,11 +163,7 @@ where
         (Receiver::new(res), Receiver::new(res))
     }
 
-    fn event(
-        rs: &mut Self::Receivers,
-        dt: Mono::Duration,
-        edge: bool,
-    ) -> [Option<AnyCommand>; 2] {
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<AnyCommand>; 2] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -203,11 +190,7 @@ where
         (Receiver::new(res), Receiver::new(res), Receiver::new(res))
     }
 
-    fn event(
-        rs: &mut Self::Receivers,
-        dt: Mono::Duration,
-        edge: bool,
-    ) -> [Option<AnyCommand>; 3] {
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<AnyCommand>; 3] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -243,11 +226,7 @@ where
         )
     }
 
-    fn event(
-        rs: &mut Self::Receivers,
-        dt: Mono::Duration,
-        edge: bool,
-    ) -> [Option<AnyCommand>; 4] {
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<AnyCommand>; 4] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -288,11 +267,7 @@ where
         )
     }
 
-    fn event(
-        rs: &mut Self::Receivers,
-        dt: Mono::Duration,
-        edge: bool,
-    ) -> [Option<AnyCommand>; 5] {
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<AnyCommand>; 5] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),
@@ -340,11 +315,7 @@ where
         )
     }
 
-    fn event(
-        rs: &mut Self::Receivers,
-        dt: Mono::Duration,
-        edge: bool,
-    ) -> [Option<AnyCommand>; 6] {
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<AnyCommand>; 6] {
         [
             rs.0.event(dt, edge).unwrap_or_default().map(Into::into),
             rs.1.event(dt, edge).unwrap_or_default().map(Into::into),

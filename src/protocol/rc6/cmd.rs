@@ -1,7 +1,9 @@
 use core::convert::TryInto;
 
-use crate::cmd::{AddressCommand, AnyCommand, Command};
-use crate::ProtocolId;
+use crate::{
+    cmd::{AddressCommand, AnyCommand, Command},
+    ProtocolId,
+};
 
 #[derive(Debug, PartialEq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
