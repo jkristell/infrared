@@ -8,7 +8,7 @@ pub trait Command {
 
 /// Command with address and command part
 pub trait AddressCommand: Command + Sized {
-    /// Get the adress
+    /// Get the address
     fn address(&self) -> u32;
     /// Get the command
     fn command(&self) -> u32;
@@ -17,6 +17,7 @@ pub trait AddressCommand: Command + Sized {
 }
 
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct AnyCommand {
     pub protocol: ProtocolId,
     pub address: u32,
