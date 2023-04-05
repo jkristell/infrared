@@ -128,7 +128,7 @@ pub use bufferinput::BufferInputReceiver;
 pub use builder::Builder;
 pub use decoder::{DecoderBuilder, ProtocolDecoder, State};
 pub use error::{DecodingError, Error};
-pub use multi::{MultiReceiver};
+pub use multi::MultiReceiver;
 pub use ppoll::PeriodicPoll;
 
 /// Don't use a embedded-hal pin as input
