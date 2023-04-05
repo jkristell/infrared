@@ -52,7 +52,7 @@ mod app {
     #[init(
         local = [usb_bus: Option<bus::UsbBusAllocator<UsbBusType>> = None]
     )]
-    fn init(cx: init::Context) -> (Shared, Local, init::Monotonics) {
+    fn init(mut cx: init::Context) -> (Shared, Local, init::Monotonics) {
         let mut flash = cx.device.FLASH.constrain();
         let rcc = cx.device.RCC.constrain();
         let mut afio = cx.device.AFIO.constrain();
@@ -93,8 +93,8 @@ mod app {
             let mut gpiob = cx.device.GPIOB.split();
             let mut pin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
             pin.make_interrupt_source(&mut afio);
-            pin.trigger_on_edge(&cx.device.EXTI, Edge::RisingFalling);
-            pin.enable_interrupt(&cx.device.EXTI);
+            pin.trigger_on_edge(&mut cx.device.EXTI, Edge::RisingFalling);
+            pin.enable_interrupt(&mut cx.device.EXTI);
             pin
         };
 
