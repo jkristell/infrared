@@ -23,6 +23,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Build
+    - name: Build Bluepill examples
+      working-directory: examples/bluepill
       run: cargo build --verbose
-    working-directory: examples/bluepill
