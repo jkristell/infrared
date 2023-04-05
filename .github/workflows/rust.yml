@@ -25,6 +25,5 @@ jobs:
     - uses: actions/checkout@v2
     - name: Build Bluepill examples
       working-directory: examples/bluepill
-      steps:
-       - run: rustup target add thumbv7m-none-eabi
-       - run: cargo build --verbose
+      run: rustup target add thumbv7m-none-eabi
+      run: cargo build --verbose
