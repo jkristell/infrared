@@ -13,7 +13,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Build
       run: cargo build --verbose
     - name: Run tests
@@ -22,7 +22,7 @@ jobs:
   build_bluepill_examples:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Install target
       run: rustup target add thumbv7m-none-eabi
     - name: Build Bluepill examples
@@ -32,7 +32,7 @@ jobs:
   build_rp_pico_examples:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install target
         run: rustup target add thumbv6m-none-eabi
       - name: Build rp-pico examples
