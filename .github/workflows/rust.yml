@@ -28,3 +28,13 @@ jobs:
     - name: Build Bluepill examples
       working-directory: examples/bluepill
       run: cargo build --verbose --release
+
+  build_rp_pico_examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install target
+        run: rustup target add thumbv6m-none-eabi
+      - name: Build rp-pico examples
+        working-directory: examples/rp-pico
+        run: cargo build --verbose --release
