@@ -115,20 +115,20 @@ use embedded_hal::digital::v2::InputPin;
 
 use crate::{receiver::time::InfraMonotonic, Protocol};
 
-mod bufferinputreceiver;
+mod bufferinput;
 mod builder;
 mod decoder;
 mod error;
 mod iter;
-mod multireceiver;
+mod multi;
 mod ppoll;
 pub mod time;
 
-pub use bufferinputreceiver::BufferInputReceiver;
+pub use bufferinput::BufferInputReceiver;
 pub use builder::Builder;
 pub use decoder::{DecoderBuilder, ProtocolDecoder, State};
 pub use error::{DecodingError, Error};
-pub use multireceiver::MultiReceiver;
+pub use multi::MultiReceiver;
 pub use ppoll::PeriodicPoll;
 
 /// Don't use a embedded-hal pin as input
