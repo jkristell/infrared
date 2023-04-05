@@ -44,10 +44,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
-        profile: minimal
-        toolchain: nightly-2022-07-10
-        override: true
-        components: rust-src
+        with:
+          profile: minimal
+          toolchain: nightly-2022-07-10
+          override: true
+          components: rust-src
       - name: Build arduino examples
         working-directory: examples/arduino_uno
         run: cargo build --verbose --release
