@@ -1,10 +1,8 @@
-use crate::{
-    protocol::Protocol,
-    receiver::{
-        time::{InfraMonotonic, PulseSpans},
-        DecoderBuilder, ProtocolDecoder, State,
-    },
-};
+use crate::{protocol::Protocol, ProtocolId, receiver::{
+    time::{InfraMonotonic, PulseSpans},
+    DecoderBuilder, ProtocolDecoder, State,
+}};
+use crate::cmd::AnyCommand;
 
 #[cfg(test)]
 mod test;
@@ -111,6 +109,17 @@ pub enum DenonState {
     Idle,
     Data(u8),
     Done,
+}
+
+impl From<DenonCommand> for AnyCommand {
+    fn from(value: DenonCommand) -> Self {
+        AnyCommand {
+            protocol: ProtocolId::Denon,
+            address: 0,
+            command: 0,
+            repeat: false,
+        }
+    }
 }
 
 impl From<DenonState> for State {

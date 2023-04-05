@@ -1,9 +1,7 @@
 //! The Standard NEC variant
 
-use crate::{
-    cmd::{AddressCommand, Command},
-    protocol::nec::{NecCommandVariant, NecPulseLen, NEC_STANDARD_TIMING},
-};
+use crate::{cmd::{AddressCommand, Command}, protocol::nec::{NecCommandVariant, NecPulseLen, NEC_STANDARD_TIMING}, ProtocolId};
+use crate::cmd::AnyCommand;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -37,6 +35,17 @@ impl NecCommandVariant for NecCommand {
 impl Command for NecCommand {
     fn is_repeat(&self) -> bool {
         self.repeat
+    }
+}
+
+impl From<NecCommand> for AnyCommand {
+    fn from(value: NecCommand) -> Self {
+        AnyCommand {
+            protocol: ProtocolId::Nec,
+            address: value.address(),
+            command: value.command(),
+            repeat: value.is_repeat(),
+        }
     }
 }
 

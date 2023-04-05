@@ -1,9 +1,7 @@
 //! Nec protocol variant from Apple
 
-use crate::{
-    cmd::{AddressCommand, Command},
-    protocol::nec::{NecCommandVariant, NecPulseLen, NEC_STANDARD_TIMING},
-};
+use crate::{cmd::{AddressCommand, Command}, protocol::nec::{NecCommandVariant, NecPulseLen, NEC_STANDARD_TIMING}, ProtocolId};
+use crate::cmd::AnyCommand;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -13,6 +11,18 @@ pub struct AppleNecCommand {
     pub device_id: u8,
     pub repeat: bool,
 }
+
+impl From<AppleNecCommand> for AnyCommand {
+    fn from(value: AppleNecCommand) -> Self {
+        AnyCommand {
+            protocol: ProtocolId::NecApple,
+            address: value.address(),
+            command: value.command(),
+            repeat: value.is_repeat(),
+        }
+    }
+}
+
 
 impl NecCommandVariant for AppleNecCommand {
     const PULSE_DISTANCE: &'static NecPulseLen = NEC_STANDARD_TIMING;

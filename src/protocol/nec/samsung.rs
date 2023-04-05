@@ -1,7 +1,7 @@
 //!NEC Samsung Command variant
 
 use crate::{
-    cmd::{AddressCommand, Command},
+    cmd::{AddressCommand, Command, AnyCommand},
     protocol::nec::{NecCommandVariant, NecPulseLen, NEC_SAMSUNG_TIMING},
 };
 
@@ -54,5 +54,11 @@ impl AddressCommand for SamsungNecCommand {
             cmd: cmd as u8,
             repeat: false,
         })
+    }
+}
+
+impl From<SamsungNecCommand> for AnyCommand {
+    fn from(value: SamsungNecCommand) -> Self {
+        AnyCommand { protocol: crate::ProtocolId::NecSamsung, address: value.address(), command: value.command(), repeat: value.repeat }
     }
 }
