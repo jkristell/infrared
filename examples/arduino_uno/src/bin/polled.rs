@@ -17,18 +17,22 @@
  *
  */
 use core::cell::Cell;
-use panic_halt as _;
 
 use arduino_hal::{
-    hal::port::{PB5, PD2, PD7},
+    hal::port::{PD2, PD7},
     pac::tc0::tccr0b::CS0_A,
-    port::mode::{Floating, Input, Output},
-    port::Pin,
+    port::{
+        mode::{Floating, Input, Output},
+        Pin,
+    },
     prelude::*,
 };
 use avr_device::interrupt::Mutex;
-
-use infrared::{protocol::nec::NecCommand, protocol::*, receiver::PeriodicPoll};
+use infrared::{
+    protocol::{nec::NecCommand, *},
+    receiver::PeriodicPoll,
+};
+use panic_halt as _;
 
 type IrPin = Pin<Input<Floating>, PD2>;
 type IrProto = Nec;
@@ -89,7 +93,7 @@ fn main() -> ! {
 fn timer_start(tc0: arduino_hal::pac::TC0, prescaler: CS0_A, top: u8) {
     // Configure the timer for the above interval (in CTC mode)
     tc0.tccr0a.write(|w| w.wgm0().ctc());
-    tc0.ocr0a.write(|w| unsafe { w.bits(top) });
+    tc0.ocr0a.write(|w| w.bits(top));
     tc0.tccr0b.write(|w| w.cs0().variant(prescaler));
 
     // Enable interrupt
@@ -99,7 +103,7 @@ fn timer_start(tc0: arduino_hal::pac::TC0, prescaler: CS0_A, top: u8) {
 #[avr_device::interrupt(atmega328p)]
 fn TIMER0_COMPA() {
     let recv = unsafe { RECEIVER.as_mut().unwrap() };
-    let led = unsafe { LED.as_mut().unwrap() };
+    let _led = unsafe { LED.as_mut().unwrap() };
 
     if let Ok(Some(cmd)) = recv.poll() {
         // Command receieved
