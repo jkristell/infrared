@@ -1,6 +1,9 @@
 use core::convert::TryInto;
 
-use crate::cmd::{AddressCommand, Command};
+use crate::{
+    cmd::{AddressCommand, Command},
+    ProtocolId,
+};
 
 #[derive(Debug, PartialEq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -33,6 +36,8 @@ impl Command for Rc6Command {
 }
 
 impl AddressCommand for Rc6Command {
+    const ID: ProtocolId = ProtocolId::Rc6;
+
     fn address(&self) -> u32 {
         self.addr.into()
     }

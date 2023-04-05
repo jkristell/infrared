@@ -8,7 +8,7 @@ pub trait Command {
 
 /// Command with address and command part
 pub trait AddressCommand: Command + Sized {
-    const ID: ProtocolId = ProtocolId::Nec;
+    const ID: ProtocolId;
     fn raw(&self) -> u64 {
         0
     }

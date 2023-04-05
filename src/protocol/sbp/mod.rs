@@ -18,6 +18,7 @@ use crate::{
         time::{InfraMonotonic, PulseSpans},
         DecoderBuilder,
     },
+    ProtocolId,
 };
 
 /// Samsung BluRay player protocol
@@ -93,6 +94,8 @@ impl Command for SbpCommand {
 }
 
 impl AddressCommand for SbpCommand {
+    const ID: ProtocolId = ProtocolId::Sbp;
+
     fn address(&self) -> u32 {
         self.address.into()
     }
