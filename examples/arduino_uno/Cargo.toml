@@ -16,7 +16,7 @@ git = "https://github.com/rahix/avr-hal"
 features = ["arduino-uno"]
 
 [dependencies.avr-device]
-version = "0.3"
+version = "0.5"
 
 [profile.dev]
 panic = "abort"
