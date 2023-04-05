@@ -23,8 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
     - name: Install target
-      working-directory: examples/bluepill
       run: rustup target add thumbv7m-none-eabi
     - name: Build Bluepill examples
       working-directory: examples/bluepill
