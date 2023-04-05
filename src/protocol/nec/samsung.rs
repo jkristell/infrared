@@ -3,6 +3,7 @@
 use crate::{
     cmd::{AddressCommand, Command},
     protocol::nec::{NecCommandVariant, NecPulseLen, NEC_SAMSUNG_TIMING},
+    ProtocolId,
 };
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -40,6 +41,8 @@ impl Command for SamsungNecCommand {
 }
 
 impl AddressCommand for SamsungNecCommand {
+    const ID: ProtocolId = ProtocolId::NecSamsung;
+
     fn address(&self) -> u32 {
         self.addr.into()
     }
