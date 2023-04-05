@@ -1,9 +1,11 @@
 use crate::{
+    cmd::AnyCommand,
     protocol::Protocol,
     receiver::{
         time::{InfraMonotonic, PulseSpans},
         DecoderBuilder, ProtocolDecoder, State,
     },
+    ProtocolId,
 };
 
 #[cfg(test)]
@@ -58,6 +60,18 @@ pub struct DenonDecoder<Mono: InfraMonotonic> {
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct DenonCommand {
     pub bits: u64,
+}
+
+impl From<DenonCommand> for AnyCommand {
+    fn from(cmd: DenonCommand) -> AnyCommand {
+        AnyCommand {
+            protocol: ProtocolId::Denon,
+            raw: cmd.bits,
+            address: 0,
+            command: 0,
+            repeat: false,
+        }
+    }
 }
 
 impl<Mono: InfraMonotonic> ProtocolDecoder<Denon, Mono> for DenonDecoder<Mono> {

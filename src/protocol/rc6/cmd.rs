@@ -1,9 +1,6 @@
 use core::convert::TryInto;
 
-use crate::{
-    cmd::{AddressCommand, AnyCommand, Command},
-    ProtocolId,
-};
+use crate::cmd::{AddressCommand, Command};
 
 #[derive(Debug, PartialEq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -46,16 +43,5 @@ impl AddressCommand for Rc6Command {
 
     fn create(addr: u32, cmd: u32) -> Option<Self> {
         Some(Rc6Command::new(addr.try_into().ok()?, cmd.try_into().ok()?))
-    }
-}
-
-impl From<Rc6Command> for AnyCommand {
-    fn from(cmd: Rc6Command) -> Self {
-        AnyCommand {
-            protocol: ProtocolId::Rc6,
-            address: cmd.address(),
-            command: cmd.command(),
-            repeat: false,
-        }
     }
 }

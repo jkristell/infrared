@@ -4,7 +4,7 @@ use core::convert::TryInto;
 
 pub mod decoder;
 use crate::{
-    cmd::{AddressCommand, AnyCommand, Command},
+    cmd::{AddressCommand, Command},
     protocol::Protocol,
     ProtocolId,
 };
@@ -78,6 +78,8 @@ impl Command for Rc5Command {
 }
 
 impl AddressCommand for Rc5Command {
+    const ID: ProtocolId = ProtocolId::Rc5;
+
     fn address(&self) -> u32 {
         self.addr.into()
     }
@@ -91,16 +93,5 @@ impl AddressCommand for Rc5Command {
         let cmd = cmd.try_into().ok()?;
 
         Some(Rc5Command::new(addr, cmd, false))
-    }
-}
-
-impl From<Rc5Command> for AnyCommand {
-    fn from(cmd: Rc5Command) -> Self {
-        AnyCommand {
-            protocol: ProtocolId::Rc5,
-            address: cmd.address(),
-            command: cmd.command(),
-            repeat: cmd.is_repeat(),
-        }
     }
 }
