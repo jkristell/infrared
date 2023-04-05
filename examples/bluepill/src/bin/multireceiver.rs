@@ -22,7 +22,7 @@ static mut MONO: Option<MonoTimer> = None;
 #[entry]
 fn main() -> ! {
     let cp = cortex_m::Peripherals::take().unwrap();
-    let d = pac::Peripherals::take().unwrap();
+    let mut d = pac::Peripherals::take().unwrap();
 
     let mut flash = d.FLASH.constrain();
     let rcc = d.RCC.constrain();
@@ -39,8 +39,8 @@ fn main() -> ! {
     let mut inpin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
 
     inpin.make_interrupt_source(&mut afio);
-    inpin.trigger_on_edge(&d.EXTI, Edge::RisingFalling);
-    inpin.enable_interrupt(&d.EXTI);
+    inpin.trigger_on_edge(&mut d.EXTI, Edge::RisingFalling);
+    inpin.enable_interrupt(&mut d.EXTI);
 
     let mono = MonoTimer::new(cp.DWT, cp.DCB, clocks);
     let mono_freq = mono.frequency();

@@ -30,7 +30,7 @@ static mut RECEIVER: Option<Receiver<AppleNec, IrPin>> = None;
 #[entry]
 fn main() -> ! {
     let cp = cortex_m::Peripherals::take().unwrap();
-    let d = pac::Peripherals::take().unwrap();
+    let mut d = pac::Peripherals::take().unwrap();
 
     let mut flash = d.FLASH.constrain();
     let rcc = d.RCC.constrain();
@@ -47,8 +47,8 @@ fn main() -> ! {
     let mut pin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
 
     pin.make_interrupt_source(&mut afio);
-    pin.trigger_on_edge(&d.EXTI, Edge::RisingFalling);
-    pin.enable_interrupt(&d.EXTI);
+    pin.trigger_on_edge(&mut d.EXTI, Edge::RisingFalling);
+    pin.enable_interrupt(&mut d.EXTI);
 
     let mono = MonoTimer::new(cp.DWT, cp.DCB, clocks);
     let mono_freq = mono.frequency();
