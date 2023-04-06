@@ -85,7 +85,7 @@ fn main() -> ! {
         if let Some(cmd) = avr_device::interrupt::free(|cs| CMD.borrow(cs).take()) {
             ufmt::uwriteln!(
                 &mut serial,
-                "Cmd: Adress: {}, Command: {}, repeat: {}\r",
+                "Cmd: Address: {}, Command: {}, repeat: {}\r",
                 cmd.addr,
                 cmd.cmd,
                 cmd.repeat
