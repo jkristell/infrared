@@ -78,7 +78,7 @@ fn main() -> ! {
         if let Some(cmd) = avr_device::interrupt::free(|cs| CMD.borrow(cs).take()) {
             ufmt::uwriteln!(
                 &mut serial,
-                "Cmd: Adress: {}, Command: {}, repeat: {}\r",
+                "Cmd: Address: {}, Command: {}, repeat: {}\r",
                 cmd.addr,
                 cmd.cmd,
                 cmd.repeat
@@ -106,7 +106,7 @@ fn TIMER0_COMPA() {
     let _led = unsafe { LED.as_mut().unwrap() };
 
     if let Ok(Some(cmd)) = recv.poll() {
-        // Command receieved
+        // Command received
 
         avr_device::interrupt::free(|cs| {
             let cell = CMD.borrow(cs);
