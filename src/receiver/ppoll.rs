@@ -1,7 +1,7 @@
 use core::marker::PhantomData;
 
 #[cfg(feature = "embedded")]
-use embedded_hal::digital::v2::InputPin;
+use embedded_hal::digital::InputPin;
 
 use crate::{
     receiver::{DecoderBuilder, DecodingError, Error, NoPin, ProtocolDecoder},
