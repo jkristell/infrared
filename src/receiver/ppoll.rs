@@ -1,7 +1,7 @@
 use core::marker::PhantomData;
 
-#[cfg(feature = "embedded")]
-use embedded_hal::digital::v2::InputPin;
+#[cfg(feature = "embedded-hal-02")]
+use embedded_hal_02::digital::v2::InputPin;
 
 use crate::{
     receiver::{DecoderBuilder, DecodingError, Error, NoPin, ProtocolDecoder},
@@ -75,7 +75,7 @@ where
     }
 }
 
-#[cfg(feature = "embedded-hal")]
+#[cfg(feature = "embedded-hal-02")]
 impl<Proto, Pin, Cmd> PeriodicPoll<Proto, Pin, Cmd>
 where
     Proto: DecoderBuilder<u32>,

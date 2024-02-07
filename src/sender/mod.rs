@@ -3,12 +3,12 @@
 use crate::protocol::Protocol;
 
 mod buffer;
-#[cfg(feature = "embedded-hal")]
+#[cfg(feature = "embedded-hal-02")]
 mod hal;
 mod senders;
 
 pub use buffer::*;
-#[cfg(feature = "embedded-hal")]
+#[cfg(feature = "embedded-hal-02")]
 pub use hal::*;
 pub use senders::*;
 
