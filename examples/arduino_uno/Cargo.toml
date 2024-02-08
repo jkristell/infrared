@@ -7,13 +7,14 @@ edition = "2018"
 
 [dependencies]
 panic-halt = "0.2.0"
-ufmt = "0.1.0"
+ufmt = "0.2.0"
 embedded-hal = "0.2.3"
 infrared = { path = "../.." }
 
 [dependencies.arduino-hal]
 git = "https://github.com/rahix/avr-hal"
 features = ["arduino-uno"]
+rev = "e312e6e1620bd09470afee71e6590da0ba96f369"
 
 [dependencies.avr-device]
 version = "0.5"
@@ -29,6 +30,3 @@ codegen-units = 1
 debug = true
 lto = true
 opt-level = "s"
-
-[patch.crates-io]
-ufmt = { git = "https://github.com/Rahix/ufmt.git", rev = "12225dc1678e42fecb0e8635bf80f501e24817d9" }
