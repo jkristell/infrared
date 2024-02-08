@@ -1,5 +1,5 @@
-#[cfg(feature = "embedded-hal")]
-use embedded_hal::digital::v2::InputPin;
+#[cfg(feature = "embedded-hal-02")]
+use embedded_hal_02::digital::v2::InputPin;
 
 use crate::{
     cmd::AnyCommand,
@@ -41,7 +41,7 @@ impl<const N: usize, Receivers: ReceiverWrapper<N, Mono>, Input, Mono: InfraMono
     }
 }
 
-#[cfg(feature = "embedded-hal")]
+#[cfg(feature = "embedded-hal-02")]
 impl<const N: usize, Receivers, Pin: InputPin, Mono: InfraMonotonic>
     MultiReceiver<N, Receivers, Pin, Mono>
 where

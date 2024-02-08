@@ -16,7 +16,7 @@ exclude = ["examples/bluepill", "examples/rp-pico", "examples/arduino_uno"]
 
 [features]
 default = ["nec", "rc5", "rc6", "sbp", "denon", "remotes", "embedded"]
-embedded = ["embedded-hal", "fugit"]
+embedded = ["embedded-hal-02", "fugit"]
 nec = []
 rc5 = []
 rc6 = []
@@ -25,7 +25,7 @@ denon = []
 remotes = []
 
 [dependencies]
-embedded-hal = {version = "0.2.4", features = ["unproven"], optional = true}
+embedded-hal-02 = { package = "embedded-hal", version = "0.2.7", features = ["unproven"], optional = true}
 defmt = { version = "0.3", optional = true }
 log = { version = "0.4", optional = true }
 fugit = { version = "0.3.5", optional = true }

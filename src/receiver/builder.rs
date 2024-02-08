@@ -1,7 +1,7 @@
 use core::marker::PhantomData;
 
-#[cfg(feature = "embedded-hal")]
-use embedded_hal::digital::v2::InputPin;
+#[cfg(feature = "embedded-hal-02")]
+use embedded_hal_02::digital::v2::InputPin;
 
 #[cfg(feature = "denon")]
 use crate::protocol::Denon;
@@ -121,7 +121,7 @@ where
         }
     }
 
-    #[cfg(feature = "embedded-hal")]
+    #[cfg(feature = "embedded-hal-02")]
     /// The Receiver use `pin` as input
     pub fn pin<NewPin: InputPin>(self, pin: NewPin) -> Builder<Proto, NewPin, Mono, Cmd> {
         Builder {

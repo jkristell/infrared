@@ -58,7 +58,7 @@
 //!
 //! #### Polled example
 //! ```
-//! use embedded_hal::digital::v2::InputPin;
+//! use embedded_hal_02::digital::v2::InputPin;
 //! use dummy_pin::DummyPin;
 //! use infrared::protocol::Nec;
 //!
@@ -110,8 +110,8 @@
 //! ```
 use core::marker::PhantomData;
 
-#[cfg(feature = "embedded-hal")]
-use embedded_hal::digital::v2::InputPin;
+#[cfg(feature = "embedded-hal-02")]
+use embedded_hal_02::digital::v2::InputPin;
 
 use crate::{receiver::time::InfraMonotonic, Protocol};
 
@@ -208,7 +208,7 @@ where
     }
 }
 
-#[cfg(feature = "embedded-hal")]
+#[cfg(feature = "embedded-hal-02")]
 impl<Proto, Pin, Mono, Cmd> Receiver<Proto, Pin, Mono, Cmd>
 where
     Proto: DecoderBuilder<Mono>,
@@ -222,7 +222,7 @@ where
     }
 }
 
-#[cfg(feature = "embedded")]
+#[cfg(all(feature = "embedded-hal-02", feature = "fugit"))]
 impl<Proto, Pin, const HZ: u32, Cmd> Receiver<Proto, Pin, fugit::TimerInstantU32<HZ>, Cmd>
 where
     Proto: DecoderBuilder<fugit::TimerInstantU32<HZ>>,
@@ -235,7 +235,7 @@ where
     }
 }
 
-#[cfg(feature = "embedded")]
+#[cfg(all(feature = "embedded-hal-02", feature = "fugit"))]
 impl<Proto, Pin, const HZ: u32, Cmd> Receiver<Proto, Pin, fugit::TimerInstantU64<HZ>, Cmd>
 where
     Proto: DecoderBuilder<fugit::TimerInstantU64<HZ>>,
@@ -270,7 +270,7 @@ where
     }
 }
 
-#[cfg(feature = "embedded-hal")]
+#[cfg(feature = "embedded-hal-02")]
 impl<Proto, Pin, Mono, Cmd> Receiver<Proto, Pin, Mono, Cmd>
 where
     Proto: DecoderBuilder<Mono>,

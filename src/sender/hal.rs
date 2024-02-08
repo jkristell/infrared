@@ -11,7 +11,7 @@ pub struct Sender<PwmPin, const FREQ: u32, const BUFSIZE: usize> {
 
 impl<PwmPin, PwmDuty, const F: u32, const S: usize> Sender<PwmPin, F, S>
 where
-    PwmPin: embedded_hal::PwmPin<Duty = PwmDuty>,
+    PwmPin: embedded_hal_02::PwmPin<Duty = PwmDuty>,
 {
     pub fn new(pin: PwmPin) -> Self {
         Self {
