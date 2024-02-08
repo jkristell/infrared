@@ -10,7 +10,7 @@ mod app {
     use rp_pico::{
         hal::{
             clocks::init_clocks_and_plls,
-            gpio::{bank0::Gpio12, Floating, Input, Interrupt, Pin},
+            gpio::{bank0::Gpio12, FunctionSioInput, PullNone, Interrupt, Pin},
             sio::Sio,
             watchdog::Watchdog,
         },
@@ -27,7 +27,7 @@ mod app {
     type Monotonic = Rp2040Monotonic;
 
     // Useful aliases
-    pub type IRPin = Pin<Gpio12, Input<Floating>>;
+    pub type IRPin = Pin<Gpio12, FunctionSioInput, PullNone>;
     pub type IrReceiver =
         Receiver<AppleNec, IRPin, <Monotonic as rtic_monotonic::Monotonic>::Instant>;
 
