@@ -24,7 +24,7 @@ const fn pulselens<Cmd: NecCommandVariant>() -> [u32; 8] {
     ]
 }
 
-const TOL: [u32; 8] = [7, 7, 5, 5, 0, 0, 0, 0];
+const TOL: [u32; 8] = [7, 7, 25, 12, 0, 0, 0, 0];
 
 impl<Mono: InfraMonotonic, Cmd: NecCommandVariant> DecoderBuilder<Mono> for Nec<Cmd> {
     type Decoder = NecDecoder<Mono, Cmd>;
