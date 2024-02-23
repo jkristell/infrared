@@ -1,7 +1,7 @@
 use core::marker::PhantomData;
 
 #[cfg(feature = "embedded-hal")]
-use embedded_hal::digital::v2::InputPin;
+use embedded_hal::digital::InputPin;
 
 #[cfg(feature = "denon")]
 use crate::protocol::Denon;

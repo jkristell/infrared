@@ -1,4 +1,5 @@
-use embedded_hal::digital::v2::InputPin;
+use std::convert::Infallible;
+use embedded_hal::digital::{ErrorType, InputPin};
 
 #[cfg(feature = "rc5")]
 #[test]
@@ -31,14 +32,15 @@ fn receiver_remote() {
 
 struct DummyEmbeddedHalPin;
 
-impl InputPin for DummyEmbeddedHalPin {
-    type Error = ();
+impl ErrorType for DummyEmbeddedHalPin { type Error = Infallible; }
 
-    fn is_high(&self) -> Result<bool, Self::Error> {
+impl InputPin for DummyEmbeddedHalPin {
+
+    fn is_high(&mut self) -> Result<bool, Self::Error> {
         Ok(true)
     }
 
-    fn is_low(&self) -> Result<bool, Self::Error> {
+    fn is_low(&mut self) -> Result<bool, Self::Error> {
         Ok(false)
     }
 }

@@ -1,5 +1,5 @@
 #[cfg(feature = "embedded-hal")]
-use embedded_hal::digital::v2::InputPin;
+use embedded_hal::digital::InputPin;
 
 use crate::{
     cmd::AnyCommand,
