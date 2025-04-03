@@ -70,7 +70,7 @@ impl AddressCommand for AppleNecCommand {
     }
 
     fn command(&self) -> u32 {
-        u32::from(self.command_page << 7 | self.command)
+        u32::from((self.command_page << 7) | self.command)
     }
 
     fn create(_addr: u32, _cmd: u32) -> Option<Self> {

@@ -29,8 +29,8 @@ impl NecCommandVariant for NecCommand {
     }
 
     fn pack(&self) -> u32 {
-        let addr = u32::from(self.addr) | (u32::from(!self.addr) & 0xFF) << 8;
-        let cmd = u32::from(self.cmd) << 16 | u32::from(!self.cmd) << 24;
+        let addr = u32::from(self.addr) | ((u32::from(!self.addr) & 0xFF) << 8);
+        let cmd = (u32::from(self.cmd) << 16) | (u32::from(!self.cmd) << 24);
         addr | cmd
     }
 }

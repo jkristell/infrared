@@ -64,10 +64,10 @@ impl Rc5Command {
     }
 
     pub fn pack(&self) -> u16 {
-        u16::from(self.addr) << ADDR_SHIFT
+        (u16::from(self.addr) << ADDR_SHIFT)
             | u16::from(self.cmd)
-            | u16::from(self.toggle) << TOGGLE_SHIFT
-            | u16::from(self.start) << START_SHIFT
+            | (u16::from(self.toggle) << TOGGLE_SHIFT)
+            | (u16::from(self.start) << START_SHIFT)
     }
 }
 

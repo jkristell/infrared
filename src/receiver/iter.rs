@@ -33,7 +33,7 @@ where
     }
 }
 
-impl<'a, Proto, Mono, Cmd> Iterator for BufferIterator<'a, Proto, Mono, Cmd>
+impl<Proto, Mono, Cmd> Iterator for BufferIterator<'_, Proto, Mono, Cmd>
 where
     Proto: DecoderBuilder<Mono>,
     Mono: InfraMonotonic,
