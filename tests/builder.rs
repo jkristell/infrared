@@ -1,4 +1,4 @@
-use embedded_hal::digital::v2::InputPin;
+use embedded_hal_02::digital::v2::InputPin;
 
 #[cfg(feature = "rc5")]
 #[test]
