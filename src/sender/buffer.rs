@@ -48,7 +48,7 @@ pub struct PulseIterator<'a> {
     pos: usize,
 }
 
-impl<'a> Iterator for PulseIterator<'a> {
+impl Iterator for PulseIterator<'_> {
     type Item = u32;
 
     fn next(&mut self) -> Option<Self::Item> {

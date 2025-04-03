@@ -52,7 +52,10 @@ where
         }
     }
 
-    pub fn iter<'a>(&'a mut self, buf: &'a [Mono::Duration]) -> BufferIterator<Proto, Mono, Cmd> {
+    pub fn iter<'a>(
+        &'a mut self,
+        buf: &'a [Mono::Duration],
+    ) -> BufferIterator<'a, Proto, Mono, Cmd> {
         BufferIterator::new(self.resolution, buf)
     }
 
@@ -60,7 +63,7 @@ where
         &'a mut self,
         resolution: u32,
         buf: &'a [M::Duration],
-    ) -> BufferIterator<P, M, C>
+    ) -> BufferIterator<'a, P, M, C>
     where
         P: DecoderBuilder<M>,
         M: InfraMonotonic,

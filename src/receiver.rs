@@ -47,12 +47,12 @@
 //! ### Polled
 //!
 //! 1. Setup a CountDown-timer at a frequency of something like 20 kHz. How to setup the timer
-//! and enable interrupts is HAL-specific but most HALs have examples showing you how to do it.
+//!    and enable interrupts is HAL-specific but most HALs have examples showing you how to do it.
 //!
 //! 2. Create a Polled `infrared::Receiver` with the desired Decoder state machine.
 //!
 //! 3. Periodically call the poll method in the timer interrupt and it should give you a valid command
-//! eventually
+//!    eventually
 //!
 //! Something like this:
 //!
@@ -255,7 +255,7 @@ where
     Cmd: From<Proto::Cmd>,
 {
     pub fn event(&mut self, dt: Mono::Duration, edge: bool) -> Result<Option<Cmd>, DecodingError> {
-        Ok(self.event_edge(dt, edge)?.map(Into::into))
+        self.event_edge(dt, edge)
     }
 
     pub fn event_instant(
@@ -266,7 +266,7 @@ where
         let dt = Mono::checked_sub(t, self.prev_instant).unwrap_or(Mono::ZERO_DURATION);
         self.prev_instant = t;
 
-        Ok(self.event_edge(dt, edge)?.map(Into::into))
+        self.event_edge(dt, edge)
     }
 }
 
@@ -280,7 +280,7 @@ where
 {
     pub fn event(&mut self, dt: Mono::Duration) -> Result<Option<Cmd>, Error<Pin::Error>> {
         let edge = self.pin.is_low().map_err(Error::Hal)?;
-        Ok(self.event_edge(dt, edge)?.map(Into::into))
+        Ok(self.event_edge(dt, edge)?)
     }
 
     pub fn event_instant(&mut self, t: Mono::Instant) -> Result<Option<Cmd>, Error<Pin::Error>> {
@@ -289,7 +289,7 @@ where
         let dt = Mono::checked_sub(t, self.prev_instant).unwrap_or(Mono::ZERO_DURATION);
         self.prev_instant = t;
 
-        Ok(self.event_edge(dt, edge)?.map(Into::into))
+        Ok(self.event_edge(dt, edge)?)
     }
 
     /// Get a reference to the Pin

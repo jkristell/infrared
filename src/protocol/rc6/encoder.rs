@@ -11,7 +11,7 @@ impl<const F: u32> ProtocolEncoder<F> for Rc6 {
 
         let header = leader(cmd.toggle, rc6len);
 
-        let bits = u16::from(cmd.addr) << 8 | u16::from(cmd.cmd);
+        let bits = (u16::from(cmd.addr) << 8) | u16::from(cmd.cmd);
         let payload = payload(bits, rc6len);
 
         let mut prevlev = Low(0);
