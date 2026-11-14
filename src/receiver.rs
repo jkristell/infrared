@@ -58,7 +58,7 @@
 //!
 //! #### Polled example
 //! ```
-//! use embedded_hal::digital::v2::InputPin;
+//! use embedded_hal::digital::InputPin;
 //! use dummy_pin::DummyPin;
 //! use infrared::protocol::Nec;
 //!
@@ -111,7 +111,7 @@
 use core::marker::PhantomData;
 
 #[cfg(feature = "embedded-hal")]
-use embedded_hal::digital::v2::InputPin;
+use embedded_hal::digital::InputPin;
 
 use crate::{receiver::time::InfraMonotonic, Protocol};
 
