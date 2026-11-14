@@ -7,6 +7,7 @@ use crate::protocol::nec::{NecCommandVariant, NecPulseLen, NEC_STANDARD_TIMING};
 /// Nec Command without parsing of bit meaning
 pub struct NecDebugCmd {
     pub bits: u32,
+    pub repeat: bool,
 }
 
 impl NecCommandVariant for NecDebugCmd {
@@ -16,8 +17,8 @@ impl NecCommandVariant for NecDebugCmd {
         true
     }
 
-    fn unpack(bits: u32, _repeat: bool) -> Option<Self> {
-        Some(NecDebugCmd { bits })
+    fn unpack(bits: u32, repeat: bool) -> Option<Self> {
+        Some(NecDebugCmd { bits, repeat })
     }
 
     fn pack(&self) -> u32 {
