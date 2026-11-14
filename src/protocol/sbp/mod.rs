@@ -9,6 +9,9 @@
 
 use core::convert::TryInto;
 
+#[cfg(test)]
+mod tests;
+
 use crate::{
     cmd::{AddressCommand, Command},
     protocol::Protocol,

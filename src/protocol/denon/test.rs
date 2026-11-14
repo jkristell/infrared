@@ -24,6 +24,10 @@ fn denon() {
 
     assert_eq!(cmds.len(), 2);
 
+    // Regression values for this capture; the second frame has inverted bits
+    assert_eq!(cmds[0].bits, 70373060129364);
+    assert_eq!(cmds[1].bits, 70373060125268);
+
     for cmd in &cmds {
         println!("{:?}", cmd);
     }
