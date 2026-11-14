@@ -79,16 +79,16 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Denon, Mono> for DenonDecoder<Mono> {
     fn event(&mut self, rising: bool, dt: Mono::Duration) -> State {
 
         if rising {
-            let pulsewidth = self.spans.get::<PulseWidth>( self.dt_save + dt)
-                .unwrap_or(PulseWidth::Fail);
+            let symbol = self.spans.get::<DenonSymbol>( self.dt_save + dt)
+                .unwrap_or(DenonSymbol::Fail);
 
-            self.state = match (self.state, pulsewidth) {
-                (DenonState::Idle,          PulseWidth::Sync)   => DenonState::Data(0),
+            self.state = match (self.state, symbol) {
+                (DenonState::Idle,          DenonSymbol::Sync)   => DenonState::Data(0),
                 (DenonState::Idle,          _)                  => DenonState::Idle,
-                (DenonState::Data(47),      PulseWidth::Zero)   => DenonState::Done,
-                (DenonState::Data(47),      PulseWidth::One)    => DenonState::Done,
-                (DenonState::Data(idx),     PulseWidth::Zero)   => DenonState::Data(idx + 1),
-                (DenonState::Data(idx),     PulseWidth::One)    => { self.buf |= 1 << idx; DenonState::Data(idx + 1) }
+                (DenonState::Data(47),      DenonSymbol::Zero)   => DenonState::Done,
+                (DenonState::Data(47),      DenonSymbol::One)    => DenonState::Done,
+                (DenonState::Data(idx),     DenonSymbol::Zero)   => DenonState::Data(idx + 1),
+                (DenonState::Data(idx),     DenonSymbol::One)    => { self.buf |= 1 << idx; DenonState::Data(idx + 1) }
                 (DenonState::Data(_ix),     _)                  => DenonState::Idle,
                 (DenonState::Done,          _)                  => DenonState::Done,
             };
@@ -139,20 +139,20 @@ impl From<DenonState> for State {
 
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-enum PulseWidth {
+enum DenonSymbol {
     Sync,
     Zero,
     One,
     Fail,
 }
 
-impl From<usize> for PulseWidth {
+impl From<usize> for DenonSymbol {
     fn from(value: usize) -> Self {
         match value {
-            0 => PulseWidth::Sync,
-            1 => PulseWidth::Zero,
-            2 => PulseWidth::One,
-            _ => PulseWidth::Fail,
+            0 => DenonSymbol::Sync,
+            1 => DenonSymbol::Zero,
+            2 => DenonSymbol::One,
+            _ => DenonSymbol::Fail,
         }
     }
 }

@@ -1,8 +1,8 @@
 use crate::{
     protocol::{rc5::Rc5Command, Rc5},
-    receiver::BufferInputReceiver,
+    receiver::BufferReceiver,
     remotecontrol::{Action, Button},
-    sender::PulsedataBuffer,
+    sender::PulseBuffer,
 };
 
 #[test]
@@ -18,7 +18,7 @@ fn test_bufrecv() {
         72, 72, 73, 70, 72, 36, 37, 34, 36, 36, 36, 71, 73, 35, 37, 70, 37,
     ];
 
-    let mut r = BufferInputReceiver::<Rc5>::with_frequenzy(40_000);
+    let mut r = BufferReceiver::<Rc5>::with_resolution(40_000);
 
     let v: std::vec::Vec<_> = r.iter(&dists).collect();
     assert_eq!(v.len(), 2);
@@ -43,7 +43,7 @@ fn command_mixed() {
         50973, 38, 34, 73, 70, 73, 70, 74, 34, 37, 35, 37, 34, 38, 34, 37, 35, 37, 34, 38, 70, 37,
     ];
 
-    let mut r = BufferInputReceiver::<Rc5>::with_frequenzy(40_000);
+    let mut r = BufferReceiver::<Rc5>::with_resolution(40_000);
     let v: std::vec::Vec<_> = r.iter( &dists).collect();
     assert_eq!(v.len(), 3);
 
@@ -52,7 +52,7 @@ fn command_mixed() {
         assert_eq!(c.cmd, 1);
     }
 
-    let mut r = BufferInputReceiver::<Rc5, u32, Button< rc5::CdPlayer>>::with_frequenzy(40_000);
+    let mut r = BufferReceiver::<Rc5, u32, Button< rc5::CdPlayer>>::with_resolution(40_000);
 
     let v: std::vec::Vec<_> = r.iter( &dists).collect();
     assert_eq!(v.len(), 3);
@@ -67,7 +67,7 @@ fn command_mixed() {
 fn all_commands() {
     const SAMPLERATE: u32 = 40_000;
 
-    let mut ptb = PulsedataBuffer::<96>::new();
+    let mut ptb = PulseBuffer::<96>::new();
 
     for address in 0..32 {
         for cmdnum in 0..64 {
@@ -76,7 +76,7 @@ fn all_commands() {
             let cmd: Rc5Command = Rc5Command::new(address, cmdnum, false);
             ptb.load::<Rc5, SAMPLERATE>(&cmd);
 
-            let mut r = BufferInputReceiver::<Rc5>::with_frequenzy(SAMPLERATE);
+            let mut r = BufferReceiver::<Rc5>::with_resolution(SAMPLERATE);
 
             let cmdres = r.iter(&ptb.buf).next().unwrap();
 
@@ -94,11 +94,11 @@ fn timer_resolution() {
 }
 
 fn test_freq<const F: u32>() {
-    let mut ptb = PulsedataBuffer::<96>::new();
+    let mut ptb = PulseBuffer::<96>::new();
     let cmd: Rc5Command = Rc5Command::new(10, 2, false);
     ptb.load::<Rc5, F>(&cmd);
     //let mut r = Builder::new().rc5().resolution(F).buffer(&ptb.buf).build();
-    let mut r = BufferInputReceiver::<Rc5>::with_frequenzy(F);
+    let mut r = BufferReceiver::<Rc5>::with_resolution(F);
 
     let cmdres = r.iter(&ptb.buf).next().unwrap();
     assert_eq!(cmd.addr, cmdres.addr);

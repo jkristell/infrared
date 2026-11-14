@@ -1,6 +1,12 @@
 # Changelog
 
 ## [0.15.0] - Unreleased
+ - Terminology cleanup:
+   - `BufferInputReceiver` is now `BufferReceiver`, and `with_frequenzy` is `with_resolution`
+   - `PulsedataBuffer`/`PulsedataSender` are now `PulseBuffer`/`PulseSender`
+   - `Builder::frequency()` is now `Builder::resolution()`
+   - The pulse period enums are now named symbols: `NecSymbol`, `DenonSymbol`, `SbpSymbol` (they classify mark+space periods, not pulse widths)
+   - Documented the edge semantics: `edge == true` means start of an IR mark (low pin on an active-low receiver module)
  - Updated to edition 2024 and declared `rust-version = "1.85"` (MSRV), checked in CI
  - New tests: SBP decoding (previously untested), Denon regression values, fugit u64 receiver, `PinReceiver` polling, and remote control button mapping
  - `PeriodicPoll` is now a pinless core like `Receiver`: `poll(edge)` takes the sampled pin state, and pin based polling goes through `PinReceiver` (`PeriodicPoll::with_pin` returns one). New `PollReceiver` trait

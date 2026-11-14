@@ -31,7 +31,7 @@ impl<const N: usize, Receivers: ReceiverWrapper<N, Mono>, Mono: InfraMonotonic>
 
     /// Update the receivers
     /// * `dt`: Duration since the previous edge
-    /// * `edge`: true = positive edge, false = negative edge
+    /// * `edge`: true = start of an IR mark (the pin reading low on an active-low receiver module), false = start of a space
     pub fn event(&mut self, dt: Mono::Duration, edge: bool) -> [Option<AnyCommand>; N] {
         Receivers::event(&mut self.receivers, dt, edge)
     }
@@ -87,7 +87,7 @@ pub trait ReceiverWrapper<const N: usize, Mono: InfraMonotonic> {
 
     fn make(res: u32) -> Self::Receivers;
 
-    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, flank: bool) -> [Option<AnyCommand>; N];
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<AnyCommand>; N];
 }
 
 macro_rules! impl_receiver_wrapper {

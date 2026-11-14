@@ -3,7 +3,7 @@
 
 # Infrared
 
-Rust library for using Infrared hardware decoders (For example a Vishay TSOP* decoder),
+Rust library for using infrared receiver modules (for example a Vishay TSOP* receiver),
 enabling remote control support for embedded project.
 
 This library aims to be useful with any MCU HAL that implements the embedded-hal traits,

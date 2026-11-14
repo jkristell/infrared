@@ -1,11 +1,11 @@
 use crate::sender::ProtocolEncoder;
 
-pub(crate) struct PulsedataBuffer<const S: usize> {
+pub(crate) struct PulseBuffer<const S: usize> {
     pub buf: [u32; S],
     pub offset: usize,
 }
 
-impl<const S: usize> PulsedataBuffer<S> {
+impl<const S: usize> PulseBuffer<S> {
     pub fn new() -> Self {
         Self {
             buf: [0; S],
@@ -31,7 +31,7 @@ impl<const S: usize> PulsedataBuffer<S> {
     }
 }
 
-impl<'a, const S: usize> IntoIterator for &'a PulsedataBuffer<S> {
+impl<'a, const S: usize> IntoIterator for &'a PulseBuffer<S> {
     type Item = u32;
     type IntoIter = PulseIterator<'a>;
 

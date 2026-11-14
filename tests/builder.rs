@@ -61,7 +61,7 @@ fn build_receiver_with_pin() {
 
     let mut r: PinReceiver<Receiver<Rc5>, TestPin> = infrared::receiver()
         .rc5()
-        .frequency(40_000)
+        .resolution(40_000)
         .build_with_pin(TestPin { low: false });
 
     let mut cmds = std::vec::Vec::new();

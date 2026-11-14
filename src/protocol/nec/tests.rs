@@ -5,8 +5,8 @@ use crate::{
         nec::{AppleNecCommand, Nec16Command, NecCommand, NecCommandVariant, SamsungNecCommand},
         Nec,
     },
-    receiver::BufferInputReceiver,
-    sender::PulsedataBuffer,
+    receiver::BufferReceiver,
+    sender::PulseBuffer,
 };
 
 #[test]
@@ -26,7 +26,7 @@ fn standard_nec() {
         24, 21, 24, 21, 24, 21, 24, 65, 25, 65, 24, 21, 24, 21, 24, 66, 24, 65, 25, 65, 24, 66, 24,
     ];
 
-    let mut brecv = BufferInputReceiver::<Nec>::with_frequenzy(40_000);
+    let mut brecv = BufferReceiver::<Nec>::with_resolution(40_000);
 
     let cmds = brecv.iter(&dists).collect::<Vec<_>>();
     assert_eq!(cmds.len(), 2);
@@ -97,7 +97,7 @@ fn cmd_nec16() {
 #[test]
 fn all_nec_commands() {
     const FREQUENCY: u32 = 40_000;
-    let mut ptb = PulsedataBuffer::<96>::new();
+    let mut ptb = PulseBuffer::<96>::new();
 
     for address in 0..255 {
         for cmdnum in 0..255 {
@@ -108,7 +108,7 @@ fn all_nec_commands() {
                 repeat: false,
             };
             ptb.load::<Nec, FREQUENCY>(&cmd);
-            let mut brecv = BufferInputReceiver::<Nec>::with_frequenzy(40_000);
+            let mut brecv = BufferReceiver::<Nec>::with_resolution(40_000);
 
             let cmdres = brecv.iter(ptb.buffer()).next().unwrap();
             assert_eq!(cmd.addr, cmdres.addr);
@@ -125,7 +125,7 @@ fn clock_frequencies() {
 }
 
 fn one_freq<const F: u32>() {
-    let mut ptb = PulsedataBuffer::<96>::new();
+    let mut ptb = PulseBuffer::<96>::new();
 
     let cmd: NecCommand = NecCommand {
         addr: 20,
@@ -134,7 +134,7 @@ fn one_freq<const F: u32>() {
     };
     ptb.load::<Nec, F>(&cmd);
 
-    let mut receiver = BufferInputReceiver::<Nec>::with_frequenzy(F);
+    let mut receiver = BufferReceiver::<Nec>::with_resolution(F);
 
     if let Some(cmd) = receiver.iter(ptb.buffer()).next() {
         assert_eq!(cmd.addr, 20);
@@ -188,7 +188,7 @@ fn repeat() {
         97387
     ];
 
-    let mut receiver = BufferInputReceiver::<Nec>::with_frequenzy(1_000_000);
+    let mut receiver = BufferReceiver::<Nec>::with_resolution(1_000_000);
 
     let iter = receiver.iter(&data);
 

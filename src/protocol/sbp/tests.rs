@@ -1,6 +1,6 @@
 use std::vec::Vec;
 
-use crate::{protocol::Sbp, receiver::BufferInputReceiver};
+use crate::{protocol::Sbp, receiver::BufferReceiver};
 
 /// Build an SBP pulse train as edge distances in µs, starting with a rising edge
 fn pulsetrain(address: u16, cmd: u8, checksum_ok: bool, dists: &mut Vec<u32>) {
@@ -32,7 +32,7 @@ fn sbp_decode() {
     let mut dists = Vec::new();
     pulsetrain(0xA55A, 0x37, true, &mut dists);
 
-    let mut r = BufferInputReceiver::<Sbp>::with_frequenzy(1_000_000);
+    let mut r = BufferReceiver::<Sbp>::with_resolution(1_000_000);
     let cmds: Vec<_> = r.iter(&dists).collect();
 
     assert_eq!(cmds.len(), 1);
@@ -47,7 +47,7 @@ fn sbp_decode_all_commands() {
         let mut dists = Vec::new();
         pulsetrain(0x0101, cmd, true, &mut dists);
 
-        let mut r = BufferInputReceiver::<Sbp>::with_frequenzy(1_000_000);
+        let mut r = BufferReceiver::<Sbp>::with_resolution(1_000_000);
         let cmds: Vec<_> = r.iter(&dists).collect();
 
         assert_eq!(cmds.len(), 1);
@@ -62,7 +62,7 @@ fn sbp_invalid_checksum() {
     let mut dists = Vec::new();
     pulsetrain(0xA55A, 0x37, false, &mut dists);
 
-    let mut r = BufferInputReceiver::<Sbp>::with_frequenzy(1_000_000);
+    let mut r = BufferReceiver::<Sbp>::with_resolution(1_000_000);
     let cmds: Vec<_> = r.iter(&dists).collect();
 
     assert_eq!(cmds.len(), 1);

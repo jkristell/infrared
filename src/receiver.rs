@@ -10,7 +10,7 @@
 //!  - [`PinReceiver`]: [`Receiver`] combined with an embedded-hal `InputPin`.
 //!  - [`MultiReceiver`]: Multiple protocol decoders sharing the input signal.
 //!  - [`PeriodicPoll`]: Polling based receiver.
-//!  - [`BufferInputReceiver`]: Decodes buffers of edge timings.
+//!  - [`BufferReceiver`]: Decodes buffers of edge timings.
 //!
 //! ### Event / Interrupt based Receiver with embedded-hal pin
 //!
@@ -34,7 +34,7 @@
 //!
 //! let mut receiver = infrared::receiver()
 //!     .rc5()
-//!     .frequency(RESOLUTION)
+//!     .resolution(RESOLUTION)
 //!     .remotecontrol(CdPlayer)
 //!     .build_with_pin(input_pin);
 //!
@@ -127,7 +127,7 @@
 //!        protocol::{Rc6, Nec},
 //!    };
 //!    use dummy_pin::DummyPin;
-//!    use infrared::receiver::BufferInputReceiver;
+//!    use infrared::receiver::BufferReceiver;
 //!
 //!    // Receiver for Rc6 signals, event based with embedded-hal pin
 //!    let pin = DummyPin::new_low();
@@ -138,7 +138,7 @@
 //!    let r2: PinReceiver<infrared::PeriodicPoll<Nec>, DummyPin> =
 //!        infrared::PeriodicPoll::with_pin(40_000, pin);
 //!
-//!    let mut r3: BufferInputReceiver<Rc6> = BufferInputReceiver::with_frequenzy(20_000);
+//!    let mut r3: BufferReceiver<Rc6> = BufferReceiver::with_resolution(20_000);
 //!
 //!    let buf: &[u32] = &[20, 40, 20];
 //!    let cmd_iter = r3.iter(buf);
@@ -159,7 +159,7 @@ mod pin;
 mod ppoll;
 pub mod time;
 
-pub use bufferinput::BufferInputReceiver;
+pub use bufferinput::BufferReceiver;
 pub use builder::Builder;
 pub use decoder::{DecoderBuilder, ProtocolDecoder, State};
 pub use error::{DecodingError, Error};
@@ -183,7 +183,7 @@ pub trait EdgeReceiver {
 
     /// Update the receiver with an edge event
     /// * `dt`: Duration since the previous edge
-    /// * `edge`: true = positive edge, false = negative edge
+    /// * `edge`: true = start of an IR mark (the pin reading low on an active-low receiver module), false = start of a space
     fn event_edge(&mut self, dt: Self::Duration, edge: bool)
         -> Result<Self::Output, DecodingError>;
 
@@ -243,7 +243,7 @@ where
 
     /// Update the receiver
     /// * `dt`: Duration since the previous edge
-    /// * `edge`: true = positive edge, false = negative edge
+    /// * `edge`: true = start of an IR mark (the pin reading low on an active-low receiver module), false = start of a space
     pub fn event(&mut self, dt: Mono::Duration, edge: bool) -> Result<Option<Cmd>, DecodingError> {
         // Update state machine
         let state = self.decoder.event(edge, dt);

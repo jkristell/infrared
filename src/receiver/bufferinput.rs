@@ -6,7 +6,7 @@ use crate::{
 };
 
 /// Receiver that takes it input from a buffer
-pub struct BufferInputReceiver<
+pub struct BufferReceiver<
     Proto: DecoderBuilder<Mono>,
     Mono: InfraMonotonic = u32,
     Cmd: From<<Proto as Protocol>::Cmd> = <Proto as Protocol>::Cmd,
@@ -17,7 +17,7 @@ pub struct BufferInputReceiver<
     cmd: PhantomData<Cmd>,
 }
 
-impl<Proto, Mono, Cmd> Default for BufferInputReceiver<Proto, Mono, Cmd>
+impl<Proto, Mono, Cmd> Default for BufferReceiver<Proto, Mono, Cmd>
 where
     Proto: DecoderBuilder<Mono>,
     Mono: InfraMonotonic,
@@ -28,14 +28,14 @@ where
     }
 }
 
-impl<Proto, Mono, Cmd> BufferInputReceiver<Proto, Mono, Cmd>
+impl<Proto, Mono, Cmd> BufferReceiver<Proto, Mono, Cmd>
 where
     Proto: DecoderBuilder<Mono>,
     Mono: InfraMonotonic,
     Cmd: From<<Proto as Protocol>::Cmd>,
 {
     pub fn new() -> Self {
-        BufferInputReceiver {
+        BufferReceiver {
             resolution: 1_000_000,
             proto: Default::default(),
             mono: Default::default(),
@@ -43,7 +43,7 @@ where
         }
     }
 
-    pub fn with_frequenzy(resolution: u32) -> Self {
+    pub fn with_resolution(resolution: u32) -> Self {
         Self {
             resolution,
             proto: Default::default(),

@@ -13,7 +13,7 @@ fn polled_rc5() {
         71, 36,
     ];
 
-    let mut recv: PeriodicPoll<Rc5> = infrared::receiver().rc5().frequency(40_000).build_polled();
+    let mut recv: PeriodicPoll<Rc5> = infrared::receiver().rc5().resolution(40_000).build_polled();
 
     let mut pinstate = false;
 

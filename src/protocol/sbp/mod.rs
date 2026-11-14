@@ -2,7 +2,7 @@
 //!
 //! Protocol used on some Samsung BluRay players and probably other devices from Samsung.
 //!
-//! Pulse distance coding is used with. After the Header the 16 bit address is sent.
+//! Pulse distance coding is used. After the header the 16 bit address is sent.
 //! Then a pause and then 4 bits of unknown function (could be repeat indicator?)
 //! After this the 8 bit command is sent twice, second time inverted.
 //!
@@ -135,12 +135,12 @@ pub enum SbpState {
 impl<Mono: InfraMonotonic> ProtocolDecoder<Sbp, Mono> for SbpDecoder<Mono> {
     #[rustfmt::skip]
     fn event(&mut self, rising: bool, dt: Mono::Duration) -> State {
-        use SbpPulse::*;
+        use SbpSymbol::*;
         use SbpState::*;
 
         if rising {
             let dt = self.since_rising + dt;
-            let pulsewidth = self.spans.get::<SbpPulse>(dt).unwrap_or(SbpPulse::NotAPulseWidth);
+            let pulsewidth = self.spans.get::<SbpSymbol>(dt).unwrap_or(SbpSymbol::Invalid);
 
             self.state = match (self.state, pulsewidth) {
                 (Init,          Sync)   => Address(0),
@@ -152,7 +152,7 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Sbp, Mono> for SbpDecoder<Mono> {
                 (Address(bit),  Zero)   => Address(bit + 1),
                 (Address(_),    _)      => Err(DecodingError::Address),
 
-                (Divider,       Paus)   => Command(0),
+                (Divider,       Pause)   => Command(0),
                 (Divider,       _)      => Err(DecodingError::Data),
 
                 (Command(19),   One)    => { self.command |= 1 << 19; Done }
@@ -226,22 +226,22 @@ const TIMING: SbpTiming = SbpTiming {
 
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub enum SbpPulse {
+pub enum SbpSymbol {
     Sync = 0,
-    Paus = 1,
+    Pause = 1,
     Zero = 2,
     One = 3,
-    NotAPulseWidth = 4,
+    Invalid = 4,
 }
 
-impl From<usize> for SbpPulse {
+impl From<usize> for SbpSymbol {
     fn from(v: usize) -> Self {
         match v {
-            0 => SbpPulse::Sync,
-            1 => SbpPulse::Paus,
-            2 => SbpPulse::Zero,
-            3 => SbpPulse::One,
-            _ => SbpPulse::NotAPulseWidth,
+            0 => SbpSymbol::Sync,
+            1 => SbpSymbol::Pause,
+            2 => SbpSymbol::Zero,
+            3 => SbpSymbol::One,
+            _ => SbpSymbol::Invalid,
         }
     }
 }

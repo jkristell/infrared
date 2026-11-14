@@ -14,7 +14,10 @@ use crate::{
 /// Receiver wrapper that reads its input from an embedded-hal `InputPin`
 ///
 /// Wraps any pinless receiver core ([`Receiver`], [`MultiReceiver`] or
-/// [`PeriodicPoll`]) and reads the edge state from the pin on every event.
+/// [`PeriodicPoll`]) and reads the pin state on every event.
+///
+/// Note: IR receiver modules are typically active-low, so a low pin is
+/// interpreted as "IR mark" (carrier detected).
 pub struct PinReceiver<R, Pin> {
     recv: R,
     pin: Pin,

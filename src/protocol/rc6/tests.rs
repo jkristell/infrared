@@ -1,7 +1,7 @@
 use crate::{
     protocol::{rc6::Rc6Command, Rc6},
-    receiver::{BufferInputReceiver, ProtocolDecoder},
-    sender::PulsedataBuffer,
+    receiver::{BufferReceiver, ProtocolDecoder},
+    sender::PulseBuffer,
     Receiver,
 };
 
@@ -11,7 +11,7 @@ fn state_debug() {
 
     const SAMPLE_RATE: u32 = 1_000_000;
 
-    let mut sender = PulsedataBuffer::<96>::new();
+    let mut sender = PulseBuffer::<96>::new();
 
     sender.load::<Rc6, SAMPLE_RATE>(&cmd);
 
@@ -52,7 +52,7 @@ fn decode_buffer() {
         17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 35, 35, 35,
     ];
 
-    let mut recv = BufferInputReceiver::<Rc6>::with_frequenzy(40_000);
+    let mut recv = BufferReceiver::<Rc6>::with_resolution(40_000);
 
     let iter = recv.iter(&dists);
 
@@ -70,7 +70,7 @@ fn decode_buffer() {
 
 #[test]
 fn all_commands() {
-    let mut ptb = PulsedataBuffer::<96>::new();
+    let mut ptb = PulseBuffer::<96>::new();
     const FREQ: u32 = 40_000;
 
     for address in 0..255 {
@@ -80,7 +80,7 @@ fn all_commands() {
             let cmd = Rc6Command::new(address, cmdnum);
             ptb.load::<Rc6, FREQ>(&cmd);
 
-            let mut recv = BufferInputReceiver::<Rc6>::with_frequenzy(FREQ);
+            let mut recv = BufferReceiver::<Rc6>::with_resolution(FREQ);
 
             let cmdres = recv.iter(&ptb.buf).next().unwrap();
 

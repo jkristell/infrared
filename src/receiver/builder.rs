@@ -118,7 +118,7 @@ where
         }
     }
 
-    pub fn frequency(mut self, hz: u32) -> Self {
+    pub fn resolution(mut self, hz: u32) -> Self {
         self.freq = hz;
         self
     }

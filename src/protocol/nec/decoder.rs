@@ -90,16 +90,16 @@ where
     fn event(&mut self, rising: bool, dur: Mono::Duration) -> State {
 
         use NecState::*;
-        use PulseWidth::*;
+        use NecSymbol::*;
 
         if rising {
 
             let total_duration = dur + self.dt_save;
 
-            let pulsewidth = self.pulsespans.get(total_duration)
-                .unwrap_or(PulseWidth::Invalid);
+            let symbol = self.pulsespans.get(total_duration)
+                .unwrap_or(NecSymbol::Invalid);
 
-            let status = match (self.state, pulsewidth) {
+            let status = match (self.state, symbol) {
                 (Init,              Sync)   => { self.bitbuf = 0; Receiving(0) },
                 (Init,              Repeat) => RepeatDone,
                 (Init,              _)      => Init,
@@ -116,10 +116,10 @@ where
             };
 
             trace!(
-                "State(prev, new): ({:?}, {:?}) pulsewidth: {:?}",
+                "State(prev, new): ({:?}, {:?}) symbol: {:?}",
                 self.state,
                 status,
-                pulsewidth
+                symbol
             );
 
             self.state = status;
@@ -153,7 +153,7 @@ where
 
 #[derive(Debug, Copy, Clone)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub enum PulseWidth {
+pub enum NecSymbol {
     Sync = 0,
     Repeat = 1,
     Zero = 2,
@@ -161,14 +161,14 @@ pub enum PulseWidth {
     Invalid = 4,
 }
 
-impl From<usize> for PulseWidth {
+impl From<usize> for NecSymbol {
     fn from(v: usize) -> Self {
         match v {
-            0 => PulseWidth::Sync,
-            1 => PulseWidth::Repeat,
-            2 => PulseWidth::Zero,
-            3 => PulseWidth::One,
-            _ => PulseWidth::Invalid,
+            0 => NecSymbol::Sync,
+            1 => NecSymbol::Repeat,
+            2 => NecSymbol::Zero,
+            3 => NecSymbol::One,
+            _ => NecSymbol::Invalid,
         }
     }
 }

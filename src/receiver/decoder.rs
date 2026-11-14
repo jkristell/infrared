@@ -26,7 +26,7 @@ where
     Mono: InfraMonotonic,
 {
     /// Notify the state machine of a new event
-    /// * `edge`: true = positive edge, false = negative edge
+    /// * `edge`: true = start of an IR mark (the pin reading low on an active-low receiver module), false = start of a space
     /// * `dt` : Duration since last event
     fn event(&mut self, edge: bool, dt: Mono::Duration) -> State;
 

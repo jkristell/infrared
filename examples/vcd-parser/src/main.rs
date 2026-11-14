@@ -18,7 +18,7 @@ fn main() -> io::Result<()> {
     println!("Samples captured at: {:?} Hz", resolution);
 
     let mut ir_recv = infrared::receiver()
-        .frequency(resolution)
+        .resolution(resolution)
         .monotonic::<u64>()
         .nec_samsung()
         .build();

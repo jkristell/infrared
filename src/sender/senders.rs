@@ -1,16 +1,16 @@
-use crate::sender::{ProtocolEncoder, PulsedataBuffer};
+use crate::sender::{ProtocolEncoder, PulseBuffer};
 
-pub struct PulsedataSender<const S: usize> {
-    pub(crate) ptb: PulsedataBuffer<S>,
+pub struct PulseSender<const S: usize> {
+    pub(crate) ptb: PulseBuffer<S>,
     pos: usize,
     pub(crate) status: Status,
     ts_lastedge: u32,
 }
 
 #[allow(clippy::new_without_default)]
-impl<const S: usize> PulsedataSender<S> {
+impl<const S: usize> PulseSender<S> {
     pub fn new() -> Self {
-        let ptb = PulsedataBuffer::new();
+        let ptb = PulseBuffer::new();
         Self {
             ptb,
             pos: 0,

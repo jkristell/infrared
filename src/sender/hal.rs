@@ -1,12 +1,12 @@
 //! Embedded-hal based Sender
 
-use crate::sender::{ProtocolEncoder, PulsedataSender, Status};
+use crate::sender::{ProtocolEncoder, PulseSender, Status};
 
 /// Embedded hal sender
 pub struct Sender<PwmPin, const FREQ: u32, const BUFSIZE: usize> {
     pin: PwmPin,
     counter: u32,
-    buffer: PulsedataSender<BUFSIZE>,
+    buffer: PulseSender<BUFSIZE>,
 }
 
 impl<PwmPin, PwmDuty, const F: u32, const S: usize> Sender<PwmPin, F, S>
@@ -17,7 +17,7 @@ where
         Self {
             pin,
             counter: 0,
-            buffer: PulsedataSender::new(),
+            buffer: PulseSender::new(),
         }
     }
 
