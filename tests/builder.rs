@@ -1,4 +1,5 @@
 use std::convert::Infallible;
+
 use embedded_hal::digital::{ErrorType, InputPin};
 
 #[cfg(feature = "rc5")]
@@ -30,17 +31,49 @@ fn receiver_remote() {
     let _r: Receiver<Rc5, u32, Button<CdPlayer>> = Receiver::new(20_000);
 }
 
-struct DummyEmbeddedHalPin;
+struct TestPin {
+    low: bool,
+}
 
-impl ErrorType for DummyEmbeddedHalPin { type Error = Infallible; }
+impl ErrorType for TestPin {
+    type Error = Infallible;
+}
 
-impl InputPin for DummyEmbeddedHalPin {
-
+impl InputPin for TestPin {
     fn is_high(&mut self) -> Result<bool, Self::Error> {
-        Ok(true)
+        Ok(!self.low)
     }
 
     fn is_low(&mut self) -> Result<bool, Self::Error> {
-        Ok(false)
+        Ok(self.low)
     }
+}
+
+#[cfg(feature = "rc5")]
+#[test]
+fn build_receiver_with_pin() {
+    use infrared::{protocol::Rc5, PinReceiver, Receiver};
+
+    // Rc5 command, address 20, command 9, captured at 40 kHz
+    const DISTS: [u32; 20] = [
+        0, 37, 34, 72, 72, 73, 70, 72, 36, 37, 34, 36, 36, 36, 71, 73, 35, 37, 70, 37,
+    ];
+
+    let mut r: PinReceiver<Receiver<Rc5>, TestPin> = infrared::receiver()
+        .rc5()
+        .frequency(40_000)
+        .build_with_pin(TestPin { low: false });
+
+    let mut cmds = std::vec::Vec::new();
+    for (i, dt) in DISTS.iter().enumerate() {
+        // The receiver reads the edge state from the pin
+        r.pin_mut().low = i % 2 == 0;
+        if let Ok(Some(cmd)) = r.event(*dt) {
+            cmds.push(cmd);
+        }
+    }
+
+    assert_eq!(cmds.len(), 1);
+    assert_eq!(cmds[0].addr, 20);
+    assert_eq!(cmds[0].cmd, 9);
 }

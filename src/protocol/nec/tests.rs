@@ -195,9 +195,9 @@ fn repeat() {
     let cmds = iter.collect::<std::vec::Vec<_>>();
 
     assert_eq!(cmds.len(), 8);
-    assert_eq!(cmds[0].repeat, false);
-    assert_eq!(cmds[1].repeat, true);
-    assert_eq!(cmds[7].repeat, true);
+    assert!(!cmds[0].repeat);
+    assert!(cmds[1].repeat);
+    assert!(cmds[7].repeat);
 }
 
 #[test]
@@ -241,7 +241,7 @@ fn fugit() {
     }
 
     assert_eq!(cmds.len(), 8);
-    assert_eq!(cmds[0].repeat, false);
-    assert_eq!(cmds[1].repeat, true);
-    assert_eq!(cmds[7].repeat, true);
+    assert!(!cmds[0].repeat);
+    assert!(cmds[1].repeat);
+    assert!(cmds[7].repeat);
 }

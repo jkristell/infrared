@@ -1,6 +1,9 @@
 # Changelog
 
 ## [0.15.0] - Unreleased
+ - CI: added a clippy check
+ - docs.rs now builds with all features enabled
+ - New tests: `PinReceiver` via the builder, and `MultiReceiver` (duration and instant based)
  - Receiver API rework: `Receiver` is now a hardware independent core (no pin, 3 generic parameters). The new `PinReceiver` wraps any edge-driven receiver with an embedded-hal `InputPin`
  - `MultiReceiver` is pinless too, gained instant based eventing, and shares the pin handling with `Receiver` through `PinReceiver`
  - New `EdgeReceiver` trait implemented by `Receiver` and `MultiReceiver`, intended as the extension point for future input drivers (e.g. async)

@@ -6,8 +6,8 @@
 Rust library for using Infrared hardware decoders (For example a Vishay TSOP* decoder),
 enabling remote control support for embedded project.
 
-This library aims for to be useful with the any MCU hal that implements the embedded-hal traits,
-and at the same time provide functionality for using it with more efficient implementation
+This library aims to be useful with any MCU HAL that implements the embedded-hal traits,
+and at the same time provide functionality for using it with more efficient implementations
 such as input capture, and be useful in host applications (such as Blipper).
 
 ### Supported protocols

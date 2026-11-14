@@ -13,10 +13,10 @@ use crate::protocol::Rc6;
 use crate::protocol::Sbp;
 #[cfg(feature = "nec")]
 use crate::protocol::{nec::NecCommand, AppleNec, Nec, Nec16, SamsungNec};
-#[cfg(feature = "remotes")]
-use crate::remotecontrol::{Button, RemoteControlModel};
 #[cfg(feature = "embedded-hal")]
 use crate::receiver::PinReceiver;
+#[cfg(feature = "remotes")]
+use crate::remotecontrol::{Button, RemoteControlModel};
 use crate::{
     receiver::{time::InfraMonotonic, DecoderBuilder, NoPin, Receiver},
     PeriodicPoll, Protocol,
