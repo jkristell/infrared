@@ -1,6 +1,8 @@
 # Changelog
 
 ## [0.15.0] - Unreleased
+ - Iterator cleanup: `BufferReceiver::iter` takes `&self`; `BufferIterator` is exported and implements `FusedIterator`; removed the unused `iter_with` and the hand-rolled `PulseIterator` (slice iterator used instead)
+ - Fixed `PulseBuffer::get` reading stale data past the loaded pulse train, which made `PulseSender` toggle rapidly after each transmission
  - Terminology cleanup:
    - `BufferInputReceiver` is now `BufferReceiver`, and `with_frequenzy` is `with_resolution`
    - `PulsedataBuffer`/`PulsedataSender` are now `PulseBuffer`/`PulseSender`

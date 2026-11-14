@@ -32,7 +32,7 @@ fn sbp_decode() {
     let mut dists = Vec::new();
     pulsetrain(0xA55A, 0x37, true, &mut dists);
 
-    let mut r = BufferReceiver::<Sbp>::with_resolution(1_000_000);
+    let r = BufferReceiver::<Sbp>::with_resolution(1_000_000);
     let cmds: Vec<_> = r.iter(&dists).collect();
 
     assert_eq!(cmds.len(), 1);
@@ -47,7 +47,7 @@ fn sbp_decode_all_commands() {
         let mut dists = Vec::new();
         pulsetrain(0x0101, cmd, true, &mut dists);
 
-        let mut r = BufferReceiver::<Sbp>::with_resolution(1_000_000);
+        let r = BufferReceiver::<Sbp>::with_resolution(1_000_000);
         let cmds: Vec<_> = r.iter(&dists).collect();
 
         assert_eq!(cmds.len(), 1);
@@ -62,7 +62,7 @@ fn sbp_invalid_checksum() {
     let mut dists = Vec::new();
     pulsetrain(0xA55A, 0x37, false, &mut dists);
 
-    let mut r = BufferReceiver::<Sbp>::with_resolution(1_000_000);
+    let r = BufferReceiver::<Sbp>::with_resolution(1_000_000);
     let cmds: Vec<_> = r.iter(&dists).collect();
 
     assert_eq!(cmds.len(), 1);

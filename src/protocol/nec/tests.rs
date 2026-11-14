@@ -26,7 +26,7 @@ fn standard_nec() {
         24, 21, 24, 21, 24, 21, 24, 65, 25, 65, 24, 21, 24, 21, 24, 66, 24, 65, 25, 65, 24, 66, 24,
     ];
 
-    let mut brecv = BufferReceiver::<Nec>::with_resolution(40_000);
+    let brecv = BufferReceiver::<Nec>::with_resolution(40_000);
 
     let cmds = brecv.iter(&dists).collect::<Vec<_>>();
     assert_eq!(cmds.len(), 2);
@@ -108,7 +108,7 @@ fn all_nec_commands() {
                 repeat: false,
             };
             ptb.load::<Nec, FREQUENCY>(&cmd);
-            let mut brecv = BufferReceiver::<Nec>::with_resolution(40_000);
+            let brecv = BufferReceiver::<Nec>::with_resolution(40_000);
 
             let cmdres = brecv.iter(ptb.buffer()).next().unwrap();
             assert_eq!(cmd.addr, cmdres.addr);
@@ -134,7 +134,7 @@ fn one_freq<const F: u32>() {
     };
     ptb.load::<Nec, F>(&cmd);
 
-    let mut receiver = BufferReceiver::<Nec>::with_resolution(F);
+    let receiver = BufferReceiver::<Nec>::with_resolution(F);
 
     if let Some(cmd) = receiver.iter(ptb.buffer()).next() {
         assert_eq!(cmd.addr, 20);
@@ -188,7 +188,7 @@ fn repeat() {
         97387
     ];
 
-    let mut receiver = BufferReceiver::<Nec>::with_resolution(1_000_000);
+    let receiver = BufferReceiver::<Nec>::with_resolution(1_000_000);
 
     let iter = receiver.iter(&data);
 

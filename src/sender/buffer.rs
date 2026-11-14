@@ -22,8 +22,9 @@ impl<const S: usize> PulseBuffer<S> {
         self.offset += len;
     }
 
+    /// Get the pulse length at `index`, if it is part of the loaded pulse train
     pub fn get(&self, index: usize) -> Option<u32> {
-        self.buf.get(index).cloned()
+        self.buffer().get(index).copied()
     }
 
     pub fn buffer(&self) -> &[u32] {
@@ -33,31 +34,9 @@ impl<const S: usize> PulseBuffer<S> {
 
 impl<'a, const S: usize> IntoIterator for &'a PulseBuffer<S> {
     type Item = u32;
-    type IntoIter = PulseIterator<'a>;
+    type IntoIter = core::iter::Copied<core::slice::Iter<'a, u32>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        PulseIterator {
-            pulses: &self.buf[0..self.offset],
-            pos: 0,
-        }
-    }
-}
-
-pub struct PulseIterator<'a> {
-    pulses: &'a [u32],
-    pos: usize,
-}
-
-impl Iterator for PulseIterator<'_> {
-    type Item = u32;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.pos == self.pulses.len() {
-            None
-        } else {
-            let r = self.pulses[self.pos];
-            self.pos += 1;
-            Some(r)
-        }
+        self.buffer().iter().copied()
     }
 }

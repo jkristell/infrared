@@ -52,23 +52,8 @@ where
         }
     }
 
-    pub fn iter<'a>(
-        &'a mut self,
-        buf: &'a [Mono::Duration],
-    ) -> BufferIterator<'a, Proto, Mono, Cmd> {
+    /// Get an iterator over the commands decoded from the pulse buffer `buf`
+    pub fn iter<'a>(&self, buf: &'a [Mono::Duration]) -> BufferIterator<'a, Proto, Mono, Cmd> {
         BufferIterator::new(self.resolution, buf)
-    }
-
-    pub fn iter_with<'a, P, M, C>(
-        &'a mut self,
-        resolution: u32,
-        buf: &'a [M::Duration],
-    ) -> BufferIterator<'a, P, M, C>
-    where
-        P: DecoderBuilder<M>,
-        M: InfraMonotonic,
-        C: From<<P as Protocol>::Cmd>,
-    {
-        BufferIterator::new(resolution, buf)
     }
 }

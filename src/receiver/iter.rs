@@ -1,10 +1,13 @@
-use core::marker::PhantomData;
+use core::{iter::FusedIterator, marker::PhantomData};
 
 use crate::{
     receiver::{time::InfraMonotonic, DecoderBuilder, ProtocolDecoder, State},
     Protocol,
 };
 
+/// Iterator over the commands decoded from a buffer of pulse durations
+///
+/// Returned by [`BufferReceiver::iter`](crate::receiver::BufferReceiver::iter).
 pub struct BufferIterator<'a, Proto, Mono, Cmd>
 where
     Proto: DecoderBuilder<Mono>,
@@ -23,11 +26,11 @@ where
     Mono: InfraMonotonic,
     Cmd: From<<Proto as Protocol>::Cmd>,
 {
-    pub fn new(freq: u32, buf: &'a [Mono::Duration]) -> Self {
+    pub fn new(resolution: u32, buf: &'a [Mono::Duration]) -> Self {
         BufferIterator {
             pos: 0,
             buf,
-            decoder: Proto::build(freq),
+            decoder: Proto::build(resolution),
             cmd: PhantomData,
         }
     }
@@ -69,4 +72,12 @@ where
             }
         }
     }
+}
+
+impl<Proto, Mono, Cmd> FusedIterator for BufferIterator<'_, Proto, Mono, Cmd>
+where
+    Proto: DecoderBuilder<Mono>,
+    Mono: InfraMonotonic,
+    Cmd: From<<Proto as Protocol>::Cmd>,
+{
 }

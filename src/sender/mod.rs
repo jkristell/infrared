@@ -5,7 +5,7 @@ use crate::protocol::Protocol;
 mod buffer;
 mod senders;
 
-pub use buffer::*;
+pub(crate) use buffer::PulseBuffer;
 pub use senders::*;
 
 pub trait ProtocolEncoder<const FREQ: u32>: Protocol {

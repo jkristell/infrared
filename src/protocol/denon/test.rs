@@ -19,7 +19,7 @@ fn denon() {
         48, 19, 15, 18, 17, 16, 19, 15, 19, 15, 18, 15, 19, 49, 19, 15, 18, 16, 17, 16, 18, 16, 18,
         15, 18, 16, 19, 14, 18, 16, 18, 16, 17, 16, 18, 16, 18, 15, 18, 16, 18, 49, 18, 16, 18,
     ];
-    let mut brecv = BufferReceiver::<Denon>::with_resolution(40_000);
+    let brecv = BufferReceiver::<Denon>::with_resolution(40_000);
     let cmds = brecv.iter(dists).collect::<Vec<_>>();
 
     assert_eq!(cmds.len(), 2);

@@ -138,7 +138,7 @@
 //!    let r2: PinReceiver<infrared::PeriodicPoll<Nec>, DummyPin> =
 //!        infrared::PeriodicPoll::with_pin(40_000, pin);
 //!
-//!    let mut r3: BufferReceiver<Rc6> = BufferReceiver::with_resolution(20_000);
+//!    let r3: BufferReceiver<Rc6> = BufferReceiver::with_resolution(20_000);
 //!
 //!    let buf: &[u32] = &[20, 40, 20];
 //!    let cmd_iter = r3.iter(buf);
@@ -160,6 +160,7 @@ mod ppoll;
 pub mod time;
 
 pub use bufferinput::BufferReceiver;
+pub use iter::BufferIterator;
 pub use builder::Builder;
 pub use decoder::{DecoderBuilder, ProtocolDecoder, State};
 pub use error::{DecodingError, Error};

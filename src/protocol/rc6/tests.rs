@@ -52,7 +52,7 @@ fn decode_buffer() {
         17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 35, 35, 35,
     ];
 
-    let mut recv = BufferReceiver::<Rc6>::with_resolution(40_000);
+    let recv = BufferReceiver::<Rc6>::with_resolution(40_000);
 
     let iter = recv.iter(&dists);
 
@@ -80,7 +80,7 @@ fn all_commands() {
             let cmd = Rc6Command::new(address, cmdnum);
             ptb.load::<Rc6, FREQ>(&cmd);
 
-            let mut recv = BufferReceiver::<Rc6>::with_resolution(FREQ);
+            let recv = BufferReceiver::<Rc6>::with_resolution(FREQ);
 
             let cmdres = recv.iter(&ptb.buf).next().unwrap();
 
