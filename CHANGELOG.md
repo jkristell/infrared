@@ -1,6 +1,7 @@
 # Changelog
 
 ## [0.15.0] - Unreleased
+ - Updated to edition 2024 and declared `rust-version = "1.85"` (MSRV), checked in CI
  - `PeriodicPoll` is now a pinless core like `Receiver`: `poll(edge)` takes the sampled pin state, and pin based polling goes through `PinReceiver` (`PeriodicPoll::with_pin` returns one). New `PollReceiver` trait
  - Removed `NoPin`
  - CI: added a clippy check
