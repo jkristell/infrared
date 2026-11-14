@@ -2,11 +2,13 @@
 
 use embedded_hal::digital::InputPin;
 
-use crate::receiver::{
-    time::InfraMonotonic, DecoderBuilder, EdgeReceiver, Error, MultiReceiver, Receiver,
-    ReceiverWrapper,
+use crate::{
+    cmd::AnyCommand,
+    receiver::{
+        time::InfraMonotonic, DecoderBuilder, EdgeReceiver, Error, MultiReceiver, Receiver,
+        ReceiverWrapper,
+    },
 };
-use crate::cmd::AnyCommand;
 
 /// Receiver wrapper that reads its input from an embedded-hal `InputPin`
 ///
@@ -82,7 +84,8 @@ where
 }
 
 #[cfg(feature = "fugit")]
-impl<Proto, Pin, const HZ: u32, Cmd> PinReceiver<Receiver<Proto, fugit::TimerInstantU32<HZ>, Cmd>, Pin>
+impl<Proto, Pin, const HZ: u32, Cmd>
+    PinReceiver<Receiver<Proto, fugit::TimerInstantU32<HZ>, Cmd>, Pin>
 where
     Proto: DecoderBuilder<fugit::TimerInstantU32<HZ>>,
     Pin: InputPin,
@@ -95,7 +98,8 @@ where
 }
 
 #[cfg(feature = "fugit")]
-impl<Proto, Pin, const HZ: u32, Cmd> PinReceiver<Receiver<Proto, fugit::TimerInstantU64<HZ>, Cmd>, Pin>
+impl<Proto, Pin, const HZ: u32, Cmd>
+    PinReceiver<Receiver<Proto, fugit::TimerInstantU64<HZ>, Cmd>, Pin>
 where
     Proto: DecoderBuilder<fugit::TimerInstantU64<HZ>>,
     Pin: InputPin,

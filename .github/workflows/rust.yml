@@ -19,6 +19,13 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
 
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+    - name: Clippy
+      run: cargo clippy --all-targets --all-features -- -D warnings
+
   features:
     runs-on: ubuntu-latest
     steps:

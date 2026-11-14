@@ -9,13 +9,12 @@
 
 use core::convert::TryInto;
 
-use crate::receiver::{DecodingError, ProtocolDecoder, State};
 use crate::{
     cmd::{AddressCommand, Command},
     protocol::Protocol,
     receiver::{
         time::{InfraMonotonic, PulseSpans},
-        DecoderBuilder,
+        DecoderBuilder, DecodingError, ProtocolDecoder, State,
     },
     ProtocolId,
 };

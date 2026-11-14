@@ -10,6 +10,9 @@ keywords = ["infrared", "remote", "rc5", "rc6", "nec"]
 categories = ["no-std", "embedded"]
 license = "MIT OR Apache-2.0"
 
+[package.metadata.docs.rs]
+all-features = true
+
 [workspace]
 members = ["examples/vcd-parser"]
 exclude = ["examples/bluepill", "examples/rp-pico", "examples/arduino_uno"]
