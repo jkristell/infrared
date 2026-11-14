@@ -1,6 +1,7 @@
 # Changelog
 
 ## [0.15.0] - Unreleased
+ - Rewrote the embedded-hal `Sender` for embedded-hal 1.0 (`SetDutyCycle`), with configurable carrier duty cycle
  - Ported to embedded-hal 1.0 (#106)
  - Updated defmt to 1.0 (#115)
  - Removed the `embedded` feature. Use `embedded-hal` and `fugit`, both enabled by default (#117)
