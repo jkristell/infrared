@@ -26,6 +26,15 @@ jobs:
     - name: Clippy
       run: cargo clippy --all-targets --all-features -- -D warnings
 
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+    - name: Install MSRV toolchain
+      run: rustup toolchain install 1.85 --profile minimal
+    - name: Check with MSRV
+      run: cargo +1.85 check --all-features
+
   features:
     runs-on: ubuntu-latest
     steps:

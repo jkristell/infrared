@@ -2,7 +2,8 @@
 name = "infrared"
 version = "0.15.0"
 authors = ["Johan Kristell <johan@jott.se>"]
-edition = "2021"
+edition = "2024"
+rust-version = "1.85"
 description = "Infrared remote control library"
 repository = "https://github.com/jkristell/infrared"
 readme = "README.md"
