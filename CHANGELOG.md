@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.15.0] - Unreleased
+ - Ported to embedded-hal 1.0 (#106)
+ - Updated defmt to 1.0 (#115)
+ - Removed the `embedded` feature. Use `embedded-hal` and `fugit`, both enabled by default (#117)
+ - Fixed compile errors in several non-default feature combinations (#117)
+ - Enabling both `defmt` and `log` is now allowed; defmt takes precedence (#117)
+ - Nec: added repeat state to NecDebugCmd (#105)
+ - Nec: increased tolerances for bit pulses (#107)
+ - Added AnyCommand support for AddressCommand (#93, #96)
+ - Removed the Capture protocol (#92)
+ - Examples: updated bluepill and rp-pico examples for embedded-hal 1.0; removed the arduino and sender examples (#114)
+
 ## [0.14.2] - 2023-01-22
  - add a to_str() method on Action
 
