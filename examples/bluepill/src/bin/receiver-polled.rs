@@ -21,7 +21,7 @@ use stm32f1xx_hal::{
 
 // Pin connected to the receiver
 type IrPin = PB8<Input<Floating>>;
-type IrReceiver = infrared::PeriodicPoll<AppleNec, IrPin, Button<Apple2009>>;
+type IrReceiver = infrared::PinReceiver<infrared::PeriodicPoll<AppleNec, Button<Apple2009>>, IrPin>;
 
 // Samplerate
 const SAMPLERATE: u32 = 20_000;

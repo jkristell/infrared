@@ -1,6 +1,8 @@
 # Changelog
 
 ## [0.15.0] - Unreleased
+ - `PeriodicPoll` is now a pinless core like `Receiver`: `poll(edge)` takes the sampled pin state, and pin based polling goes through `PinReceiver` (`PeriodicPoll::with_pin` returns one). New `PollReceiver` trait
+ - Removed `NoPin`
  - CI: added a clippy check
  - docs.rs now builds with all features enabled
  - New tests: `PinReceiver` via the builder, and `MultiReceiver` (duration and instant based)
