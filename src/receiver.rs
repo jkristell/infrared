@@ -222,7 +222,7 @@ where
     }
 }
 
-#[cfg(feature = "embedded")]
+#[cfg(all(feature = "embedded-hal", feature = "fugit"))]
 impl<Proto, Pin, const HZ: u32, Cmd> Receiver<Proto, Pin, fugit::TimerInstantU32<HZ>, Cmd>
 where
     Proto: DecoderBuilder<fugit::TimerInstantU32<HZ>>,
@@ -235,7 +235,7 @@ where
     }
 }
 
-#[cfg(feature = "embedded")]
+#[cfg(all(feature = "embedded-hal", feature = "fugit"))]
 impl<Proto, Pin, const HZ: u32, Cmd> Receiver<Proto, Pin, fugit::TimerInstantU64<HZ>, Cmd>
 where
     Proto: DecoderBuilder<fugit::TimerInstantU64<HZ>>,

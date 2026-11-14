@@ -19,6 +19,18 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
 
+  features:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+    - uses: taiki-e/install-action@cargo-hack
+    - name: Check feature combinations
+      run: cargo hack check --feature-powerset --depth 2 --no-dev-deps
+    - name: Install thumbv7m target
+      run: rustup target add thumbv7m-none-eabi
+    - name: Check no_std build
+      run: cargo check --target thumbv7m-none-eabi
+
   build_bluepill_examples:
     runs-on: ubuntu-latest
     steps:
