@@ -9,7 +9,6 @@
 
 use core::convert::TryInto;
 
-#[cfg(feature = "remotes")]
 use crate::receiver::{DecodingError, ProtocolDecoder, State};
 use crate::{
     cmd::{AddressCommand, Command},
