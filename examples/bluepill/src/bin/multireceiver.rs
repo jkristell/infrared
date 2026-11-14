@@ -83,5 +83,5 @@ fn EXTI9_5() {
 
     LAST.replace(now);
 
-    receiver.pin().clear_interrupt_pending_bit();
+    receiver.pin_mut().clear_interrupt_pending_bit();
 }
