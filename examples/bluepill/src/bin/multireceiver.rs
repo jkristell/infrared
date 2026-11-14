@@ -74,9 +74,10 @@ fn EXTI9_5() {
     let now = rtic_monotonic::Monotonic::now(mono);
 
     if let Some(dt) = LAST.map(|last| now - last) {
-        let Ok(cmds) = receiver.event_iter(dt);
-        for cmd in cmds {
-            info!("cmd: {:?}", cmd);
+        if let Ok(cmds) = receiver.event_iter(dt) {
+            for cmd in cmds {
+                info!("cmd: {:?}", cmd);
+            }
         }
     }
 
