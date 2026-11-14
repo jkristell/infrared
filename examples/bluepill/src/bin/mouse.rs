@@ -14,6 +14,7 @@ use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Edge, ExtiPin, Floating, Input},
     pac,
     prelude::*,
+    rcc,
     timer::fugit::TimerInstantU32,
     usb::{Peripheral, UsbBus, UsbBusType},
 };
@@ -23,7 +24,7 @@ use usbd_hid::{
     hid_class::HIDClass,
 };
 
-#[rtic::app(device = stm32f1xx_hal::stm32, peripherals = true, dispatchers = [USART1])]
+#[rtic::app(device = stm32f1xx_hal::pac, peripherals = true, dispatchers = [USART1])]
 mod app {
     use super::*;
 
@@ -54,22 +55,18 @@ mod app {
     )]
     fn init(mut cx: init::Context) -> (Shared, Local, init::Monotonics) {
         let mut flash = cx.device.FLASH.constrain();
-        let rcc = cx.device.RCC.constrain();
-        let mut afio = cx.device.AFIO.constrain();
+        let mut rcc = cx.device.RCC.freeze(
+            rcc::Config::hse(8.MHz()).sysclk(48.MHz()).pclk1(24.MHz()),
+            &mut flash.acr,
+        );
+        let mut afio = cx.device.AFIO.constrain(&mut rcc);
 
-        let clocks = rcc
-            .cfgr
-            .use_hse(8.MHz())
-            .sysclk(48.MHz())
-            .pclk1(24.MHz())
-            .freeze(&mut flash.acr);
+        assert!(rcc.clocks.usbclk_valid());
 
-        assert!(clocks.usbclk_valid());
-
-        let mut gpioa = cx.device.GPIOA.split();
+        let mut gpioa = cx.device.GPIOA.split(&mut rcc);
         let mut usb_dp = gpioa.pa12.into_push_pull_output(&mut gpioa.crh);
         usb_dp.set_low();
-        cortex_m::asm::delay(clocks.sysclk().raw() / 100);
+        cortex_m::asm::delay(rcc.clocks.sysclk().raw() / 100);
         let usb_dm = gpioa.pa11;
         let usb_dp = usb_dp.into_floating_input(&mut gpioa.crh);
         let usb = Peripheral {
@@ -83,14 +80,16 @@ mod app {
         let usb_hid = HIDClass::new(usb_bus.as_ref().unwrap(), MouseReport::desc(), 60);
 
         let usb_dev = UsbDeviceBuilder::new(usb_bus.as_ref().unwrap(), UsbVidPid(0, 0x3821))
-            .manufacturer("Infrared")
-            .product("Mouse")
-            .serial_number("InfrR12")
+            .strings(&[StringDescriptors::default()
+                .manufacturer("Infrared")
+                .product("Mouse")
+                .serial_number("InfrR12")])
+            .unwrap()
             .device_class(0xEF)
             .build();
 
         let rx_pin = {
-            let mut gpiob = cx.device.GPIOB.split();
+            let mut gpiob = cx.device.GPIOB.split(&mut rcc);
             let mut pin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
             pin.make_interrupt_source(&mut afio);
             pin.trigger_on_edge(&mut cx.device.EXTI, Edge::RisingFalling);
@@ -99,7 +98,7 @@ mod app {
         };
 
         let ir_rx = infrared::Receiver::with_fugit(rx_pin);
-        let mono = cx.device.TIM3.monotonic(&clocks);
+        let mono = cx.device.TIM3.monotonic(&mut rcc);
 
         let shared = Shared { usb_dev, usb_hid };
 

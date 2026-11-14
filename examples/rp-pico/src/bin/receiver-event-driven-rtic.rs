@@ -12,19 +12,19 @@ mod app {
             clocks::init_clocks_and_plls,
             gpio::{bank0::Gpio12, FunctionSioInput, PullNone, Interrupt, Pin},
             sio::Sio,
+            timer::{monotonic::Monotonic as HalMonotonic, Alarm0, Timer},
             watchdog::Watchdog,
         },
         XOSC_CRYSTAL_FREQ,
     };
 
-    use rp2040_monotonic::Rp2040Monotonic;
     use rp_pico::hal;
 
     // IR receiver stuff
     use infrared::{protocol::*, Receiver};
 
     #[monotonic(binds = TIMER_IRQ_0, default = true)]
-    type Monotonic = Rp2040Monotonic;
+    type Monotonic = HalMonotonic<Alarm0>;
 
     // Useful aliases
     pub type IRPin = Pin<Gpio12, FunctionSioInput, PullNone>;
@@ -44,7 +44,7 @@ mod app {
     fn init(c: init::Context) -> (Shared, Local, init::Monotonics) {
         let mut watchdog = Watchdog::new(c.device.WATCHDOG);
         let mut resets = c.device.RESETS;
-        let _clocks = init_clocks_and_plls(
+        let clocks = init_clocks_and_plls(
             XOSC_CRYSTAL_FREQ,
             c.device.XOSC,
             c.device.CLOCKS,
@@ -74,7 +74,9 @@ mod app {
 
         defmt::info!("Init done");
 
-        let mono = Monotonic::new(c.device.TIMER);
+        let mut timer = Timer::new(c.device.TIMER, &mut resets, &clocks);
+        let alarm = timer.alarm_0().unwrap();
+        let mono = Monotonic::new(timer, alarm);
         (Shared { ir_recv }, Local {}, init::Monotonics(mono))
     }
 

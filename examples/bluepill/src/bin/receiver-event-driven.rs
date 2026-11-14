@@ -3,7 +3,7 @@
 
 use bluepill_examples as _;
 use cortex_m_rt::entry;
-use defmt::{info, Debug2Format};
+use defmt::info;
 #[allow(unused_imports)]
 use infrared::{
     protocol::{AppleNec, Nec, Rc6},
@@ -12,50 +12,48 @@ use infrared::{
 };
 use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Edge, ExtiPin, Floating, Input},
-    pac,
+    pac::{self, interrupt, TIM2},
     prelude::*,
-    stm32::interrupt,
-    time::{Instant, MonoTimer},
+    rcc,
+    timer::{fugit::TimerInstantU32, MonoTimerUs},
 };
+
+// Resolution of the monotonic timer
+const MONO_FREQ: u32 = 1_000_000;
 
 // Pin connected to the receiver
 type IrPin = PB8<Input<Floating>>;
 
 // Our timer. Needs to be accessible in the interrupt handler.
-static mut MONO: Option<MonoTimer> = None;
+static mut MONO: Option<MonoTimerUs<TIM2>> = None;
 
 // Our Infrared receiver
-static mut RECEIVER: Option<Receiver<AppleNec, IrPin>> = None;
+static mut RECEIVER: Option<Receiver<AppleNec, IrPin, TimerInstantU32<MONO_FREQ>>> = None;
 
 #[entry]
 fn main() -> ! {
-    let cp = cortex_m::Peripherals::take().unwrap();
+    let _cp = cortex_m::Peripherals::take().unwrap();
     let mut d = pac::Peripherals::take().unwrap();
 
     let mut flash = d.FLASH.constrain();
-    let rcc = d.RCC.constrain();
-    let mut afio = d.AFIO.constrain();
+    let mut rcc = d.RCC.freeze(
+        rcc::Config::hse(8.MHz()).sysclk(48.MHz()).pclk1(24.MHz()),
+        &mut flash.acr,
+    );
+    let mut afio = d.AFIO.constrain(&mut rcc);
 
-    let clocks = rcc
-        .cfgr
-        .use_hse(8.MHz())
-        .sysclk(48.MHz())
-        .pclk1(24.MHz())
-        .freeze(&mut flash.acr);
-
-    let mut gpiob = d.GPIOB.split();
+    let mut gpiob = d.GPIOB.split(&mut rcc);
     let mut pin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
 
     pin.make_interrupt_source(&mut afio);
     pin.trigger_on_edge(&mut d.EXTI, Edge::RisingFalling);
     pin.enable_interrupt(&mut d.EXTI);
 
-    let mono = MonoTimer::new(cp.DWT, cp.DCB, clocks);
-    let mono_freq = mono.frequency();
+    let mono = d.TIM2.monotonic_us(&mut rcc);
 
-    info!("Monotimer f = {:?}", Debug2Format(&mono_freq));
+    info!("Monotimer f = {:?}", MONO_FREQ);
 
-    let receiver = Receiver::with_pin(mono_freq.raw(), pin);
+    let receiver = Receiver::with_fugit(pin);
 
     // Safe because the devices are only used from in the interrupt handler
     unsafe {
@@ -76,19 +74,13 @@ fn main() -> ! {
 
 #[interrupt]
 fn EXTI9_5() {
-    static mut LAST: Option<Instant> = None;
-
     let receiver = unsafe { RECEIVER.as_mut().unwrap() };
-    let mono = unsafe { MONO.as_ref().unwrap() };
-    let now = mono.now();
+    let mono = unsafe { MONO.as_mut().unwrap() };
+    let now = rtic_monotonic::Monotonic::now(mono);
 
-    if let Some(dt) = LAST.map(|i| i.elapsed()) {
-        if let Ok(Some(cmd)) = receiver.event(dt) {
-            info!("cmd: {:?}", cmd);
-        }
+    if let Ok(Some(cmd)) = receiver.event_instant(now) {
+        info!("cmd: {:?}", cmd);
     }
-
-    LAST.replace(now);
 
     receiver.pin_mut().clear_interrupt_pending_bit();
 }
