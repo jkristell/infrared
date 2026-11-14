@@ -13,7 +13,8 @@ use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Floating, Input},
     pac::{self, interrupt, TIM2},
     prelude::*,
-    timer::{CounterHz, Event, Timer},
+    rcc,
+    timer::{CounterHz, Event},
 };
 
 // Sample rate
@@ -59,19 +60,15 @@ fn main() -> ! {
     let device = pac::Peripherals::take().unwrap();
 
     let mut flash = device.FLASH.constrain();
-    let rcc = device.RCC.constrain();
+    let mut rcc = device.RCC.freeze(
+        rcc::Config::hse(8.MHz()).sysclk(48.MHz()).pclk1(24.MHz()),
+        &mut flash.acr,
+    );
 
-    let clocks = rcc
-        .cfgr
-        .use_hse(8.MHz())
-        .sysclk(48.MHz())
-        .pclk1(24.MHz())
-        .freeze(&mut flash.acr);
-
-    let mut gpiob = device.GPIOB.split();
+    let mut gpiob = device.GPIOB.split(&mut rcc);
     let pin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
 
-    let mut timer = Timer::new(device.TIM2, &clocks).counter_hz();
+    let mut timer = device.TIM2.counter_hz(&mut rcc);
     timer.start(TIMER_FREQ.Hz()).unwrap();
     timer.listen(Event::Update);
 

@@ -13,10 +13,10 @@ use infrared::{
 };
 use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Floating, Input},
-    pac,
+    pac::{self, interrupt, TIM2},
     prelude::*,
-    stm32::{interrupt, TIM2},
-    timer::{CounterHz, Event, Timer},
+    rcc,
+    timer::{CounterHz, Event},
 };
 
 // Pin connected to the receiver
@@ -36,19 +36,15 @@ fn main() -> ! {
     let d = pac::Peripherals::take().unwrap();
 
     let mut flash = d.FLASH.constrain();
-    let rcc = d.RCC.constrain();
+    let mut rcc = d.RCC.freeze(
+        rcc::Config::hse(8.MHz()).sysclk(48.MHz()).pclk1(24.MHz()),
+        &mut flash.acr,
+    );
 
-    let clocks = rcc
-        .cfgr
-        .use_hse(8.MHz())
-        .sysclk(48.MHz())
-        .pclk1(24.MHz())
-        .freeze(&mut flash.acr);
-
-    let mut gpiob = d.GPIOB.split();
+    let mut gpiob = d.GPIOB.split(&mut rcc);
     let pin = gpiob.pb8.into_floating_input(&mut gpiob.crh);
 
-    let mut timer = Timer::new(d.TIM2, &clocks).counter_hz();
+    let mut timer = d.TIM2.counter_hz(&mut rcc);
 
     timer.start(SAMPLERATE.Hz()).unwrap();
 
