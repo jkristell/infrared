@@ -1,7 +1,7 @@
 //!NEC Samsung Command variant
 
 use crate::{
-    cmd::{AddressCommand, Command},
+    cmd::{AddressedCommand, Command},
     protocol::nec::{NecCommandVariant, NecPulseLen, NEC_SAMSUNG_TIMING},
     ProtocolId,
 };
@@ -40,7 +40,7 @@ impl Command for SamsungNecCommand {
     }
 }
 
-impl AddressCommand for SamsungNecCommand {
+impl AddressedCommand for SamsungNecCommand {
     const ID: ProtocolId = ProtocolId::NecSamsung;
 
     fn address(&self) -> u32 {

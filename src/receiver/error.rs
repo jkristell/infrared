@@ -1,6 +1,6 @@
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-/// Decode State machine error
+/// Decoder state machine error
 pub enum DecodingError {
     /// Error while decoding address
     Address,

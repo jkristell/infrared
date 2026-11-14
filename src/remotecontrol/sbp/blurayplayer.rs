@@ -2,14 +2,14 @@ use Action::*;
 
 use crate::{
     protocol::sbp::SbpCommand,
-    remotecontrol::{Action, DeviceType, RemoteControlModel},
+    remotecontrol::{Action, DeviceType, RemoteControl},
     ProtocolId,
 };
 
 #[derive(Debug, Default)]
 pub struct SamsungBluRayPlayer;
 
-impl RemoteControlModel for SamsungBluRayPlayer {
+impl RemoteControl for SamsungBluRayPlayer {
     const MODEL: &'static str = "Samsung BluRay Player";
     const DEVTYPE: DeviceType = DeviceType::BluRayPlayer;
     const PROTOCOL: ProtocolId = ProtocolId::Sbp;

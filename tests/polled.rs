@@ -3,7 +3,7 @@
 fn polled_rc5() {
     use infrared::{
         protocol::{rc5::Rc5Command, Rc5},
-        PeriodicPoll,
+        PolledReceiver,
     };
 
     // Rc5 cmd data sampled at 40 kHz
@@ -13,7 +13,7 @@ fn polled_rc5() {
         71, 36,
     ];
 
-    let mut recv: PeriodicPoll<Rc5> = infrared::receiver().rc5().resolution(40_000).build_polled();
+    let mut recv: PolledReceiver<Rc5> = infrared::receiver().rc5().resolution(40_000).build_polled();
 
     let mut pinstate = false;
 
@@ -47,7 +47,7 @@ fn polled_rc5_with_pin() {
     use embedded_hal::digital::{ErrorType, InputPin};
     use infrared::{
         protocol::{rc5::Rc5Command, Rc5},
-        PeriodicPoll,
+        PolledReceiver,
     };
 
     struct TestPin {
@@ -75,7 +75,7 @@ fn polled_rc5_with_pin() {
         71, 36,
     ];
 
-    let mut recv = PeriodicPoll::<Rc5>::with_pin(40_000, TestPin { low: false });
+    let mut recv = PolledReceiver::<Rc5>::with_pin(40_000, TestPin { low: false });
 
     let mut res = None;
     for n in data {

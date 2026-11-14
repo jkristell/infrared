@@ -6,7 +6,7 @@ use embedded_hal::digital::InputPin;
 #[cfg(feature = "embedded-hal")]
 use crate::receiver::PinReceiver;
 use crate::{
-    receiver::{DecoderBuilder, DecodingError, PollReceiver, ProtocolDecoder},
+    receiver::{DecoderBuilder, DecodingError, PollDriven, ProtocolDecoder},
     Protocol,
 };
 
@@ -14,10 +14,10 @@ use crate::{
 ///
 /// The protocol decoder state machine for periodically sampled input.
 /// Hardware independent, like [`Receiver`](crate::receiver::Receiver): the
-/// sampled pin state is fed to [`poll`](PeriodicPoll::poll) manually. Combine
+/// sampled pin state is fed to [`poll`](PolledReceiver::poll) manually. Combine
 /// it with [`PinReceiver`](crate::receiver::PinReceiver) to let it sample an
 /// embedded-hal pin.
-pub struct PeriodicPoll<
+pub struct PolledReceiver<
     Proto: DecoderBuilder<u32>,
     Cmd: From<<Proto as Protocol>::Cmd> = <Proto as Protocol>::Cmd,
 > {
@@ -33,12 +33,12 @@ pub struct PeriodicPoll<
     cmd: PhantomData<Cmd>,
 }
 
-impl<Proto, Cmd> PeriodicPoll<Proto, Cmd>
+impl<Proto, Cmd> PolledReceiver<Proto, Cmd>
 where
     Proto: DecoderBuilder<u32>,
     Cmd: From<<Proto as Protocol>::Cmd>,
 {
-    /// Create a new PeriodicPoll with the given sample frequency (in Hz)
+    /// Create a new PolledReceiver with the given sample frequency (in Hz)
     pub fn new(freq: u32) -> Self {
         Self {
             decoder: Proto::build(freq),
@@ -75,7 +75,7 @@ where
     }
 }
 
-impl<Proto, Cmd> PollReceiver for PeriodicPoll<Proto, Cmd>
+impl<Proto, Cmd> PollDriven for PolledReceiver<Proto, Cmd>
 where
     Proto: DecoderBuilder<u32>,
     Cmd: From<<Proto as Protocol>::Cmd>,

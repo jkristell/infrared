@@ -13,11 +13,11 @@ use core::convert::TryInto;
 mod tests;
 
 use crate::{
-    cmd::{AddressCommand, Command},
+    cmd::{AddressedCommand, Command},
     protocol::Protocol,
     receiver::{
         time::{InfraMonotonic, PulseSpans},
-        DecoderBuilder, DecodingError, ProtocolDecoder, State,
+        DecoderBuilder, DecodingError, ProtocolDecoder, DecoderState,
     },
     ProtocolId,
 };
@@ -94,7 +94,7 @@ impl Command for SbpCommand {
     }
 }
 
-impl AddressCommand for SbpCommand {
+impl AddressedCommand for SbpCommand {
     const ID: ProtocolId = ProtocolId::Sbp;
 
     fn address(&self) -> u32 {
@@ -134,7 +134,7 @@ pub enum SbpState {
 
 impl<Mono: InfraMonotonic> ProtocolDecoder<Sbp, Mono> for SbpDecoder<Mono> {
     #[rustfmt::skip]
-    fn event(&mut self, rising: bool, dt: Mono::Duration) -> State {
+    fn event(&mut self, rising: bool, dt: Mono::Duration) -> DecoderState {
         use SbpSymbol::*;
         use SbpState::*;
 
@@ -186,14 +186,14 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Sbp, Mono> for SbpDecoder<Mono> {
     }
 }
 
-impl From<SbpState> for State {
-    fn from(state: SbpState) -> State {
+impl From<SbpState> for DecoderState {
+    fn from(state: SbpState) -> DecoderState {
         use SbpState::*;
         match state {
-            Init => State::Idle,
-            Done => State::Done,
-            Err(e) => State::Error(e),
-            _ => State::Receiving,
+            Init => DecoderState::Idle,
+            Done => DecoderState::Done,
+            Err(e) => DecoderState::Error(e),
+            _ => DecoderState::Receiving,
         }
     }
 }

@@ -5,8 +5,8 @@ use embedded_hal::digital::InputPin;
 use crate::{
     cmd::AnyCommand,
     receiver::{
-        time::InfraMonotonic, DecoderBuilder, EdgeReceiver, Error, MultiReceiver, PeriodicPoll,
-        PollReceiver, Receiver, ReceiverWrapper,
+        time::InfraMonotonic, DecoderBuilder, EdgeDriven, Error, MultiReceiver, PolledReceiver,
+        PollDriven, Receiver, ReceiverSet,
     },
     Protocol,
 };
@@ -14,7 +14,7 @@ use crate::{
 /// Receiver wrapper that reads its input from an embedded-hal `InputPin`
 ///
 /// Wraps any pinless receiver core ([`Receiver`], [`MultiReceiver`] or
-/// [`PeriodicPoll`]) and reads the pin state on every event.
+/// [`PolledReceiver`]) and reads the pin state on every event.
 ///
 /// Note: IR receiver modules are typically active-low, so a low pin is
 /// interpreted as "IR mark" (carrier detected).
@@ -57,7 +57,7 @@ impl<R, Pin> PinReceiver<R, Pin> {
 
 impl<R, Pin> PinReceiver<R, Pin>
 where
-    R: EdgeReceiver,
+    R: EdgeDriven,
     Pin: InputPin,
 {
     /// Update the receiver
@@ -78,7 +78,7 @@ where
 
 impl<R, Pin> PinReceiver<R, Pin>
 where
-    R: PollReceiver,
+    R: PollDriven,
     Pin: InputPin,
 {
     /// Sample the pin and update the receiver
@@ -90,7 +90,7 @@ where
     }
 }
 
-impl<Proto, Pin, Cmd> PinReceiver<PeriodicPoll<Proto, Cmd>, Pin>
+impl<Proto, Pin, Cmd> PinReceiver<PolledReceiver<Proto, Cmd>, Pin>
 where
     Proto: DecoderBuilder<u32>,
     Pin: InputPin,
@@ -99,7 +99,7 @@ where
     /// Create a periodic poll receiver with the given sample frequency (in Hz)
     /// and `pin` as input
     pub fn with_pin_poll(freq: u32, pin: Pin) -> Self {
-        Self::new(PeriodicPoll::new(freq), pin)
+        Self::new(PolledReceiver::new(freq), pin)
     }
 }
 
@@ -146,7 +146,7 @@ where
 
 impl<const N: usize, Receivers, Pin, Mono> PinReceiver<MultiReceiver<N, Receivers, Mono>, Pin>
 where
-    Receivers: ReceiverWrapper<N, Mono>,
+    Receivers: ReceiverSet<N, Mono>,
     Pin: InputPin,
     Mono: InfraMonotonic,
 {

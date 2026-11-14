@@ -1,7 +1,7 @@
 //! Nec protocol variant from Apple
 
 use crate::{
-    cmd::{AddressCommand, Command},
+    cmd::{AddressedCommand, Command},
     protocol::nec::{NecCommandVariant, NecPulseLen, NEC_STANDARD_TIMING},
     ProtocolId,
 };
@@ -62,7 +62,7 @@ impl Command for AppleNecCommand {
     }
 }
 
-impl AddressCommand for AppleNecCommand {
+impl AddressedCommand for AppleNecCommand {
     const ID: ProtocolId = ProtocolId::NecApple;
 
     fn address(&self) -> u32 {

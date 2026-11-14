@@ -1,6 +1,6 @@
 use crate::{
     cmd::AnyCommand,
-    receiver::{time::InfraMonotonic, DecoderBuilder, DecodingError, EdgeReceiver, Receiver},
+    receiver::{time::InfraMonotonic, DecoderBuilder, DecodingError, EdgeDriven, Receiver},
 };
 
 /// Multi Receiver
@@ -11,14 +11,14 @@ use crate::{
 /// from an embedded-hal pin.
 pub struct MultiReceiver<
     const N: usize,
-    Receivers: ReceiverWrapper<N, Mono>,
+    Receivers: ReceiverSet<N, Mono>,
     Mono: InfraMonotonic = u32,
 > {
     receivers: Receivers::Receivers,
     prev_instant: Mono::Instant,
 }
 
-impl<const N: usize, Receivers: ReceiverWrapper<N, Mono>, Mono: InfraMonotonic>
+impl<const N: usize, Receivers: ReceiverSet<N, Mono>, Mono: InfraMonotonic>
     MultiReceiver<N, Receivers, Mono>
 {
     /// Create a new MultiReceiver with the given clock resolution (in Hz)
@@ -56,9 +56,9 @@ impl<const N: usize, Receivers: ReceiverWrapper<N, Mono>, Mono: InfraMonotonic>
     }
 }
 
-impl<const N: usize, Receivers, Mono> EdgeReceiver for MultiReceiver<N, Receivers, Mono>
+impl<const N: usize, Receivers, Mono> EdgeDriven for MultiReceiver<N, Receivers, Mono>
 where
-    Receivers: ReceiverWrapper<N, Mono>,
+    Receivers: ReceiverSet<N, Mono>,
     Mono: InfraMonotonic,
 {
     type Duration = Mono::Duration;
@@ -82,7 +82,7 @@ where
     }
 }
 
-pub trait ReceiverWrapper<const N: usize, Mono: InfraMonotonic> {
+pub trait ReceiverSet<const N: usize, Mono: InfraMonotonic> {
     type Receivers;
 
     fn make(res: u32) -> Self::Receivers;
@@ -92,7 +92,7 @@ pub trait ReceiverWrapper<const N: usize, Mono: InfraMonotonic> {
 
 macro_rules! impl_receiver_wrapper {
     ($N:literal; $($P:ident),+; $($idx:tt),+) => {
-        impl<$($P,)+ Mono: InfraMonotonic> ReceiverWrapper<$N, Mono> for ($($P,)+)
+        impl<$($P,)+ Mono: InfraMonotonic> ReceiverSet<$N, Mono> for ($($P,)+)
         where
             $($P: DecoderBuilder<Mono>,)+
             $($P::Cmd: Into<AnyCommand>,)+

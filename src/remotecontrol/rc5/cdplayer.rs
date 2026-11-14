@@ -2,7 +2,7 @@ use Action::*;
 
 use crate::{
     protocol::rc5::Rc5Command,
-    remotecontrol::{Action, DeviceType, RemoteControlModel},
+    remotecontrol::{Action, DeviceType, RemoteControl},
     ProtocolId,
 };
 
@@ -10,7 +10,7 @@ use crate::{
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct CdPlayer;
 
-impl RemoteControlModel for CdPlayer {
+impl RemoteControl for CdPlayer {
     const MODEL: &'static str = "CD Player (Rc5)";
     const DEVTYPE: DeviceType = DeviceType::CDPlayer;
     const PROTOCOL: ProtocolId = ProtocolId::Rc5;

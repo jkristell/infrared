@@ -2,7 +2,7 @@ use Action::*;
 
 use crate::{
     protocol::nec::NecCommand,
-    remotecontrol::{Action, DeviceType, RemoteControlModel},
+    remotecontrol::{Action, DeviceType, RemoteControl},
     ProtocolId,
 };
 
@@ -10,7 +10,7 @@ use crate::{
 #[derive(Debug, Default)]
 pub struct SpecialForMp3;
 
-impl RemoteControlModel for SpecialForMp3 {
+impl RemoteControl for SpecialForMp3 {
     const MODEL: &'static str = "Special for Mp3";
     const DEVTYPE: DeviceType = DeviceType::Generic;
     const PROTOCOL: ProtocolId = ProtocolId::Nec;

@@ -6,7 +6,7 @@ use cortex_m_rt::entry;
 use defmt::info;
 use infrared::{
     protocol::{rc6::Rc6Command, Rc6},
-    remotecontrol::{Action, Button, DeviceType, RemoteControlModel},
+    remotecontrol::{Action, Button, DeviceType, RemoteControl},
     ProtocolId,
 };
 use stm32f1xx_hal::{
@@ -22,7 +22,7 @@ const TIMER_FREQ: u32 = 40_000;
 
 // Our receivertype
 type IrReceiver =
-    infrared::PinReceiver<infrared::PeriodicPoll<Rc6, Button<Rc6Tv>>, PB8<Input<Floating>>>;
+    infrared::PinReceiver<infrared::PolledReceiver<Rc6, Button<Rc6Tv>>, PB8<Input<Floating>>>;
 
 // Globals
 static mut TIMER: Option<CounterHz<TIM2>> = None;
@@ -31,7 +31,7 @@ static mut RECEIVER: Option<IrReceiver> = None;
 #[derive(Debug, Default, defmt::Format)]
 struct Rc6Tv;
 
-impl RemoteControlModel for Rc6Tv {
+impl RemoteControl for Rc6Tv {
     const MODEL: &'static str = "Rc6 Tv";
     const DEVTYPE: DeviceType = DeviceType::TV;
     const PROTOCOL: ProtocolId = ProtocolId::Rc6;
@@ -73,7 +73,7 @@ fn main() -> ! {
     timer.start(TIMER_FREQ.Hz()).unwrap();
     timer.listen(Event::Update);
 
-    let receiver = infrared::PeriodicPoll::with_pin(TIMER_FREQ, pin);
+    let receiver = infrared::PolledReceiver::with_pin(TIMER_FREQ, pin);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {

@@ -2,7 +2,7 @@ use Action::*;
 
 use crate::{
     protocol::nec::AppleNecCommand,
-    remotecontrol::{Action, DeviceType, RemoteControlModel},
+    remotecontrol::{Action, DeviceType, RemoteControl},
     ProtocolId,
 };
 
@@ -25,7 +25,7 @@ const BUTTONS: &[((u8, u8), Action)] = &[
     ((0x00, 0x07), BatteryLow),
 ];
 
-impl RemoteControlModel for Apple2009 {
+impl RemoteControl for Apple2009 {
     const MODEL: &'static str = "Apple Remote";
     const DEVTYPE: DeviceType = DeviceType::Generic;
     const PROTOCOL: ProtocolId = ProtocolId::NecApple;

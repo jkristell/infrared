@@ -4,7 +4,7 @@
 use bluepill_examples as _;
 use cortex_m_rt::entry;
 use defmt::{info, warn};
-use infrared::{protocol::Rc6, PeriodicPoll, PinReceiver};
+use infrared::{protocol::Rc6, PolledReceiver, PinReceiver};
 use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Floating, Input},
     pac::{self, interrupt, TIM2},
@@ -17,7 +17,7 @@ use stm32f1xx_hal::{
 const TIMER_FREQ: u32 = 40_000;
 
 // Our receivertype
-type IrReceiver = PinReceiver<PeriodicPoll<Rc6>, PB8<Input<Floating>>>;
+type IrReceiver = PinReceiver<PolledReceiver<Rc6>, PB8<Input<Floating>>>;
 
 // Globals
 static mut TIMER: Option<CounterHz<TIM2>> = None;
@@ -41,7 +41,7 @@ fn main() -> ! {
     timer.start(TIMER_FREQ.Hz()).unwrap();
     timer.listen(Event::Update);
 
-    let receiver = infrared::PeriodicPoll::with_pin(TIMER_FREQ, pin);
+    let receiver = infrared::PolledReceiver::with_pin(TIMER_FREQ, pin);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {

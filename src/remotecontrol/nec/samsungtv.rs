@@ -2,14 +2,14 @@ use Action::*;
 
 use crate::{
     protocol::nec::SamsungNecCommand,
-    remotecontrol::{Action, DeviceType, RemoteControlModel},
+    remotecontrol::{Action, DeviceType, RemoteControl},
     ProtocolId,
 };
 
 #[derive(Debug, Default)]
 pub struct SamsungTv;
 
-impl RemoteControlModel for SamsungTv {
+impl RemoteControl for SamsungTv {
     const MODEL: &'static str = "Samsung TV";
     const DEVTYPE: DeviceType = DeviceType::TV;
     const PROTOCOL: ProtocolId = ProtocolId::NecSamsung;

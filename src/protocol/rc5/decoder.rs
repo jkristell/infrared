@@ -2,7 +2,7 @@ use crate::{
     protocol::{rc5::Rc5Command, Rc5},
     receiver::{
         time::{InfraMonotonic, PulseSpans},
-        DecoderBuilder, DecodingError, ProtocolDecoder, State,
+        DecoderBuilder, DecodingError, ProtocolDecoder, DecoderState,
     },
 };
 
@@ -24,7 +24,7 @@ impl<Mono: InfraMonotonic> DecoderBuilder<Mono> for Rc5 {
 }
 
 impl<Mono: InfraMonotonic> ProtocolDecoder<Rc5, Mono> for Rc5Decoder<Mono> {
-    fn event(&mut self, rising: bool, delta_t: Mono::Duration) -> State {
+    fn event(&mut self, rising: bool, delta_t: Mono::Duration) -> DecoderState {
         use Rc5State::*;
 
         // Find this delta t in the defined ranges
@@ -99,13 +99,13 @@ pub enum Rc5State {
     Err(DecodingError),
 }
 
-impl From<Rc5State> for State {
+impl From<Rc5State> for DecoderState {
     fn from(rs: Rc5State) -> Self {
         match rs {
-            Rc5State::Idle => State::Idle,
-            Rc5State::Data(_) => State::Receiving,
-            Rc5State::Done => State::Done,
-            Rc5State::Err(e) => State::Error(e),
+            Rc5State::Idle => DecoderState::Idle,
+            Rc5State::Data(_) => DecoderState::Receiving,
+            Rc5State::Done => DecoderState::Done,
+            Rc5State::Err(e) => DecoderState::Error(e),
         }
     }
 }

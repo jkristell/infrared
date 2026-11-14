@@ -16,10 +16,10 @@ use crate::protocol::{nec::NecCommand, AppleNec, Nec, Nec16, SamsungNec};
 #[cfg(feature = "embedded-hal")]
 use crate::receiver::PinReceiver;
 #[cfg(feature = "remotes")]
-use crate::remotecontrol::{Button, RemoteControlModel};
+use crate::remotecontrol::{Button, RemoteControl};
 use crate::{
     receiver::{time::InfraMonotonic, DecoderBuilder, Receiver},
-    PeriodicPoll, Protocol,
+    PolledReceiver, Protocol,
 };
 
 /// Receiver Builder
@@ -108,7 +108,7 @@ where
     /// Use Remote control
     pub fn remotecontrol<Remote>(self, _: Remote) -> Builder<Proto, Mono, Button<Remote>>
     where
-        Remote: RemoteControlModel,
+        Remote: RemoteControl,
     {
         Builder {
             freq: self.freq,
@@ -146,12 +146,12 @@ where
     }
 
     /// Create a polled Receiver
-    pub fn build_polled(self) -> PeriodicPoll<Proto, Cmd>
+    pub fn build_polled(self) -> PolledReceiver<Proto, Cmd>
     where
         Proto: DecoderBuilder<u32>,
         Cmd: From<<Proto as Protocol>::Cmd>,
     {
-        PeriodicPoll::new(self.freq)
+        PolledReceiver::new(self.freq)
     }
 
     #[cfg(feature = "embedded-hal")]
@@ -159,11 +159,11 @@ where
     pub fn build_polled_with_pin<Pin: InputPin>(
         self,
         pin: Pin,
-    ) -> PinReceiver<PeriodicPoll<Proto, Cmd>, Pin>
+    ) -> PinReceiver<PolledReceiver<Proto, Cmd>, Pin>
     where
         Proto: DecoderBuilder<u32>,
         Cmd: From<<Proto as Protocol>::Cmd>,
     {
-        PeriodicPoll::with_pin(self.freq, pin)
+        PolledReceiver::with_pin(self.freq, pin)
     }
 }

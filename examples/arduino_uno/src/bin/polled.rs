@@ -30,7 +30,7 @@ use arduino_hal::{
 use avr_device::interrupt::Mutex;
 use infrared::{
     protocol::{nec::NecCommand, *},
-    receiver::PeriodicPoll,
+    receiver::PolledReceiver,
 };
 use panic_halt as _;
 
@@ -38,7 +38,7 @@ type IrPin = Pin<Input<Floating>, PD2>;
 type IrProto = Nec;
 type IrCmd = NecCommand;
 
-static mut RECEIVER: Option<PeriodicPoll<IrProto, IrPin>> = None;
+static mut RECEIVER: Option<PolledReceiver<IrProto, IrPin>> = None;
 static mut LED: Option<Pin<Output, PD7>> = None;
 static CMD: Mutex<Cell<Option<IrCmd>>> = Mutex::new(Cell::new(None));
 
@@ -62,7 +62,7 @@ fn main() -> ! {
     shield_led1.set_low();
     shield_led2.set_low();
 
-    let ir = PeriodicPoll::with_pin(POLL_FREQ, pins.d2);
+    let ir = PolledReceiver::with_pin(POLL_FREQ, pins.d2);
 
     unsafe {
         RECEIVER.replace(ir);

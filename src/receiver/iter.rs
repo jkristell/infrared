@@ -1,7 +1,7 @@
 use core::{iter::FusedIterator, marker::PhantomData};
 
 use crate::{
-    receiver::{time::InfraMonotonic, DecoderBuilder, ProtocolDecoder, State},
+    receiver::{time::InfraMonotonic, DecoderBuilder, ProtocolDecoder, DecoderState},
     Protocol,
 };
 
@@ -57,15 +57,15 @@ where
             let state = self.decoder.event(pos_edge, dt_us);
 
             match state {
-                State::Idle | State::Receiving => {
+                DecoderState::Idle | DecoderState::Receiving => {
                     continue;
                 }
-                State::Done => {
+                DecoderState::Done => {
                     let cmd = self.decoder.command();
                     self.decoder.reset();
                     break cmd.map(|r| r.into());
                 }
-                State::Error(_) => {
+                DecoderState::Error(_) => {
                     self.decoder.reset();
                     break None;
                 }

@@ -13,10 +13,10 @@ pub mod sbp;
 
 pub use mapper::Button;
 
-use crate::{cmd::AddressCommand, ProtocolId};
+use crate::{cmd::AddressedCommand, ProtocolId};
 
 /// A trait describing a Remote Control
-pub trait RemoteControlModel: Default {
+pub trait RemoteControl: Default {
     /// Remote control model
     const MODEL: &'static str = "<NONAME>";
     /// Type of device that this remote controls
@@ -26,7 +26,7 @@ pub trait RemoteControlModel: Default {
     /// Device address
     const ADDRESS: u32;
     /// The type of command
-    type Cmd: AddressCommand;
+    type Cmd: AddressedCommand;
     /// command byte to action mapping
     const BUTTONS: &'static [(u32, Action)] = &[];
 

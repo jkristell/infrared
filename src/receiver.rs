@@ -9,7 +9,7 @@
 //!    building block for the wrappers.
 //!  - [`PinReceiver`]: [`Receiver`] combined with an embedded-hal `InputPin`.
 //!  - [`MultiReceiver`]: Multiple protocol decoders sharing the input signal.
-//!  - [`PeriodicPoll`]: Polling based receiver.
+//!  - [`PolledReceiver`]: Polling based receiver.
 //!  - [`BufferReceiver`]: Decodes buffers of edge timings.
 //!
 //! ### Event / Interrupt based Receiver with embedded-hal pin
@@ -17,7 +17,7 @@
 //! Example:
 //! ```
 //! use infrared::{PinReceiver,
-//!     remotecontrol::rc5::CdPlayer, cmd::AddressCommand,
+//!     remotecontrol::rc5::CdPlayer, cmd::AddressedCommand,
 //!     protocol::rc5::Rc5Command,
 //! };
 //! use dummy_pin::DummyPin;
@@ -84,7 +84,7 @@
 //! 1. Setup a CountDown-timer at a frequency of something like 20 kHz. How to setup the timer
 //!    and enable interrupts is HAL-specific but most HALs have examples showing you how to do it.
 //!
-//! 2. Create a Polled `infrared::PeriodicPoll` with the desired Decoder state machine.
+//! 2. Create a Polled `infrared::PolledReceiver` with the desired Decoder state machine.
 //!
 //! 3. Periodically call the poll method in the timer interrupt and it should give you a valid command
 //!    eventually
@@ -107,7 +107,7 @@
 //! // Frequency of the timer interrupt in Hz.
 //! const FREQ: u32 = 20_000;
 //!
-//! let mut receiver = infrared::PeriodicPoll::<Nec>::with_pin(FREQ, input_pin);
+//! let mut receiver = infrared::PolledReceiver::<Nec>::with_pin(FREQ, input_pin);
 //!
 //! // -------------------------------------------
 //! // Timer interrupt handler
@@ -135,8 +135,8 @@
 //!
 //!    // Periodic polled Nec Receiver
 //!    let pin = DummyPin::new_low();
-//!    let r2: PinReceiver<infrared::PeriodicPoll<Nec>, DummyPin> =
-//!        infrared::PeriodicPoll::with_pin(40_000, pin);
+//!    let r2: PinReceiver<infrared::PolledReceiver<Nec>, DummyPin> =
+//!        infrared::PolledReceiver::with_pin(40_000, pin);
 //!
 //!    let r3: BufferReceiver<Rc6> = BufferReceiver::with_resolution(20_000);
 //!
@@ -162,19 +162,19 @@ pub mod time;
 pub use bufferinput::BufferReceiver;
 pub use iter::BufferIterator;
 pub use builder::Builder;
-pub use decoder::{DecoderBuilder, ProtocolDecoder, State};
+pub use decoder::{DecoderBuilder, ProtocolDecoder, DecoderState};
 pub use error::{DecodingError, Error};
-pub use multi::{MultiReceiver, ReceiverWrapper};
+pub use multi::{MultiReceiver, ReceiverSet};
 #[cfg(feature = "embedded-hal")]
 pub use pin::PinReceiver;
-pub use ppoll::PeriodicPoll;
+pub use ppoll::PolledReceiver;
 
 /// Edge driven receiver
 ///
 /// Implemented by the pinless receiver cores ([`Receiver`] and
 /// [`MultiReceiver`]) so that input wrappers such as [`PinReceiver`] can be
 /// generic over them.
-pub trait EdgeReceiver {
+pub trait EdgeDriven {
     /// Duration type of the monotonic clock
     type Duration;
     /// Instant type of the monotonic clock
@@ -198,9 +198,9 @@ pub trait EdgeReceiver {
 
 /// Poll driven receiver
 ///
-/// Implemented by [`PeriodicPoll`] so that input wrappers such as
+/// Implemented by [`PolledReceiver`] so that input wrappers such as
 /// [`PinReceiver`] can be generic over it.
-pub trait PollReceiver {
+pub trait PollDriven {
     /// Output produced on a successful decode
     type Output;
 
@@ -250,16 +250,16 @@ where
         let state = self.decoder.event(edge, dt);
 
         match state {
-            State::Done => {
+            DecoderState::Done => {
                 let cmd = self.decoder.command().map(Into::into);
                 self.decoder.reset();
                 Ok(cmd)
             }
-            State::Error(err) => {
+            DecoderState::Error(err) => {
                 self.decoder.reset();
                 Err(err)
             }
-            State::Idle | State::Receiving => Ok(None),
+            DecoderState::Idle | DecoderState::Receiving => Ok(None),
         }
     }
 
@@ -302,7 +302,7 @@ where
     }
 }
 
-impl<Proto, Mono, Cmd> EdgeReceiver for Receiver<Proto, Mono, Cmd>
+impl<Proto, Mono, Cmd> EdgeDriven for Receiver<Proto, Mono, Cmd>
 where
     Proto: DecoderBuilder<Mono>,
     Mono: InfraMonotonic,

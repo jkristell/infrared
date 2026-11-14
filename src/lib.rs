@@ -32,7 +32,7 @@ pub use protocol::{Protocol, ProtocolId};
 #[doc(inline)]
 pub use receiver::PinReceiver;
 #[doc(inline)]
-pub use receiver::{BufferReceiver, PeriodicPoll, Receiver};
+pub use receiver::{BufferReceiver, PolledReceiver, Receiver};
 
 /// Create a receiver builder
 pub fn receiver() -> receiver::Builder {

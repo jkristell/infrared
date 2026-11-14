@@ -1,7 +1,7 @@
 use core::convert::TryInto;
 
 use crate::{
-    cmd::{AddressCommand, Command},
+    cmd::{AddressedCommand, Command},
     ProtocolId,
 };
 
@@ -35,7 +35,7 @@ impl Command for Rc6Command {
     }
 }
 
-impl AddressCommand for Rc6Command {
+impl AddressedCommand for Rc6Command {
     const ID: ProtocolId = ProtocolId::Rc6;
 
     fn address(&self) -> u32 {

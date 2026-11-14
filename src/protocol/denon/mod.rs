@@ -3,7 +3,7 @@ use crate::{
     protocol::Protocol,
     receiver::{
         time::{InfraMonotonic, PulseSpans},
-        DecoderBuilder, ProtocolDecoder, State,
+        DecoderBuilder, ProtocolDecoder, DecoderState,
     },
     ProtocolId,
 };
@@ -76,7 +76,7 @@ impl From<DenonCommand> for AnyCommand {
 
 impl<Mono: InfraMonotonic> ProtocolDecoder<Denon, Mono> for DenonDecoder<Mono> {
     #[rustfmt::skip]
-    fn event(&mut self, rising: bool, dt: Mono::Duration) -> State {
+    fn event(&mut self, rising: bool, dt: Mono::Duration) -> DecoderState {
 
         if rising {
             let symbol = self.spans.get::<DenonSymbol>( self.dt_save + dt)
@@ -127,12 +127,12 @@ pub enum DenonState {
     Done,
 }
 
-impl From<DenonState> for State {
+impl From<DenonState> for DecoderState {
     fn from(status: DenonState) -> Self {
         match status {
-            DenonState::Idle => State::Idle,
-            DenonState::Data(_) => State::Receiving,
-            DenonState::Done => State::Done,
+            DenonState::Idle => DecoderState::Idle,
+            DenonState::Data(_) => DecoderState::Receiving,
+            DenonState::Done => DecoderState::Done,
         }
     }
 }

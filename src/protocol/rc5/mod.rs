@@ -4,7 +4,7 @@ use core::convert::TryInto;
 
 pub mod decoder;
 use crate::{
-    cmd::{AddressCommand, Command},
+    cmd::{AddressedCommand, Command},
     protocol::Protocol,
     ProtocolId,
 };
@@ -77,7 +77,7 @@ impl Command for Rc5Command {
     }
 }
 
-impl AddressCommand for Rc5Command {
+impl AddressedCommand for Rc5Command {
     const ID: ProtocolId = ProtocolId::Rc5;
 
     fn address(&self) -> u32 {

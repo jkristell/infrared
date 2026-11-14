@@ -2,7 +2,7 @@
 
 use infrared::{
     protocol::rc5::Rc5Command,
-    remotecontrol::{rc5::CdPlayer, Action, Button, RemoteControlModel},
+    remotecontrol::{rc5::CdPlayer, Action, Button, RemoteControl},
 };
 
 #[test]

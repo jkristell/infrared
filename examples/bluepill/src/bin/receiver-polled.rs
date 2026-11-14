@@ -21,7 +21,7 @@ use stm32f1xx_hal::{
 
 // Pin connected to the receiver
 type IrPin = PB8<Input<Floating>>;
-type IrReceiver = infrared::PinReceiver<infrared::PeriodicPoll<AppleNec, Button<Apple2009>>, IrPin>;
+type IrReceiver = infrared::PinReceiver<infrared::PolledReceiver<AppleNec, Button<Apple2009>>, IrPin>;
 
 // Samplerate
 const SAMPLERATE: u32 = 20_000;
@@ -50,7 +50,7 @@ fn main() -> ! {
 
     timer.listen(Event::Update);
 
-    let receiver = infrared::PeriodicPoll::with_pin(SAMPLERATE, pin);
+    let receiver = infrared::PolledReceiver::with_pin(SAMPLERATE, pin);
 
     // Safe because the devices are only used from in the interrupt handler
     unsafe {

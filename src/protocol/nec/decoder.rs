@@ -7,7 +7,7 @@ use crate::{
     },
     receiver::{
         time::{InfraMonotonic, PulseSpans},
-        DecoderBuilder, DecodingError, ProtocolDecoder, State,
+        DecoderBuilder, DecodingError, ProtocolDecoder, DecoderState,
     },
 };
 
@@ -41,7 +41,7 @@ impl<Mono: InfraMonotonic, Cmd: NecCommandVariant> DecoderBuilder<Mono> for Nec<
 }
 
 pub struct NecDecoder<Mono: InfraMonotonic, C = NecCommand> {
-    // State
+    // DecoderState
     state: NecState,
     // Data buffer
     bitbuf: u32,
@@ -69,14 +69,14 @@ pub enum NecState {
     Err(DecodingError),
 }
 
-impl From<NecState> for State {
+impl From<NecState> for DecoderState {
     fn from(ns: NecState) -> Self {
         use NecState::*;
         match ns {
-            Init => State::Idle,
-            Done | RepeatDone => State::Done,
-            Err(e) => State::Error(e),
-            _ => State::Receiving,
+            Init => DecoderState::Idle,
+            Done | RepeatDone => DecoderState::Done,
+            Err(e) => DecoderState::Error(e),
+            _ => DecoderState::Receiving,
         }
     }
 }
@@ -87,7 +87,7 @@ where
     Cmd: NecCommandVariant,
 {
     #[rustfmt::skip]
-    fn event(&mut self, rising: bool, dur: Mono::Duration) -> State {
+    fn event(&mut self, rising: bool, dur: Mono::Duration) -> DecoderState {
 
         use NecState::*;
         use NecSymbol::*;
@@ -116,7 +116,7 @@ where
             };
 
             trace!(
-                "State(prev, new): ({:?}, {:?}) symbol: {:?}",
+                "DecoderState(prev, new): ({:?}, {:?}) symbol: {:?}",
                 self.state,
                 status,
                 symbol

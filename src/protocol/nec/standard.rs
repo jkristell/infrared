@@ -1,7 +1,7 @@
 //! The Standard NEC variant
 
 use crate::{
-    cmd::{AddressCommand, Command},
+    cmd::{AddressedCommand, Command},
     protocol::nec::{NecCommandVariant, NecPulseLen, NEC_STANDARD_TIMING},
     ProtocolId,
 };
@@ -41,7 +41,7 @@ impl Command for NecCommand {
     }
 }
 
-impl AddressCommand for NecCommand {
+impl AddressedCommand for NecCommand {
     const ID: ProtocolId = ProtocolId::Nec;
 
     fn address(&self) -> u32 {

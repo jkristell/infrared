@@ -1,15 +1,15 @@
-//! Embedded-hal based Sender
+//! Embedded-hal based PwmSender
 
 use crate::sender::{ProtocolEncoder, PulseSender, Status};
 
 /// Embedded hal sender
-pub struct Sender<PwmPin, const FREQ: u32, const BUFSIZE: usize> {
+pub struct PwmSender<PwmPin, const FREQ: u32, const BUFSIZE: usize> {
     pin: PwmPin,
     counter: u32,
     buffer: PulseSender<BUFSIZE>,
 }
 
-impl<PwmPin, PwmDuty, const F: u32, const S: usize> Sender<PwmPin, F, S>
+impl<PwmPin, PwmDuty, const F: u32, const S: usize> PwmSender<PwmPin, F, S>
 where
     PwmPin: embedded_hal::pwm::SetDutyCycle,
 {

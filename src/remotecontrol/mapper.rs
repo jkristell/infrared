@@ -1,13 +1,13 @@
 use crate::{
-    cmd::AddressCommand,
-    remotecontrol::{Action, RemoteControlModel},
+    cmd::AddressedCommand,
+    remotecontrol::{Action, RemoteControl},
 };
 
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub struct Button<Rc, Cmd = <Rc as RemoteControlModel>::Cmd>
+pub struct Button<Rc, Cmd = <Rc as RemoteControl>::Cmd>
 where
-    Rc: RemoteControlModel,
+    Rc: RemoteControl,
 {
     cmd: Cmd,
     action: Option<Action>,
@@ -16,8 +16,8 @@ where
 
 impl<Rc, Cmd> Button<Rc, Cmd>
 where
-    Rc: RemoteControlModel,
-    Cmd: AddressCommand,
+    Rc: RemoteControl,
+    Cmd: AddressedCommand,
 {
     pub fn action(&self) -> Option<Action> {
         self.action
@@ -34,7 +34,7 @@ where
 
 impl<Cmd, Rc> From<Cmd> for Button<Rc, Cmd>
 where
-    Rc: RemoteControlModel<Cmd = Cmd>,
+    Rc: RemoteControl<Cmd = Cmd>,
 {
     fn from(cmd: Cmd) -> Self {
         let action = Rc::decode(&cmd);

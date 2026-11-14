@@ -28,10 +28,10 @@ where
     /// Notify the state machine of a new event
     /// * `edge`: true = start of an IR mark (the pin reading low on an active-low receiver module), false = start of a space
     /// * `dt` : Duration since last event
-    fn event(&mut self, edge: bool, dt: Mono::Duration) -> State;
+    fn event(&mut self, edge: bool, dt: Mono::Duration) -> DecoderState;
 
     /// Get the command
-    /// Returns the data if State == Done, otherwise None
+    /// Returns the data if DecoderState == Done, otherwise None
     fn command(&self) -> Option<Proto::Cmd>;
 
     /// Reset the decoder
@@ -47,13 +47,13 @@ where
         dt: Mono::Duration,
     ) -> Result<Option<Proto::Cmd>, DecodingError> {
         match self.event(edge, dt) {
-            State::Idle | State::Receiving => Ok(None),
-            State::Done => {
+            DecoderState::Idle | DecoderState::Receiving => Ok(None),
+            DecoderState::Done => {
                 let cmd = self.command();
                 self.reset();
                 Ok(cmd)
             }
-            State::Error(err) => {
+            DecoderState::Error(err) => {
                 self.reset();
                 Err(err)
             }
@@ -64,7 +64,7 @@ where
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 /// Protocol decoder status
-pub enum State {
+pub enum DecoderState {
     /// Idle
     Idle,
     /// Receiving data

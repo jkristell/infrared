@@ -7,7 +7,7 @@ pub trait Command {
 }
 
 /// Command with address and command part
-pub trait AddressCommand: Command + Sized {
+pub trait AddressedCommand: Command + Sized {
     const ID: ProtocolId;
     fn raw(&self) -> u64 {
         0
@@ -30,7 +30,7 @@ pub struct AnyCommand {
     pub repeat: bool,
 }
 
-impl<Cmd: AddressCommand> From<Cmd> for AnyCommand {
+impl<Cmd: AddressedCommand> From<Cmd> for AnyCommand {
     fn from(cmd: Cmd) -> Self {
         AnyCommand {
             protocol: Cmd::ID,

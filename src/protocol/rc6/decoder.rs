@@ -2,7 +2,7 @@ use crate::{
     protocol::{rc6::Rc6Command, Rc6},
     receiver::{
         time::{InfraMonotonic, PulseSpans},
-        DecoderBuilder, DecodingError, ProtocolDecoder, State,
+        DecoderBuilder, DecodingError, ProtocolDecoder, DecoderState,
     },
 };
 
@@ -36,7 +36,7 @@ impl<Mono: InfraMonotonic> DecoderBuilder<Mono> for Rc6 {
 
 impl<Mono: InfraMonotonic> ProtocolDecoder<Rc6, Mono> for Rc6Decoder<Mono> {
     #[rustfmt::skip]
-    fn event(&mut self, rising: bool, dt: Mono::Duration) -> State {
+    fn event(&mut self, rising: bool, dt: Mono::Duration) -> DecoderState {
         use Rc6State::*;
 
         // Find the nbr of time unit ticks the dt represents
@@ -130,13 +130,13 @@ pub enum Rc6State {
     Rc6Err(DecodingError),
 }
 
-impl From<Rc6State> for State {
+impl From<Rc6State> for DecoderState {
     fn from(state: Rc6State) -> Self {
         match state {
-            Rc6State::Idle => State::Idle,
-            Rc6State::Done => State::Done,
-            Rc6State::Rc6Err(err) => State::Error(err),
-            _ => State::Receiving,
+            Rc6State::Idle => DecoderState::Idle,
+            Rc6State::Done => DecoderState::Done,
+            Rc6State::Rc6Err(err) => DecoderState::Error(err),
+            _ => DecoderState::Receiving,
         }
     }
 }
