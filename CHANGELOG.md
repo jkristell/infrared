@@ -2,6 +2,7 @@
 
 ## [0.15.0] - Unreleased
  - Updated to edition 2024 and declared `rust-version = "1.85"` (MSRV), checked in CI
+ - New tests: SBP decoding (previously untested), Denon regression values, fugit u64 receiver, `PinReceiver` polling, and remote control button mapping
  - `PeriodicPoll` is now a pinless core like `Receiver`: `poll(edge)` takes the sampled pin state, and pin based polling goes through `PinReceiver` (`PeriodicPoll::with_pin` returns one). New `PollReceiver` trait
  - Removed `NoPin`
  - CI: added a clippy check

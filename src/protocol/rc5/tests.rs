@@ -104,3 +104,32 @@ fn test_freq<const F: u32>() {
     assert_eq!(cmd.addr, cmdres.addr);
     assert_eq!(cmd.cmd, cmdres.cmd);
 }
+
+#[cfg(feature = "fugit")]
+#[test]
+fn rc5_fugit_u64() {
+    use fugit::TimerInstantU64;
+
+    use crate::receiver::Receiver;
+
+    // Rc5 command, address 20, command 9, captured at 40 kHz (25 µs ticks)
+    const DISTS: [u64; 20] = [
+        0, 37, 34, 72, 72, 73, 70, 72, 36, 37, 34, 36, 36, 36, 71, 73, 35, 37, 70, 37,
+    ];
+
+    let mut recv: Receiver<Rc5, TimerInstantU64<1_000_000>> = Receiver::with_fugit64();
+
+    let mut cmds = std::vec::Vec::new();
+    let mut t = 0;
+    for (i, dt) in DISTS.iter().enumerate() {
+        let edge = i % 2 == 0;
+        t += dt * 25;
+        if let Ok(Some(cmd)) = recv.event_instant(TimerInstantU64::from_ticks(t), edge) {
+            cmds.push(cmd);
+        }
+    }
+
+    assert_eq!(cmds.len(), 1);
+    assert_eq!(cmds[0].addr, 20);
+    assert_eq!(cmds[0].cmd, 9);
+}
