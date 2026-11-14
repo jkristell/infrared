@@ -1,78 +1,84 @@
-#[cfg(feature = "embedded-hal")]
-use embedded_hal::digital::InputPin;
-
 use crate::{
     cmd::AnyCommand,
-    receiver::{time::InfraMonotonic, DecoderBuilder, NoPin, Receiver},
+    receiver::{time::InfraMonotonic, DecoderBuilder, DecodingError, EdgeReceiver, Receiver},
 };
 
 /// Multi Receiver
+///
+/// Runs multiple protocol decoders on the same input signal. Hardware
+/// independent, like [`Receiver`]. Combine it with
+/// [`PinReceiver`](crate::receiver::PinReceiver) to let it read the edges
+/// from an embedded-hal pin.
 pub struct MultiReceiver<
     const N: usize,
-    Receivers: ReceiverWrapper<N, Time>,
-    Input,
-    Time: InfraMonotonic = u32,
+    Receivers: ReceiverWrapper<N, Mono>,
+    Mono: InfraMonotonic = u32,
 > {
     receivers: Receivers::Receivers,
-    input: Input,
+    prev_instant: Mono::Instant,
 }
 
-impl<const N: usize, Receivers: ReceiverWrapper<N, Mono>, Input, Mono: InfraMonotonic>
-    MultiReceiver<N, Receivers, Input, Mono>
+impl<const N: usize, Receivers: ReceiverWrapper<N, Mono>, Mono: InfraMonotonic>
+    MultiReceiver<N, Receivers, Mono>
 {
-    pub fn new(res: u32, input: Input) -> Self {
+    /// Create a new MultiReceiver with the given clock resolution (in Hz)
+    pub fn new(res: u32) -> Self {
         MultiReceiver {
-            input,
             receivers: Receivers::make(res),
+            prev_instant: Mono::ZERO_INSTANT,
         }
     }
 
-    pub fn event_generic(&mut self, dt: Mono::Duration, edge: bool) -> [Option<AnyCommand>; N] {
+    /// Update the receivers
+    /// * `dt`: Duration since the previous edge
+    /// * `edge`: true = positive edge, false = negative edge
+    pub fn event(&mut self, dt: Mono::Duration, edge: bool) -> [Option<AnyCommand>; N] {
         Receivers::event(&mut self.receivers, dt, edge)
     }
 
-    pub fn event_generic_iter(
-        &mut self,
-        dt: Mono::Duration,
-        flank: bool,
-    ) -> impl Iterator<Item = AnyCommand> {
-        let arr = self.event_generic(dt, flank);
-        arr.into_iter().flatten()
-    }
-}
-
-#[cfg(feature = "embedded-hal")]
-impl<const N: usize, Receivers, Pin: InputPin, Mono: InfraMonotonic>
-    MultiReceiver<N, Receivers, Pin, Mono>
-where
-    Receivers: ReceiverWrapper<N, Mono>,
-{
-    pub fn event(&mut self, dt: Mono::Duration) -> Result<[Option<AnyCommand>; N], Pin::Error> {
-        let edge = self.input.is_low()?;
-        Ok(self.event_generic(dt, edge))
-    }
-
+    /// Update the receivers and get an iterator over the decoded commands
     pub fn event_iter(
         &mut self,
         dt: Mono::Duration,
-    ) -> Result<impl Iterator<Item = AnyCommand>, Pin::Error> {
-        let arr = self.event(dt)?;
-        Ok(arr.into_iter().flatten())
+        edge: bool,
+    ) -> impl Iterator<Item = AnyCommand> {
+        self.event(dt, edge).into_iter().flatten()
     }
 
-    /// Get a reference to the Pin
-    pub fn pin(&self) -> &Pin {
-        &self.input
+    /// Update the receivers with an edge event at instant `t`
+    ///
+    /// The duration since the previous edge is tracked internally.
+    pub fn event_instant(&mut self, t: Mono::Instant, edge: bool) -> [Option<AnyCommand>; N] {
+        let dt = Mono::checked_sub(t, self.prev_instant).unwrap_or(Mono::ZERO_DURATION);
+        self.prev_instant = t;
+
+        self.event(dt, edge)
+    }
+}
+
+impl<const N: usize, Receivers, Mono> EdgeReceiver for MultiReceiver<N, Receivers, Mono>
+where
+    Receivers: ReceiverWrapper<N, Mono>,
+    Mono: InfraMonotonic,
+{
+    type Duration = Mono::Duration;
+    type Instant = Mono::Instant;
+    type Output = [Option<AnyCommand>; N];
+
+    fn event_edge(
+        &mut self,
+        dt: Self::Duration,
+        edge: bool,
+    ) -> Result<Self::Output, DecodingError> {
+        Ok(self.event(dt, edge))
     }
 
-    /// Get a mut ref to the Pin
-    pub fn pin_mut(&mut self) -> &mut Pin {
-        &mut self.input
-    }
-
-    /// Drop the receiver and release the pin
-    pub fn release(self) -> Pin {
-        self.input
+    fn event_edge_instant(
+        &mut self,
+        t: Self::Instant,
+        edge: bool,
+    ) -> Result<Self::Output, DecodingError> {
+        Ok(self.event_instant(t, edge))
     }
 }
 
@@ -91,10 +97,10 @@ macro_rules! impl_receiver_wrapper {
             $($P: DecoderBuilder<Mono>,)+
             $($P::Cmd: Into<AnyCommand>,)+
         {
-            type Receivers = ($(Receiver<$P, NoPin, Mono>,)+);
+            type Receivers = ($(Receiver<$P, Mono>,)+);
 
             fn make(res: u32) -> Self::Receivers {
-                ($(Receiver::<$P, NoPin, Mono>::new(res),)+)
+                ($(Receiver::<$P, Mono>::new(res),)+)
             }
 
             fn event(

@@ -1,10 +1,22 @@
 //! # Receiver functionality
 //!
-//! ### Event / Interrupt based Receiver
+//! The receivers are split into a hardware independent core and wrappers
+//! that handle the input:
+//!
+//!  - [`Receiver`]: The core, protocol decoder state machine. Edge events are
+//!    fed to it manually. Useful on its own in interrupt handlers where the
+//!    pin is managed by the application, in host applications, and as the
+//!    building block for the wrappers.
+//!  - [`PinReceiver`]: [`Receiver`] combined with an embedded-hal `InputPin`.
+//!  - [`MultiReceiver`]: Multiple protocol decoders sharing the input signal.
+//!  - [`PeriodicPoll`]: Polling based receiver.
+//!  - [`BufferInputReceiver`]: Decodes buffers of edge timings.
+//!
+//! ### Event / Interrupt based Receiver with embedded-hal pin
 //!
 //! Example:
 //! ```
-//! use infrared::{Receiver,
+//! use infrared::{PinReceiver,
 //!     remotecontrol::rc5::CdPlayer, cmd::AddressCommand,
 //!     protocol::rc5::Rc5Command,
 //! };
@@ -23,9 +35,8 @@
 //! let mut receiver = infrared::receiver()
 //!     .rc5()
 //!     .frequency(RESOLUTION)
-//!     .pin(input_pin)
 //!     .remotecontrol(CdPlayer)
-//!     .build();
+//!     .build_with_pin(input_pin);
 //!
 //! // -------------------------------------------
 //! // Input interrupt handler
@@ -44,12 +55,36 @@
 //!
 //! ```
 //!
+//! ### Event based Receiver without a pin
+//!
+//! The core [`Receiver`] is hardware independent and can be used by feeding
+//! it edge events manually:
+//! ```
+//! use infrared::{Receiver, protocol::Nec};
+//!
+//! // Resolution of the clock used
+//! const RESOLUTION: u32 = 1_000_000;
+//!
+//! let mut receiver: Receiver<Nec> = Receiver::new(RESOLUTION);
+//!
+//! // -------------------------------------------
+//! // Input interrupt handler
+//! // -------------------------------------------
+//!
+//! let dt = 0;        // Time since last pin flip
+//! let edge = false;  // Edge read from the pin
+//!
+//! if let Ok(Some(cmd)) = receiver.event(dt, edge) {
+//!     println!("{} {}", cmd.addr, cmd.cmd);
+//! }
+//! ```
+//!
 //! ### Polled
 //!
 //! 1. Setup a CountDown-timer at a frequency of something like 20 kHz. How to setup the timer
 //!    and enable interrupts is HAL-specific but most HALs have examples showing you how to do it.
 //!
-//! 2. Create a Polled `infrared::Receiver` with the desired Decoder state machine.
+//! 2. Create a Polled `infrared::PeriodicPoll` with the desired Decoder state machine.
 //!
 //! 3. Periodically call the poll method in the timer interrupt and it should give you a valid command
 //!    eventually
@@ -87,8 +122,8 @@
 //!
 //! ```
 //!    use infrared::{
-//!        Receiver,
-//!        receiver::{NoPin, Builder},
+//!        Receiver, PinReceiver,
+//!        receiver::Builder,
 //!        protocol::{Rc6, Nec},
 //!    };
 //!    use dummy_pin::DummyPin;
@@ -96,7 +131,7 @@
 //!
 //!    // Receiver for Rc6 signals, event based with embedded-hal pin
 //!    let pin = DummyPin::new_low();
-//!    let r1: Receiver<Rc6, DummyPin> = Receiver::with_pin(40_000, pin);
+//!    let r1: PinReceiver<Receiver<Rc6>, DummyPin> = PinReceiver::with_pin(40_000, pin);
 //!
 //!    // Periodic polled Nec Receiver
 //!    let pin = DummyPin::new_low();
@@ -110,9 +145,6 @@
 //! ```
 use core::marker::PhantomData;
 
-#[cfg(feature = "embedded-hal")]
-use embedded_hal::digital::InputPin;
-
 use crate::{receiver::time::InfraMonotonic, Protocol};
 
 mod bufferinput;
@@ -121,6 +153,8 @@ mod decoder;
 mod error;
 mod iter;
 mod multi;
+#[cfg(feature = "embedded-hal")]
+mod pin;
 mod ppoll;
 pub mod time;
 
@@ -128,68 +162,79 @@ pub use bufferinput::BufferInputReceiver;
 pub use builder::Builder;
 pub use decoder::{DecoderBuilder, ProtocolDecoder, State};
 pub use error::{DecodingError, Error};
-pub use multi::MultiReceiver;
+pub use multi::{MultiReceiver, ReceiverWrapper};
+#[cfg(feature = "embedded-hal")]
+pub use pin::PinReceiver;
 pub use ppoll::PeriodicPoll;
 
 /// Don't use a embedded-hal pin as input
 pub struct NoPin;
 
+/// Edge driven receiver
+///
+/// Implemented by the pinless receiver cores ([`Receiver`] and
+/// [`MultiReceiver`]) so that input wrappers such as [`PinReceiver`] can be
+/// generic over them.
+pub trait EdgeReceiver {
+    /// Duration type of the monotonic clock
+    type Duration;
+    /// Instant type of the monotonic clock
+    type Instant;
+    /// Output produced on a successful decode
+    type Output;
+
+    /// Update the receiver with an edge event
+    /// * `dt`: Duration since the previous edge
+    /// * `edge`: true = positive edge, false = negative edge
+    fn event_edge(&mut self, dt: Self::Duration, edge: bool)
+        -> Result<Self::Output, DecodingError>;
+
+    /// Update the receiver with an edge event at instant `t`
+    fn event_edge_instant(
+        &mut self,
+        t: Self::Instant,
+        edge: bool,
+    ) -> Result<Self::Output, DecodingError>;
+}
+
 /// Event based Receiver
+///
+/// The core protocol decoder state machine. Hardware independent: edge events
+/// are fed to it via [`event`](Receiver::event) or
+/// [`event_instant`](Receiver::event_instant). Combine it with
+/// [`PinReceiver`] to let it read the edges from an embedded-hal pin.
 pub struct Receiver<
     Proto: DecoderBuilder<Mono>,
-    Pin = NoPin,
     Mono: InfraMonotonic = u32,
     Cmd: From<Proto::Cmd> = <Proto as Protocol>::Cmd,
 > {
     /// Decoder data
     pub(crate) decoder: Proto::Decoder,
-    /// Input
-    pub(crate) pin: Pin,
+    /// Previous instant, used by `event_instant`
     prev_instant: Mono::Instant,
     /// Type of the final command output
     pub(crate) cmd: PhantomData<Cmd>,
 }
 
-impl<Proto, Mono, Cmd> Receiver<Proto, NoPin, Mono, Cmd>
+impl<Proto, Mono, Cmd> Receiver<Proto, Mono, Cmd>
 where
     Proto: DecoderBuilder<Mono>,
     Mono: InfraMonotonic,
     Cmd: From<Proto::Cmd>,
 {
-    pub fn new(freq: u32) -> Receiver<Proto, NoPin, Mono, Cmd> {
-        let decoder = Proto::build(freq);
-
+    /// Create a new Receiver with the given clock resolution (in Hz)
+    pub fn new(freq: u32) -> Self {
         Receiver {
-            decoder,
-            pin: NoPin {},
-            prev_instant: Mono::ZERO_INSTANT,
-            cmd: PhantomData,
-        }
-    }
-}
-
-impl<Proto, Input, Mono, Cmd> Receiver<Proto, Input, Mono, Cmd>
-where
-    Proto: DecoderBuilder<Mono>,
-    Mono: InfraMonotonic,
-    Cmd: From<Proto::Cmd>,
-{
-    pub fn with_input(freq: u32, input: Input) -> Self {
-        let decoder = Proto::build(freq);
-
-        Receiver {
-            decoder,
-            pin: input,
+            decoder: Proto::build(freq),
             prev_instant: Mono::ZERO_INSTANT,
             cmd: PhantomData,
         }
     }
 
-    pub fn event_edge(
-        &mut self,
-        dt: Mono::Duration,
-        edge: bool,
-    ) -> Result<Option<Cmd>, DecodingError> {
+    /// Update the receiver
+    /// * `dt`: Duration since the previous edge
+    /// * `edge`: true = positive edge, false = negative edge
+    pub fn event(&mut self, dt: Mono::Duration, edge: bool) -> Result<Option<Cmd>, DecodingError> {
         // Update state machine
         let state = self.decoder.event(edge, dt);
 
@@ -206,58 +251,10 @@ where
             State::Idle | State::Receiving => Ok(None),
         }
     }
-}
 
-#[cfg(feature = "embedded-hal")]
-impl<Proto, Pin, Mono, Cmd> Receiver<Proto, Pin, Mono, Cmd>
-where
-    Proto: DecoderBuilder<Mono>,
-    Pin: InputPin,
-    Mono: InfraMonotonic,
-    Cmd: From<Proto::Cmd>,
-{
-    /// Create a `Receiver` with `pin` as input
-    pub fn with_pin(resolution: u32, pin: Pin) -> Self {
-        Self::with_input(resolution, pin)
-    }
-}
-
-#[cfg(all(feature = "embedded-hal", feature = "fugit"))]
-impl<Proto, Pin, const HZ: u32, Cmd> Receiver<Proto, Pin, fugit::TimerInstantU32<HZ>, Cmd>
-where
-    Proto: DecoderBuilder<fugit::TimerInstantU32<HZ>>,
-    Pin: InputPin,
-    Cmd: From<Proto::Cmd>,
-{
-    /// Create a `Receiver` with `pin` as input
-    pub fn with_fugit(pin: Pin) -> Self {
-        Self::with_input(HZ, pin)
-    }
-}
-
-#[cfg(all(feature = "embedded-hal", feature = "fugit"))]
-impl<Proto, Pin, const HZ: u32, Cmd> Receiver<Proto, Pin, fugit::TimerInstantU64<HZ>, Cmd>
-where
-    Proto: DecoderBuilder<fugit::TimerInstantU64<HZ>>,
-    Pin: InputPin,
-    Cmd: From<Proto::Cmd>,
-{
-    /// Create a `Receiver` with `pin` as input
-    pub fn with_fugit64(pin: Pin) -> Self {
-        Self::with_input(HZ, pin)
-    }
-}
-
-impl<Proto, Mono, Cmd> Receiver<Proto, NoPin, Mono, Cmd>
-where
-    Proto: DecoderBuilder<Mono>,
-    Mono: InfraMonotonic,
-    Cmd: From<Proto::Cmd>,
-{
-    pub fn event(&mut self, dt: Mono::Duration, edge: bool) -> Result<Option<Cmd>, DecodingError> {
-        self.event_edge(dt, edge)
-    }
-
+    /// Update the receiver with an edge event at instant `t`
+    ///
+    /// The duration since the previous edge is tracked internally.
     pub fn event_instant(
         &mut self,
         t: Mono::Instant,
@@ -266,44 +263,57 @@ where
         let dt = Mono::checked_sub(t, self.prev_instant).unwrap_or(Mono::ZERO_DURATION);
         self.prev_instant = t;
 
-        self.event_edge(dt, edge)
+        self.event(dt, edge)
     }
 }
 
-#[cfg(feature = "embedded-hal")]
-impl<Proto, Pin, Mono, Cmd> Receiver<Proto, Pin, Mono, Cmd>
+#[cfg(feature = "fugit")]
+impl<Proto, const HZ: u32, Cmd> Receiver<Proto, fugit::TimerInstantU32<HZ>, Cmd>
+where
+    Proto: DecoderBuilder<fugit::TimerInstantU32<HZ>>,
+    Cmd: From<Proto::Cmd>,
+{
+    /// Create a new Receiver with fugit `TimerInstantU32<HZ>` as its clock
+    pub fn with_fugit() -> Self {
+        Self::new(HZ)
+    }
+}
+
+#[cfg(feature = "fugit")]
+impl<Proto, const HZ: u32, Cmd> Receiver<Proto, fugit::TimerInstantU64<HZ>, Cmd>
+where
+    Proto: DecoderBuilder<fugit::TimerInstantU64<HZ>>,
+    Cmd: From<Proto::Cmd>,
+{
+    /// Create a new Receiver with fugit `TimerInstantU64<HZ>` as its clock
+    pub fn with_fugit64() -> Self {
+        Self::new(HZ)
+    }
+}
+
+impl<Proto, Mono, Cmd> EdgeReceiver for Receiver<Proto, Mono, Cmd>
 where
     Proto: DecoderBuilder<Mono>,
-    Pin: InputPin,
     Mono: InfraMonotonic,
     Cmd: From<Proto::Cmd>,
 {
-    pub fn event(&mut self, dt: Mono::Duration) -> Result<Option<Cmd>, Error<Pin::Error>> {
-        let edge = self.pin.is_low().map_err(Error::Hal)?;
-        Ok(self.event_edge(dt, edge)?)
+    type Duration = Mono::Duration;
+    type Instant = Mono::Instant;
+    type Output = Option<Cmd>;
+
+    fn event_edge(
+        &mut self,
+        dt: Self::Duration,
+        edge: bool,
+    ) -> Result<Self::Output, DecodingError> {
+        self.event(dt, edge)
     }
 
-    pub fn event_instant(&mut self, t: Mono::Instant) -> Result<Option<Cmd>, Error<Pin::Error>> {
-        let edge = self.pin.is_low().map_err(Error::Hal)?;
-
-        let dt = Mono::checked_sub(t, self.prev_instant).unwrap_or(Mono::ZERO_DURATION);
-        self.prev_instant = t;
-
-        Ok(self.event_edge(dt, edge)?)
-    }
-
-    /// Get a reference to the Pin
-    pub fn pin(&self) -> &Pin {
-        &self.pin
-    }
-
-    /// Get a mut ref to the Pin
-    pub fn pin_mut(&mut self) -> &mut Pin {
-        &mut self.pin
-    }
-
-    /// Drop the receiver and release the pin
-    pub fn release(self) -> Pin {
-        self.pin
+    fn event_edge_instant(
+        &mut self,
+        t: Self::Instant,
+        edge: bool,
+    ) -> Result<Self::Output, DecodingError> {
+        self.event_instant(t, edge)
     }
 }

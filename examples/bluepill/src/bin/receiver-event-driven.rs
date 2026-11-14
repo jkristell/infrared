@@ -8,7 +8,7 @@ use defmt::info;
 use infrared::{
     protocol::{AppleNec, Nec, Rc6},
     remotecontrol::{nec::*, rc5::*},
-    Receiver,
+    PinReceiver, Receiver,
 };
 use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Edge, ExtiPin, Floating, Input},
@@ -28,7 +28,8 @@ type IrPin = PB8<Input<Floating>>;
 static mut MONO: Option<MonoTimerUs<TIM2>> = None;
 
 // Our Infrared receiver
-static mut RECEIVER: Option<Receiver<AppleNec, IrPin, TimerInstantU32<MONO_FREQ>>> = None;
+static mut RECEIVER: Option<PinReceiver<Receiver<AppleNec, TimerInstantU32<MONO_FREQ>>, IrPin>> =
+    None;
 
 #[entry]
 fn main() -> ! {
@@ -53,7 +54,7 @@ fn main() -> ! {
 
     info!("Monotimer f = {:?}", MONO_FREQ);
 
-    let receiver = Receiver::with_fugit(pin);
+    let receiver = PinReceiver::with_fugit(pin);
 
     // Safe because the devices are only used from in the interrupt handler
     unsafe {

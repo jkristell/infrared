@@ -21,15 +21,17 @@ mod app {
     use rp_pico::hal;
 
     // IR receiver stuff
-    use infrared::{protocol::*, Receiver};
+    use infrared::{protocol::*, PinReceiver, Receiver};
 
     #[monotonic(binds = TIMER_IRQ_0, default = true)]
     type Monotonic = HalMonotonic<Alarm0>;
 
     // Useful aliases
     pub type IRPin = Pin<Gpio12, FunctionSioInput, PullNone>;
-    pub type IrReceiver =
-        Receiver<AppleNec, IRPin, <Monotonic as rtic_monotonic::Monotonic>::Instant>;
+    pub type IrReceiver = PinReceiver<
+        Receiver<AppleNec, <Monotonic as rtic_monotonic::Monotonic>::Instant>,
+        IRPin,
+    >;
 
     #[shared]
     struct Shared {
@@ -70,7 +72,7 @@ mod app {
         ir_sensor_pin.set_interrupt_enabled(Interrupt::EdgeLow, true);
         ir_sensor_pin.set_interrupt_enabled(Interrupt::EdgeHigh, true);
 
-        let ir_recv = Receiver::with_fugit64(ir_sensor_pin);
+        let ir_recv = PinReceiver::with_fugit64(ir_sensor_pin);
 
         defmt::info!("Init done");
 
