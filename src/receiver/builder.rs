@@ -18,7 +18,7 @@ use crate::receiver::PinReceiver;
 #[cfg(feature = "remotes")]
 use crate::remotecontrol::{Button, RemoteControlModel};
 use crate::{
-    receiver::{time::InfraMonotonic, DecoderBuilder, NoPin, Receiver},
+    receiver::{time::InfraMonotonic, DecoderBuilder, Receiver},
     PeriodicPoll, Protocol,
 };
 
@@ -146,7 +146,7 @@ where
     }
 
     /// Create a polled Receiver
-    pub fn build_polled(self) -> PeriodicPoll<Proto, NoPin, Cmd>
+    pub fn build_polled(self) -> PeriodicPoll<Proto, Cmd>
     where
         Proto: DecoderBuilder<u32>,
         Cmd: From<<Proto as Protocol>::Cmd>,
@@ -156,7 +156,10 @@ where
 
     #[cfg(feature = "embedded-hal")]
     /// Create a polled Receiver with `pin` as input
-    pub fn build_polled_with_pin<Pin: InputPin>(self, pin: Pin) -> PeriodicPoll<Proto, Pin, Cmd>
+    pub fn build_polled_with_pin<Pin: InputPin>(
+        self,
+        pin: Pin,
+    ) -> PinReceiver<PeriodicPoll<Proto, Cmd>, Pin>
     where
         Proto: DecoderBuilder<u32>,
         Cmd: From<<Proto as Protocol>::Cmd>,

@@ -5,43 +5,25 @@ use embedded_hal::digital::InputPin;
 use crate::{
     cmd::AnyCommand,
     receiver::{
-        time::InfraMonotonic, DecoderBuilder, EdgeReceiver, Error, MultiReceiver, Receiver,
-        ReceiverWrapper,
+        time::InfraMonotonic, DecoderBuilder, EdgeReceiver, Error, MultiReceiver, PeriodicPoll,
+        PollReceiver, Receiver, ReceiverWrapper,
     },
+    Protocol,
 };
 
 /// Receiver wrapper that reads its input from an embedded-hal `InputPin`
 ///
-/// Wraps any [`EdgeReceiver`] (a [`Receiver`] or a [`MultiReceiver`]) and
-/// reads the edge state from the pin on every event.
+/// Wraps any pinless receiver core ([`Receiver`], [`MultiReceiver`] or
+/// [`PeriodicPoll`]) and reads the edge state from the pin on every event.
 pub struct PinReceiver<R, Pin> {
     recv: R,
     pin: Pin,
 }
 
-impl<R, Pin> PinReceiver<R, Pin>
-where
-    R: EdgeReceiver,
-    Pin: InputPin,
-{
+impl<R, Pin> PinReceiver<R, Pin> {
     /// Combine the receiver `recv` with `pin` as its input
     pub fn new(recv: R, pin: Pin) -> Self {
         Self { recv, pin }
-    }
-
-    /// Update the receiver
-    /// * `dt`: Duration since the previous edge
-    pub fn event(&mut self, dt: R::Duration) -> Result<R::Output, Error<Pin::Error>> {
-        let edge = self.pin.is_low().map_err(Error::Hal)?;
-        self.recv.event_edge(dt, edge).map_err(Into::into)
-    }
-
-    /// Update the receiver with an edge at instant `t`
-    ///
-    /// The duration since the previous edge is tracked internally.
-    pub fn event_instant(&mut self, t: R::Instant) -> Result<R::Output, Error<Pin::Error>> {
-        let edge = self.pin.is_low().map_err(Error::Hal)?;
-        self.recv.event_edge_instant(t, edge).map_err(Into::into)
     }
 
     /// Get a reference to the wrapped receiver
@@ -67,6 +49,54 @@ where
     /// Destroy the receiver and release the parts
     pub fn release(self) -> (R, Pin) {
         (self.recv, self.pin)
+    }
+}
+
+impl<R, Pin> PinReceiver<R, Pin>
+where
+    R: EdgeReceiver,
+    Pin: InputPin,
+{
+    /// Update the receiver
+    /// * `dt`: Duration since the previous edge
+    pub fn event(&mut self, dt: R::Duration) -> Result<R::Output, Error<Pin::Error>> {
+        let edge = self.pin.is_low().map_err(Error::Hal)?;
+        self.recv.event_edge(dt, edge).map_err(Into::into)
+    }
+
+    /// Update the receiver with an edge at instant `t`
+    ///
+    /// The duration since the previous edge is tracked internally.
+    pub fn event_instant(&mut self, t: R::Instant) -> Result<R::Output, Error<Pin::Error>> {
+        let edge = self.pin.is_low().map_err(Error::Hal)?;
+        self.recv.event_edge_instant(t, edge).map_err(Into::into)
+    }
+}
+
+impl<R, Pin> PinReceiver<R, Pin>
+where
+    R: PollReceiver,
+    Pin: InputPin,
+{
+    /// Sample the pin and update the receiver
+    ///
+    /// To be called periodically at the receiver's sample frequency
+    pub fn poll(&mut self) -> Result<R::Output, Error<Pin::Error>> {
+        let edge = self.pin.is_low().map_err(Error::Hal)?;
+        self.recv.poll_edge(edge).map_err(Into::into)
+    }
+}
+
+impl<Proto, Pin, Cmd> PinReceiver<PeriodicPoll<Proto, Cmd>, Pin>
+where
+    Proto: DecoderBuilder<u32>,
+    Pin: InputPin,
+    Cmd: From<<Proto as Protocol>::Cmd>,
+{
+    /// Create a periodic poll receiver with the given sample frequency (in Hz)
+    /// and `pin` as input
+    pub fn with_pin_poll(freq: u32, pin: Pin) -> Self {
+        Self::new(PeriodicPoll::new(freq), pin)
     }
 }
 

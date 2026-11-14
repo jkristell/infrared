@@ -107,7 +107,7 @@
 //! // Frequency of the timer interrupt in Hz.
 //! const FREQ: u32 = 20_000;
 //!
-//! let mut receiver = infrared::PeriodicPoll::<Nec, DummyPin>::with_pin(FREQ, input_pin);
+//! let mut receiver = infrared::PeriodicPoll::<Nec>::with_pin(FREQ, input_pin);
 //!
 //! // -------------------------------------------
 //! // Timer interrupt handler
@@ -135,7 +135,8 @@
 //!
 //!    // Periodic polled Nec Receiver
 //!    let pin = DummyPin::new_low();
-//!    let r2: infrared::PeriodicPoll<Nec, DummyPin> = infrared::PeriodicPoll::with_pin(40_000, pin);
+//!    let r2: PinReceiver<infrared::PeriodicPoll<Nec>, DummyPin> =
+//!        infrared::PeriodicPoll::with_pin(40_000, pin);
 //!
 //!    let mut r3: BufferInputReceiver<Rc6> = BufferInputReceiver::with_frequenzy(20_000);
 //!
@@ -167,9 +168,6 @@ pub use multi::{MultiReceiver, ReceiverWrapper};
 pub use pin::PinReceiver;
 pub use ppoll::PeriodicPoll;
 
-/// Don't use a embedded-hal pin as input
-pub struct NoPin;
-
 /// Edge driven receiver
 ///
 /// Implemented by the pinless receiver cores ([`Receiver`] and
@@ -195,6 +193,18 @@ pub trait EdgeReceiver {
         t: Self::Instant,
         edge: bool,
     ) -> Result<Self::Output, DecodingError>;
+}
+
+/// Poll driven receiver
+///
+/// Implemented by [`PeriodicPoll`] so that input wrappers such as
+/// [`PinReceiver`] can be generic over it.
+pub trait PollReceiver {
+    /// Output produced on a successful decode
+    type Output;
+
+    /// Update the receiver with the current pin state
+    fn poll_edge(&mut self, edge: bool) -> Result<Self::Output, DecodingError>;
 }
 
 /// Event based Receiver

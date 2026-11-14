@@ -21,7 +21,8 @@ use stm32f1xx_hal::{
 const TIMER_FREQ: u32 = 40_000;
 
 // Our receivertype
-type IrReceiver = infrared::PeriodicPoll<Rc6, PB8<Input<Floating>>, Button<Rc6Tv>>;
+type IrReceiver =
+    infrared::PinReceiver<infrared::PeriodicPoll<Rc6, Button<Rc6Tv>>, PB8<Input<Floating>>>;
 
 // Globals
 static mut TIMER: Option<CounterHz<TIM2>> = None;
