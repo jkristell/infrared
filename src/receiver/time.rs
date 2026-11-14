@@ -86,6 +86,25 @@ where
     }
 
     fn overlaps(&self, other: &Span<Dur>) -> bool {
-        self.contains(other.low) || self.contains(other.high)
+        self.low <= other.high && other.low <= self.high
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::Span;
+
+    #[test]
+    fn span_overlaps() {
+        let span = |low, high| Span::<u32> { low, high };
+
+        assert!(span(10, 20).overlaps(&span(15, 25)));
+        assert!(span(15, 25).overlaps(&span(10, 20)));
+        // Fully contained spans overlap too
+        assert!(span(10, 20).overlaps(&span(12, 18)));
+        assert!(span(12, 18).overlaps(&span(10, 20)));
+
+        assert!(!span(10, 20).overlaps(&span(21, 30)));
+        assert!(!span(21, 30).overlaps(&span(10, 20)));
     }
 }

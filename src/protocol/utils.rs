@@ -2,6 +2,11 @@ pub(crate) const fn scale_with_samplerate(len: u32, mut samplerate: u32) -> u32 
     let mut div = 1_000_000;
 
     while len.checked_mul(samplerate).is_none() {
+        if div == 1 || samplerate == 0 {
+            // Can't scale down any further. Saturate instead of
+            // dividing by zero on absurd inputs
+            return u32::MAX;
+        }
         div /= 1000;
         samplerate /= 1000;
     }
