@@ -7,7 +7,7 @@ use defmt::info;
 use infrared::{
     protocol::AppleNec,
     remotecontrol::{nec::Apple2009, Action, Button},
-    Receiver,
+    PinReceiver, Receiver,
 };
 use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Edge, ExtiPin, Floating, Input},
@@ -33,7 +33,8 @@ mod app {
     type IrPin = PB8<Input<Floating>>;
     type IrProto = AppleNec;
     type IrRemote = Apple2009;
-    type IrReceiver = Receiver<IrProto, IrPin, TimerInstantU32<TIM_FREQ>, Button<IrRemote>>;
+    type IrReceiver =
+        PinReceiver<Receiver<IrProto, TimerInstantU32<TIM_FREQ>, Button<IrRemote>>, IrPin>;
 
     #[monotonic(binds = TIM3, default = true)]
     type Monotonic = stm32f1xx_hal::timer::MonoTimer<pac::TIM3, TIM_FREQ>;
@@ -97,7 +98,7 @@ mod app {
         pin.trigger_on_edge(&mut cx.device.EXTI, Edge::RisingFalling);
         pin.enable_interrupt(&mut cx.device.EXTI);
 
-        let receiver = Receiver::with_fugit(pin);
+        let receiver = PinReceiver::with_fugit(pin);
         let mono = cx.device.TIM3.monotonic(&mut rcc);
 
         (

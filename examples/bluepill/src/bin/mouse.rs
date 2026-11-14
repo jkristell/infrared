@@ -10,6 +10,7 @@ use infrared::{
     Receiver,
 };
 use panic_probe as _;
+use infrared::PinReceiver;
 use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Edge, ExtiPin, Floating, Input},
     pac,
@@ -34,7 +35,8 @@ mod app {
     type IrPin = PB8<Input<Floating>>;
     type IrProto = AppleNec;
     type IrRemote = Apple2009;
-    type IrReceiver = Receiver<IrProto, IrPin, TimerInstantU32<MONOTIMER_FREQ>, Button<IrRemote>>;
+    type IrReceiver =
+        PinReceiver<Receiver<IrProto, TimerInstantU32<MONOTIMER_FREQ>, Button<IrRemote>>, IrPin>;
 
     #[monotonic(binds = TIM3, default = true)]
     type Monotonic = stm32f1xx_hal::timer::MonoTimer<pac::TIM3, MONOTIMER_FREQ>;
@@ -97,7 +99,7 @@ mod app {
             pin
         };
 
-        let ir_rx = infrared::Receiver::with_fugit(rx_pin);
+        let ir_rx = infrared::PinReceiver::with_fugit(rx_pin);
         let mono = cx.device.TIM3.monotonic(&mut rcc);
 
         let shared = Shared { usb_dev, usb_hid };

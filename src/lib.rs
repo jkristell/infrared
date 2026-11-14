@@ -28,6 +28,9 @@ pub mod remotecontrol;
 
 #[doc(inline)]
 pub use protocol::{Protocol, ProtocolId};
+#[cfg(feature = "embedded-hal")]
+#[doc(inline)]
+pub use receiver::PinReceiver;
 #[doc(inline)]
 pub use receiver::{BufferInputReceiver, PeriodicPoll, Receiver};
 

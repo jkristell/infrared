@@ -1,6 +1,10 @@
 # Changelog
 
 ## [0.15.0] - Unreleased
+ - Receiver API rework: `Receiver` is now a hardware independent core (no pin, 3 generic parameters). The new `PinReceiver` wraps any edge-driven receiver with an embedded-hal `InputPin`
+ - `MultiReceiver` is pinless too, gained instant based eventing, and shares the pin handling with `Receiver` through `PinReceiver`
+ - New `EdgeReceiver` trait implemented by `Receiver` and `MultiReceiver`, intended as the extension point for future input drivers (e.g. async)
+ - Builder: `.pin(pin).build()` is now `.build_with_pin(pin)`; added `.build_polled_with_pin(pin)`
  - MultiReceiver: `pin()` now returns a shared reference; use `pin_mut()` for a mutable one (matching `Receiver`); added `release()`
  - Fixed `Span::overlaps` missing the fully-contained case
  - Ported to embedded-hal 1.0 (#106)

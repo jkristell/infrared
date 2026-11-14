@@ -233,7 +233,7 @@ fn fugit() {
 
         let dtf = TimerDurationU32::from_ticks(*dt);
 
-        let s = receiver.event_edge(dtf, edge);
+        let s = receiver.event(dtf, edge);
 
         if let Ok(Some(cmd)) = s {
             cmds.push(cmd);

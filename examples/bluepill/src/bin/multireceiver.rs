@@ -4,7 +4,7 @@
 use bluepill_examples as _;
 use cortex_m_rt::entry;
 use defmt::info;
-use infrared::{protocol::*, receiver::MultiReceiver};
+use infrared::{protocol::*, receiver::MultiReceiver, PinReceiver};
 use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Edge, ExtiPin, Floating, Input},
     pac::{self, interrupt, TIM2},
@@ -18,7 +18,8 @@ const MONO_FREQ: u32 = 1_000_000;
 
 type Instant = TimerInstantU32<MONO_FREQ>;
 type IrPin = PB8<Input<Floating>>;
-type IrReceiver = MultiReceiver<6, (SamsungNec, Rc5, Rc6, AppleNec, Nec, Denon), IrPin, Instant>;
+type IrReceiver =
+    PinReceiver<MultiReceiver<6, (SamsungNec, Rc5, Rc6, AppleNec, Nec, Denon), Instant>, IrPin>;
 
 static mut RECEIVER: Option<IrReceiver> = None;
 static mut MONO: Option<MonoTimerUs<TIM2>> = None;
@@ -44,7 +45,7 @@ fn main() -> ! {
 
     let mono = d.TIM2.monotonic_us(&mut rcc);
 
-    let receiver = MultiReceiver::new(MONO_FREQ, inpin);
+    let receiver = PinReceiver::with_pin_multi(MONO_FREQ, inpin);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
@@ -66,22 +67,16 @@ fn main() -> ! {
 
 #[interrupt]
 fn EXTI9_5() {
-    static mut LAST: Option<Instant> = None;
-
     let receiver = unsafe { RECEIVER.as_mut().unwrap() };
     let mono = unsafe { MONO.as_mut().unwrap() };
 
     let now = rtic_monotonic::Monotonic::now(mono);
 
-    if let Some(dt) = LAST.map(|last| now - last) {
-        if let Ok(cmds) = receiver.event_iter(dt) {
-            for cmd in cmds {
-                info!("cmd: {:?}", cmd);
-            }
+    if let Ok(cmds) = receiver.event_instant_iter(now) {
+        for cmd in cmds {
+            info!("cmd: {:?}", cmd);
         }
     }
-
-    LAST.replace(now);
 
     receiver.pin_mut().clear_interrupt_pending_bit();
 }
