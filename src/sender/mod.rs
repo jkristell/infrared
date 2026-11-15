@@ -7,7 +7,7 @@ mod buffer;
 mod hal;
 mod senders;
 
-pub use buffer::*;
+pub(crate) use buffer::PulseBuffer;
 #[cfg(feature = "embedded-hal")]
 pub use hal::PwmSender;
 pub use senders::*;

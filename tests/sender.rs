@@ -60,7 +60,7 @@ fn send_receive_roundtrip() {
     dists.push(10_000);
 
     // Feed the pulse train back into a receiver
-    let mut receiver = BufferReceiver::<Rc5>::with_resolution(FREQ);
+    let receiver = BufferReceiver::<Rc5>::with_resolution(FREQ);
     let cmds: Vec<_> = receiver.iter(&dists).collect();
 
     assert_eq!(cmds.len(), 1);
