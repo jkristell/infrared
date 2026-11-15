@@ -13,8 +13,8 @@ const RES: u32 = 1_000_000;
 
 /// Edge distances in µs of an encoded NEC frame. The first edge is the start of an IR mark.
 fn nec_frame(addr: u8, cmd: u8) -> Vec<u32> {
-    let mut sender: PulseSender<128> = PulseSender::new();
-    sender.load_command::<Nec, RES>(&NecCommand {
+    let mut sender: PulseSender = PulseSender::new(RES);
+    sender.load::<Nec>(&NecCommand {
         addr,
         cmd,
         repeat: false,

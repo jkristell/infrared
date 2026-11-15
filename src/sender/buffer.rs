@@ -1,25 +1,37 @@
-use crate::sender::ProtocolEncoder;
+use crate::sender::{ProtocolEncoder, micros_to_ticks};
 
+/// Pulse train in ticks, preceded by a zero length entry that starts the first mark
 pub(crate) struct PulseBuffer<const S: usize> {
-    pub buf: [u32; S],
-    pub offset: usize,
+    buf: [u32; S],
+    len: usize,
 }
 
 impl<const S: usize> PulseBuffer<S> {
     pub fn new() -> Self {
         Self {
             buf: [0; S],
-            offset: 0,
+            len: 0,
         }
     }
 
     pub fn reset(&mut self) {
-        self.offset = 0;
+        self.len = 0;
     }
 
-    pub fn load<SendProto: ProtocolEncoder<F>, const F: u32>(&mut self, c: &SendProto::Cmd) {
-        let len = SendProto::encode(c, &mut self.buf[self.offset..]);
-        self.offset += len;
+    pub fn load<Proto: ProtocolEncoder>(&mut self, cmd: &Proto::Cmd, resolution: u32) {
+        const {
+            assert!(
+                S > Proto::MAX_PULSES,
+                "sender buffer too small for this protocol"
+            )
+        };
+
+        self.buf[0] = 0;
+        let n = Proto::encode(cmd, &mut self.buf[1..]);
+        for pulse in &mut self.buf[1..=n] {
+            *pulse = micros_to_ticks(*pulse, resolution).max(1);
+        }
+        self.len = n + 1;
     }
 
     /// Get the pulse length at `index`, if it is part of the loaded pulse train
@@ -28,15 +40,6 @@ impl<const S: usize> PulseBuffer<S> {
     }
 
     pub fn buffer(&self) -> &[u32] {
-        &self.buf[..self.offset]
-    }
-}
-
-impl<'a, const S: usize> IntoIterator for &'a PulseBuffer<S> {
-    type Item = u32;
-    type IntoIter = core::iter::Copied<core::slice::Iter<'a, u32>>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.buffer().iter().copied()
+        &self.buf[..self.len]
     }
 }

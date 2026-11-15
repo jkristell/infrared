@@ -9,6 +9,7 @@
 
 use core::convert::TryInto;
 
+mod encoder;
 #[cfg(test)]
 mod tests;
 
@@ -29,11 +30,18 @@ impl Protocol for Sbp {
     type Cmd = SbpCommand;
 }
 
+const HEADER_MARK: u32 = 4500;
+const HEADER_SPACE: u32 = 4500;
+const DATA_MARK: u32 = 500;
+const PAUSE_SPACE: u32 = 4500;
+const ZERO_SPACE: u32 = 500;
+const ONE_SPACE: u32 = 1500;
+
 const PULSE: [u32; 8] = [
-    (4500 + 4500),
-    (500 + 4500),
-    (500 + 500),
-    (500 + 1500),
+    (HEADER_MARK + HEADER_SPACE),
+    (DATA_MARK + PAUSE_SPACE),
+    (DATA_MARK + ZERO_SPACE),
+    (DATA_MARK + ONE_SPACE),
     0,
     0,
     0,

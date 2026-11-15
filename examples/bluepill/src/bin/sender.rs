@@ -25,7 +25,7 @@ const TIMER_FREQ: u32 = 20_000;
 // Global timer
 static mut TIMER: Option<CounterHz<TIM2>> = None;
 // Transmitter
-static mut TRANSMITTER: Option<PwmSender<IrPwm, TIMER_FREQ, 128>> = None;
+static mut TRANSMITTER: Option<PwmSender<IrPwm>> = None;
 
 #[entry]
 fn main() -> ! {
@@ -62,7 +62,7 @@ fn main() -> ! {
     // Safe because the devices are only used in the interrupt handler
     unsafe {
         TIMER.replace(timer);
-        TRANSMITTER.replace(PwmSender::with_duty_fraction(irpwm, 1, 3));
+        TRANSMITTER.replace(PwmSender::with_duty_fraction(irpwm, TIMER_FREQ, 1, 3));
     }
 
     unsafe {
@@ -92,7 +92,9 @@ fn TIM2() {
         info!("Pressing button");
 
         let cmd = CdPlayer::encode(&Action::Next).unwrap();
-        transmitter.load::<Rc5>(&cmd);
+        if transmitter.load::<Rc5>(&cmd).is_err() {
+            info!("Sender busy");
+        }
 
         *COUNTER = 0;
     }

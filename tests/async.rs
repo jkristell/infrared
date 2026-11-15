@@ -127,8 +127,8 @@ fn setup() -> (SharedSim, AsyncReceiver<Receiver<Nec>, SimClock, SimPin, SimDela
 }
 
 fn nec_frame(addr: u8, cmd: u8) -> Vec<u32> {
-    let mut sender: PulseSender<128> = PulseSender::new();
-    sender.load_command::<Nec, RES>(&NecCommand {
+    let mut sender: PulseSender = PulseSender::new(RES);
+    sender.load::<Nec>(&NecCommand {
         addr,
         cmd,
         repeat: false,
@@ -179,8 +179,8 @@ fn back_to_back_frames() {
     let (sim, mut recv) = setup();
     sim.borrow_mut().schedule(&[1000]);
     sim.borrow_mut().schedule(&nec_frame(1, 2)[1..]);
-    // The stop bit mark ends, and the next frame follows 40 ms later
-    sim.borrow_mut().schedule(&[560, 40_000]);
+    // The next frame follows 40 ms after the stop mark
+    sim.borrow_mut().schedule(&[40_000]);
     sim.borrow_mut().schedule(&nec_frame(3, 4)[1..]);
 
     let first = run(&sim, recv.receive()).unwrap();
@@ -208,4 +208,69 @@ fn multi_receive() {
     sim.borrow_mut().schedule(&nec_frame(5, 6)[1..]);
     let cmd = run(&sim, recv.receive()).unwrap();
     assert_eq!(cmd.protocol, ProtocolId::Nec);
+}
+
+/// Records every duty cycle change with the simulated time
+struct RecordingPwm {
+    sim: SharedSim,
+    log: Vec<(u32, u16)>,
+}
+
+impl embedded_hal::pwm::ErrorType for RecordingPwm {
+    type Error = Infallible;
+}
+
+impl embedded_hal::pwm::SetDutyCycle for RecordingPwm {
+    fn max_duty_cycle(&self) -> u16 {
+        1000
+    }
+
+    fn set_duty_cycle(&mut self, duty: u16) -> Result<(), Infallible> {
+        self.log.push((self.sim.borrow().now, duty));
+        Ok(())
+    }
+}
+
+#[test]
+fn async_sender() {
+    use infrared::{receiver::BufferReceiver, sender::AsyncSender};
+
+    let sim = SharedSim::default();
+    let pwm = RecordingPwm { sim: sim.clone(), log: vec![] };
+    let mut sender = AsyncSender::new(pwm, SimDelay(sim.clone()));
+    // Initially off
+    assert_eq!(sender.pwm().log, [(0, 0)]);
+
+    let cmd = NecCommand { addr: 0x12, cmd: 0x34, repeat: false };
+    run(&sim, sender.send::<Nec>(&cmd)).unwrap();
+
+    let log = &sender.pwm().log[1..];
+    // Alternating 25% duty marks and spaces, ending with the carrier off
+    assert!(log.iter().enumerate().all(|(i, &(_, d))| d == if i % 2 == 0 { 250 } else { 0 }));
+    assert_eq!(log.len() % 2, 0);
+
+    // The recorded edges decode back to the command
+    let mut dists = vec![0];
+    dists.extend(log.windows(2).map(|w| w[1].0 - w[0].0));
+    let cmds: Vec<_> = BufferReceiver::<Nec>::with_resolution(RES).iter(&dists).collect();
+    assert_eq!(cmds, [cmd]);
+}
+
+#[test]
+fn async_sender_cancelled_turns_carrier_off() {
+    use infrared::sender::AsyncSender;
+
+    let sim = SharedSim::default();
+    let pwm = RecordingPwm { sim: sim.clone(), log: vec![] };
+    let mut sender = AsyncSender::new(pwm, SimDelay(sim.clone()));
+
+    let cmd = NecCommand { addr: 1, cmd: 2, repeat: false };
+    {
+        // Start sending, then drop the future in the middle of the header mark
+        let mut fut = pin!(sender.send::<Nec>(&cmd));
+        let mut cx = Context::from_waker(Waker::noop());
+        assert!(fut.as_mut().poll(&mut cx).is_pending());
+    }
+    assert_eq!(sender.pwm().log.last(), Some(&(0, 0)));
+    assert_eq!(sender.pwm().log.len(), 3);
 }

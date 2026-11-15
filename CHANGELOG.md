@@ -5,7 +5,17 @@
  - Clock support: new `Clock` trait with `FnClock` (adapts any time source, e.g. a hardware timer, RTIC monotonic or fugit instant) and `StdClock` (new `std` feature). `ClockedReceiver` timestamps edges itself: `event(edge)`, a self-checking `timeout()`, and `poll(level)` that detects edges and idle input from the level alone. With a pin, `PinReceiver::event()` takes no arguments. Builder: `build_clocked(clock)` and `build_clocked_with_pin(clock, pin)`
  - Async receiver: new `async` feature with `AsyncReceiver`, which waits on an embedded-hal-async `Wait` pin and uses a `DelayNs` for the idle timeout. `receive().await` returns the next command and skips decode errors; `next().await` returns every decoder result. The `embassy` feature adds `EmbassyClock` and `AsyncReceiver::embassy(pin)`. Builder: `build_async(clock, pin, delay)` and `build_embassy(pin)`
  - `InfraMonotonic` has a new required method `to_micros()`
- - Examples: new async `embassy-rp-pico` example
+ - Sender rework:
+   - `ProtocolEncoder` no longer has a `FREQ` const parameter. Encoders produce mark/space durations in µs (with `MAX_PULSES`), and the senders convert them at their runtime resolution: `PulseSender::new(resolution)`, `PwmSender::new(pwm, resolution)`, `PwmSender::with_duty_fraction(pwm, resolution, num, denom)`
+   - The buffer size parameter defaults to 128 (`DEFAULT_BUFFER_SIZE`) and is checked against the protocol at compile time. `PwmSender<Pwm, FREQ, N>` is now `PwmSender<Pwm, N = 128>`
+   - `PwmSender::load` returns `Err(Busy)` instead of silently ignoring a command during a transmission. `PulseSender::load_command::<P, F>` is now `PulseSender::load::<P>`
+   - New `AsyncSender` (`async` feature): `send::<P>(&cmd).await` with a `SetDutyCycle` pwm and an embedded-hal-async delay; `AsyncSender::embassy(pwm)` with the `embassy` feature. The carrier is turned off if a send is cancelled. The `async` feature now enables `embedded-hal`
+   - New Denon and SBP encoders
+   - Fixed the final mark of NEC and RC5 frames being cut to a single tick, which IR receiver modules don't detect
+   - NEC repeat commands are now encoded as short repeat frames (Samsung NEC resends the full frame, see `NecCommandVariant::SHORT_REPEAT`). `NecCommandVariant` has a new required `repeat()` method
+   - Fixed overflow and precision loss when converting pulse lengths to ticks (e.g. RC6 above ~9.6 MHz)
+ - Fixed the Denon decoder dropping bit 47
+ - Examples: new async `embassy-rp-pico` example with a receiver and a sender
  - Plain `u32`/`u64` time counters may now wrap around: elapsed time is computed with wrapping arithmetic
  - Rewrote the embedded-hal sender for embedded-hal 1.0 (`SetDutyCycle`), with configurable carrier duty cycle
  - Type renames for a cleaner API: `PeriodicPoll` → `PolledReceiver`, the `EdgeReceiver`/`PollReceiver` traits → `EdgeDriven`/`PollDriven`, `ReceiverWrapper` → `ReceiverSet`, `receiver::State` → `DecoderState`, the embedded-hal sender → `PwmSender`, `RemoteControlModel` → `RemoteControl`, `AddressCommand` → `AddressedCommand`

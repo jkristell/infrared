@@ -6,7 +6,7 @@ use embedded_hal::pwm::{ErrorType, SetDutyCycle};
 use infrared::{
     protocol::{rc5::Rc5Command, Rc5},
     receiver::BufferReceiver,
-    sender::{PwmSender, Status},
+    sender::{Busy, PwmSender, Status},
 };
 
 const FREQ: u32 = 40_000;
@@ -35,15 +35,15 @@ impl SetDutyCycle for MockPwm {
 
 #[test]
 fn send_receive_roundtrip() {
-    let mut sender: PwmSender<MockPwm, FREQ, 96> = PwmSender::new(MockPwm::default());
+    let mut sender: PwmSender<MockPwm> = PwmSender::new(MockPwm::default(), FREQ);
     assert!(sender.is_idle());
 
     let cmd = Rc5Command::new(20, 9, false);
-    sender.load::<Rc5>(&cmd);
+    assert_eq!(sender.load::<Rc5>(&cmd), Ok(()));
     assert!(!sender.is_idle());
 
     // A second load while busy must not replace the pending command
-    sender.load::<Rc5>(&Rc5Command::new(1, 1, false));
+    assert_eq!(sender.load::<Rc5>(&Rc5Command::new(1, 1, false)), Err(Busy));
 
     // Drive the sender and record the tick index of every carrier on/off edge
     let mut edges = vec![];
@@ -74,11 +74,11 @@ fn send_receive_roundtrip() {
 
 #[test]
 fn duty_cycle_and_write_behavior() {
-    let mut sender: PwmSender<MockPwm, FREQ, 96> =
-        PwmSender::with_duty_fraction(MockPwm::default(), 1, 3);
+    let mut sender: PwmSender<MockPwm> =
+        PwmSender::with_duty_fraction(MockPwm::default(), FREQ, 1, 3);
 
     let cmd = Rc5Command::new(1, 2, false);
-    sender.load::<Rc5>(&cmd);
+    sender.load::<Rc5>(&cmd).unwrap();
 
     let mut max_seen = 0;
     let mut transitions = 0;

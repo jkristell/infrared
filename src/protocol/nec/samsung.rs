@@ -16,6 +16,7 @@ pub struct SamsungNecCommand {
 
 impl NecCommandVariant for SamsungNecCommand {
     const PULSE_DISTANCE: &'static NecPulseLen = NEC_SAMSUNG_TIMING;
+    const SHORT_REPEAT: bool = false;
 
     fn validate(bits: u32) -> bool {
         ((bits >> 24) ^ (bits >> 16)) & 0xFF == 0xFF && ((bits >> 8) ^ bits) & 0xFF == 0x00
@@ -31,6 +32,10 @@ impl NecCommandVariant for SamsungNecCommand {
         let addr = u32::from(self.addr) | (u32::from(self.addr) << 8);
         let cmd = (u32::from(self.cmd) << 16) | (u32::from(!self.cmd) << 24);
         addr | cmd
+    }
+
+    fn repeat(&self) -> bool {
+        self.repeat
     }
 }
 

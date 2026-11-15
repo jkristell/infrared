@@ -24,4 +24,8 @@ impl NecCommandVariant for NecDebugCmd {
     fn pack(&self) -> u32 {
         self.bits
     }
+
+    fn repeat(&self) -> bool {
+        self.repeat
+    }
 }
