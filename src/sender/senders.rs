@@ -30,6 +30,11 @@ impl<const S: usize> PulseSender<S> {
     pub fn load_command<Proto: ProtocolEncoder<F>, const F: u32>(&mut self, c: &Proto::Cmd) {
         self.reset();
         self.ptb.load::<Proto, F>(c);
+        // Busy until the encoded pulses have been sent. `Transmit(false)` keeps the
+        // first tick's transition to carrier on.
+        if !self.ptb.buffer().is_empty() {
+            self.status = Status::Transmit(false);
+        }
     }
 
     pub fn tick(&mut self, ts: u32) -> Status {
