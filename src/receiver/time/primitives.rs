@@ -10,11 +10,16 @@ impl InfraMonotonic for u32 {
     const ZERO_DURATION: Self::Duration = 0;
 
     fn checked_sub(a: Self::Instant, b: Self::Instant) -> Option<Self::Duration> {
-        a.checked_sub(b)
+        // Monotonic counter: an earlier looking `a` means it wrapped
+        Some(a.wrapping_sub(b))
     }
 
     fn create_span(freq: u32, p: u32, t: u32) -> Span<Self::Duration> {
         Span::<u32>::scaled(p, freq, t)
+    }
+
+    fn to_micros(freq: u32, d: u32) -> u64 {
+        u64::from(d) * 1_000_000 / u64::from(freq)
     }
 }
 
@@ -25,11 +30,16 @@ impl InfraMonotonic for u64 {
     const ZERO_DURATION: Self::Duration = 0;
 
     fn checked_sub(a: Self::Instant, b: Self::Instant) -> Option<Self::Duration> {
-        a.checked_sub(b)
+        // Monotonic counter: an earlier looking `a` means it wrapped
+        Some(a.wrapping_sub(b))
     }
 
     fn create_span(freq: u32, p: u32, t: u32) -> Span<Self::Duration> {
         Span::<u64>::scaled(p, freq, t)
+    }
+
+    fn to_micros(freq: u32, d: u64) -> u64 {
+        (u128::from(d) * 1_000_000 / u128::from(freq)) as u64
     }
 }
 

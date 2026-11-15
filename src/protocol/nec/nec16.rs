@@ -30,4 +30,8 @@ impl NecCommandVariant for Nec16Command {
         let cmd = (u32::from(self.cmd) << 16) | (u32::from(!self.cmd) << 24);
         addr | cmd
     }
+
+    fn repeat(&self) -> bool {
+        self.repeat
+    }
 }

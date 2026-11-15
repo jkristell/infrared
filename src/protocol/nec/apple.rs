@@ -54,6 +54,10 @@ impl NecCommandVariant for AppleNecCommand {
     fn pack(&self) -> u32 {
         unimplemented!()
     }
+
+    fn repeat(&self) -> bool {
+        self.repeat
+    }
 }
 
 impl Command for AppleNecCommand {

@@ -13,14 +13,22 @@ use crate::protocol::Rc6;
 use crate::protocol::Sbp;
 #[cfg(feature = "nec")]
 use crate::protocol::{nec::NecCommand, AppleNec, Nec, Nec16, SamsungNec};
+#[cfg(feature = "async")]
+use crate::receiver::AsyncReceiver;
+#[cfg(feature = "embassy")]
+use crate::receiver::EmbassyClock;
 #[cfg(feature = "embedded-hal")]
 use crate::receiver::PinReceiver;
 #[cfg(feature = "remotes")]
 use crate::remotecontrol::{Button, RemoteControl};
 use crate::{
-    receiver::{time::InfraMonotonic, DecoderBuilder, Receiver},
+    receiver::{time::InfraMonotonic, Clock, ClockedReceiver, DecoderBuilder, Receiver},
     PolledReceiver, Protocol,
 };
+
+#[cfg(feature = "embedded-hal")]
+type ClockedPinReceiver<Proto, C, Cmd, Pin> =
+    PinReceiver<ClockedReceiver<Receiver<Proto, <C as Clock>::Mono, Cmd>, C>, Pin>;
 
 /// Receiver Builder
 pub struct Builder<Proto = (), Mono: InfraMonotonic = u32, Cmd = ()> {
@@ -143,6 +151,70 @@ where
         Cmd: From<<Proto as Protocol>::Cmd>,
     {
         PinReceiver::new(Receiver::new(self.freq), pin)
+    }
+
+    /// Create a Receiver that timestamps the edges with `clock`
+    ///
+    /// The resolution and time representation are taken from the clock.
+    pub fn build_clocked<C>(self, clock: C) -> ClockedReceiver<Receiver<Proto, C::Mono, Cmd>, C>
+    where
+        C: Clock,
+        Proto: DecoderBuilder<C::Mono>,
+        Cmd: From<<Proto as Protocol>::Cmd>,
+    {
+        ClockedReceiver::with_clock(clock)
+    }
+
+    #[cfg(feature = "embedded-hal")]
+    /// Create a Receiver that timestamps the edges with `clock`, with `pin` as input
+    ///
+    /// The resolution and time representation are taken from the clock.
+    pub fn build_clocked_with_pin<C, Pin: InputPin>(
+        self,
+        clock: C,
+        pin: Pin,
+    ) -> ClockedPinReceiver<Proto, C, Cmd, Pin>
+    where
+        C: Clock,
+        Proto: DecoderBuilder<C::Mono>,
+        Cmd: From<<Proto as Protocol>::Cmd>,
+    {
+        ClockedReceiver::with_clock_and_pin(clock, pin)
+    }
+
+    #[cfg(feature = "async")]
+    /// Create an async Receiver with `pin` as input, `clock` for timestamping
+    /// the edges and `delay` for the idle timeout
+    ///
+    /// The resolution and time representation are taken from the clock.
+    pub fn build_async<C, Pin, D>(
+        self,
+        clock: C,
+        pin: Pin,
+        delay: D,
+    ) -> AsyncReceiver<Receiver<Proto, C::Mono, Cmd>, C, Pin, D>
+    where
+        C: Clock,
+        Proto: DecoderBuilder<C::Mono>,
+        Cmd: From<<Proto as Protocol>::Cmd>,
+        Pin: embedded_hal_async::digital::Wait,
+        D: embedded_hal_async::delay::DelayNs,
+    {
+        AsyncReceiver::with_clock(clock, pin, delay)
+    }
+
+    #[cfg(feature = "embassy")]
+    /// Create an async Receiver with `pin` as input, using embassy-time
+    pub fn build_embassy<Pin>(
+        self,
+        pin: Pin,
+    ) -> AsyncReceiver<Receiver<Proto, u64, Cmd>, EmbassyClock, Pin, embassy_time::Delay>
+    where
+        Proto: DecoderBuilder<u64>,
+        Cmd: From<<Proto as Protocol>::Cmd>,
+        Pin: embedded_hal_async::digital::Wait,
+    {
+        AsyncReceiver::embassy(pin)
     }
 
     /// Create a polled Receiver

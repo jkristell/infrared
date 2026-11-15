@@ -13,10 +13,8 @@ fn state_debug() {
 
     let mut sender = PulseBuffer::<96>::new();
 
-    sender.load::<Rc6, SAMPLE_RATE>(&cmd);
+    sender.load::<Rc6>(&cmd, SAMPLE_RATE);
 
-    let b = sender.buf;
-    let len = sender.offset;
 
     let mut edge = false;
 
@@ -24,7 +22,7 @@ fn state_debug() {
 
     let mut res = None;
 
-    for dist in &b[..len] {
+    for dist in sender.buffer() {
         edge = !edge;
 
         let s0 = recv.decoder.state;
@@ -78,11 +76,11 @@ fn all_commands() {
             ptb.reset();
 
             let cmd = Rc6Command::new(address, cmdnum);
-            ptb.load::<Rc6, FREQ>(&cmd);
+            ptb.load::<Rc6>(&cmd, FREQ);
 
             let recv = BufferReceiver::<Rc6>::with_resolution(FREQ);
 
-            let cmdres = recv.iter(&ptb.buf).next().unwrap();
+            let cmdres = recv.iter(ptb.buffer()).next().unwrap();
 
             assert_eq!(cmd.addr, cmdres.addr);
             assert_eq!(cmd.cmd, cmdres.cmd);

@@ -18,9 +18,16 @@ pub trait InfraMonotonic: Sized {
     const ZERO_INSTANT: Self::Instant;
     const ZERO_DURATION: Self::Duration;
 
+    /// Time elapsed from `b` to the later instant `a`
+    ///
+    /// Plain integer counters are allowed to wrap around. Returns `None` if
+    /// the duration can't be determined.
     fn checked_sub(a: Self::Instant, b: Self::Instant) -> Option<Self::Duration>;
 
     fn create_span(freq: u32, p: u32, t: u32) -> Span<Self::Duration>;
+
+    /// Convert `d` to microseconds, `freq` being the resolution in Hz
+    fn to_micros(freq: u32, d: Self::Duration) -> u64;
 }
 
 #[derive(Debug)]
@@ -58,6 +65,20 @@ where
             .iter()
             .position(|v| v.contains(pl))
             .map(Into::into)
+    }
+
+    /// The longest duration that is part of a valid symbol
+    pub fn max(&self) -> Mono::Duration {
+        self.spans.iter().fold(Mono::ZERO_DURATION, |max, span| {
+            if span.high > max { span.high } else { max }
+        })
+    }
+
+    /// Time without edges after which the input is considered idle: twice
+    /// the longest valid symbol
+    pub fn idle_timeout(&self) -> Mono::Duration {
+        let max = self.max();
+        max + max
     }
 
     pub fn check_overlaps(&self) -> bool {

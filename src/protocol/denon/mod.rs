@@ -8,6 +8,7 @@ use crate::{
     ProtocolId,
 };
 
+mod encoder;
 #[cfg(test)]
 mod test;
 
@@ -86,7 +87,7 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Denon, Mono> for DenonDecoder<Mono> {
                 (DenonState::Idle,          DenonSymbol::Sync)   => DenonState::Data(0),
                 (DenonState::Idle,          _)                  => DenonState::Idle,
                 (DenonState::Data(47),      DenonSymbol::Zero)   => DenonState::Done,
-                (DenonState::Data(47),      DenonSymbol::One)    => DenonState::Done,
+                (DenonState::Data(47),      DenonSymbol::One)    => { self.buf |= 1 << 47; DenonState::Done }
                 (DenonState::Data(idx),     DenonSymbol::Zero)   => DenonState::Data(idx + 1),
                 (DenonState::Data(idx),     DenonSymbol::One)    => { self.buf |= 1 << idx; DenonState::Data(idx + 1) }
                 (DenonState::Data(_ix),     _)                  => DenonState::Idle,

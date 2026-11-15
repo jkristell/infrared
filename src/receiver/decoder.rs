@@ -37,6 +37,17 @@ where
     /// Reset the decoder
     fn reset(&mut self);
 
+    /// Notify the state machine that the input has been idle for longer than
+    /// any valid symbol of the protocol
+    ///
+    /// The default implementation discards a partially received frame.
+    /// Protocols whose frames can only be terminated by silence override this
+    /// to finish the frame and return [`DecoderState::Done`].
+    fn timeout(&mut self) -> DecoderState {
+        self.reset();
+        DecoderState::Idle
+    }
+
     /// Get the time spans
     fn spans(&self) -> &PulseSpans<Mono>;
 
@@ -46,7 +57,19 @@ where
         edge: bool,
         dt: Mono::Duration,
     ) -> Result<Option<Proto::Cmd>, DecodingError> {
-        match self.event(edge, dt) {
+        let state = self.event(edge, dt);
+        self.finish(state)
+    }
+
+    /// Like [`event_total`](ProtocolDecoder::event_total), but for [`timeout`](ProtocolDecoder::timeout)
+    fn timeout_total(&mut self) -> Result<Option<Proto::Cmd>, DecodingError> {
+        let state = self.timeout();
+        self.finish(state)
+    }
+
+    #[doc(hidden)]
+    fn finish(&mut self, state: DecoderState) -> Result<Option<Proto::Cmd>, DecodingError> {
+        match state {
             DecoderState::Idle | DecoderState::Receiving => Ok(None),
             DecoderState::Done => {
                 let cmd = self.command();

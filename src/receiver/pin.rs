@@ -6,7 +6,7 @@ use crate::{
     cmd::AnyCommand,
     receiver::{
         time::InfraMonotonic, DecoderBuilder, EdgeDriven, Error, MultiReceiver, PolledReceiver,
-        PollDriven, Receiver, ReceiverSet,
+        PollDriven, Receiver, ReceiverSet, Timeout,
     },
     Protocol,
 };
@@ -73,6 +73,19 @@ where
     pub fn event_instant(&mut self, t: R::Instant) -> Result<R::Output, Error<Pin::Error>> {
         let edge = self.pin.is_low().map_err(Error::Hal)?;
         self.recv.event_edge_instant(t, edge).map_err(Into::into)
+    }
+}
+
+impl<R, Pin> PinReceiver<R, Pin>
+where
+    R: Timeout,
+    Pin: InputPin,
+{
+    /// Notify the receiver that the input has been idle
+    ///
+    /// See [`Timeout`].
+    pub fn timeout(&mut self) -> Result<R::Output, Error<Pin::Error>> {
+        self.recv.timeout().map_err(Into::into)
     }
 }
 

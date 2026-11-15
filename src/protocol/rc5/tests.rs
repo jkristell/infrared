@@ -74,11 +74,11 @@ fn all_commands() {
             ptb.reset();
 
             let cmd: Rc5Command = Rc5Command::new(address, cmdnum, false);
-            ptb.load::<Rc5, SAMPLERATE>(&cmd);
+            ptb.load::<Rc5>(&cmd, SAMPLERATE);
 
             let r = BufferReceiver::<Rc5>::with_resolution(SAMPLERATE);
 
-            let cmdres = r.iter(&ptb.buf).next().unwrap();
+            let cmdres = r.iter(ptb.buffer()).next().unwrap();
 
             assert_eq!(cmd.addr, cmdres.addr);
             assert_eq!(cmd.cmd, cmdres.cmd);
@@ -96,11 +96,11 @@ fn timer_resolution() {
 fn test_freq<const F: u32>() {
     let mut ptb = PulseBuffer::<96>::new();
     let cmd: Rc5Command = Rc5Command::new(10, 2, false);
-    ptb.load::<Rc5, F>(&cmd);
+    ptb.load::<Rc5>(&cmd, F);
     //let mut r = Builder::new().rc5().resolution(F).buffer(&ptb.buf).build();
     let r = BufferReceiver::<Rc5>::with_resolution(F);
 
-    let cmdres = r.iter(&ptb.buf).next().unwrap();
+    let cmdres = r.iter(ptb.buffer()).next().unwrap();
     assert_eq!(cmd.addr, cmdres.addr);
     assert_eq!(cmd.cmd, cmdres.cmd);
 }

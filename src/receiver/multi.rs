@@ -1,6 +1,8 @@
 use crate::{
     cmd::AnyCommand,
-    receiver::{time::InfraMonotonic, DecoderBuilder, DecodingError, EdgeDriven, Receiver},
+    receiver::{
+        time::InfraMonotonic, DecoderBuilder, DecodingError, EdgeDriven, Receiver, Timeout,
+    },
 };
 
 /// Multi Receiver
@@ -54,6 +56,21 @@ impl<const N: usize, Receivers: ReceiverSet<N, Mono>, Mono: InfraMonotonic>
 
         self.event(dt, edge)
     }
+
+    /// Notify the receivers that the input has been idle for at least
+    /// [`idle_timeout`](MultiReceiver::idle_timeout)
+    ///
+    /// Discards any partially received frames.
+    pub fn timeout(&mut self) -> [Option<AnyCommand>; N] {
+        Receivers::timeout(&mut self.receivers)
+    }
+
+    /// Time without edges after which the input is considered idle
+    ///
+    /// The longest idle timeout of the protocols.
+    pub fn idle_timeout(&self) -> Mono::Duration {
+        Receivers::idle_timeout(&self.receivers)
+    }
 }
 
 impl<const N: usize, Receivers, Mono> EdgeDriven for MultiReceiver<N, Receivers, Mono>
@@ -80,6 +97,22 @@ where
     ) -> Result<Self::Output, DecodingError> {
         Ok(self.event_instant(t, edge))
     }
+
+    fn idle_timeout(&self) -> Self::Duration {
+        MultiReceiver::idle_timeout(self)
+    }
+}
+
+impl<const N: usize, Receivers, Mono> Timeout for MultiReceiver<N, Receivers, Mono>
+where
+    Receivers: ReceiverSet<N, Mono>,
+    Mono: InfraMonotonic,
+{
+    type Output = [Option<AnyCommand>; N];
+
+    fn timeout(&mut self) -> Result<Self::Output, DecodingError> {
+        Ok(MultiReceiver::timeout(self))
+    }
 }
 
 pub trait ReceiverSet<const N: usize, Mono: InfraMonotonic> {
@@ -88,6 +121,10 @@ pub trait ReceiverSet<const N: usize, Mono: InfraMonotonic> {
     fn make(res: u32) -> Self::Receivers;
 
     fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<AnyCommand>; N];
+
+    fn timeout(rs: &mut Self::Receivers) -> [Option<AnyCommand>; N];
+
+    fn idle_timeout(rs: &Self::Receivers) -> Mono::Duration;
 }
 
 macro_rules! impl_receiver_wrapper {
@@ -109,6 +146,21 @@ macro_rules! impl_receiver_wrapper {
                 edge: bool,
             ) -> [Option<AnyCommand>; $N] {
                 [$(rs.$idx.event(dt, edge).unwrap_or_default().map(Into::into),)+]
+            }
+
+            fn timeout(rs: &mut Self::Receivers) -> [Option<AnyCommand>; $N] {
+                [$(rs.$idx.timeout().unwrap_or_default().map(Into::into),)+]
+            }
+
+            fn idle_timeout(rs: &Self::Receivers) -> Mono::Duration {
+                let mut max = Mono::ZERO_DURATION;
+                $(
+                    let t = rs.$idx.idle_timeout();
+                    if t > max {
+                        max = t;
+                    }
+                )+
+                max
             }
         }
     };

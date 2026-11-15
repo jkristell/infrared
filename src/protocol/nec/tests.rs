@@ -107,7 +107,7 @@ fn all_nec_commands() {
                 cmd: cmdnum,
                 repeat: false,
             };
-            ptb.load::<Nec, FREQUENCY>(&cmd);
+            ptb.load::<Nec>(&cmd, FREQUENCY);
             let brecv = BufferReceiver::<Nec>::with_resolution(40_000);
 
             let cmdres = brecv.iter(ptb.buffer()).next().unwrap();
@@ -132,7 +132,7 @@ fn one_freq<const F: u32>() {
         cmd: 10,
         repeat: false,
     };
-    ptb.load::<Nec, F>(&cmd);
+    ptb.load::<Nec>(&cmd, F);
 
     let receiver = BufferReceiver::<Nec>::with_resolution(F);
 

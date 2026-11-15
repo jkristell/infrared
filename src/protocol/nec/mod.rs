@@ -47,6 +47,10 @@ pub type NecDebug = Nec<NecDebugCmd>;
 pub trait NecCommandVariant: Sized {
     const PULSE_DISTANCE: &'static NecPulseLen;
 
+    /// Repeats are sent as a short repeat frame (header and stop mark).
+    /// If false, the whole frame is sent again.
+    const SHORT_REPEAT: bool = true;
+
     /// Validate the bits as a Command of this type
     fn validate(bits: u32) -> bool;
 
@@ -55,6 +59,9 @@ pub trait NecCommandVariant: Sized {
 
     /// Pack command into a u32
     fn pack(&self) -> u32;
+
+    /// True if this is a repeat of the previous command
+    fn repeat(&self) -> bool;
 }
 
 const NEC_STANDARD_TIMING: &NecPulseLen = &NecPulseLen {
