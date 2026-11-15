@@ -56,8 +56,6 @@ fn send_receive_roundtrip() {
     // Convert edge timestamps to edge distances
     let mut dists = vec![edges[0]];
     dists.extend(edges.windows(2).map(|w| w[1] - w[0]));
-    // Trailing gap to flush the decoder
-    dists.push(10_000);
 
     // Feed the pulse train back into a receiver
     let receiver = BufferReceiver::<Rc5>::with_resolution(FREQ);
