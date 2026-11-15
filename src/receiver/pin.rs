@@ -64,7 +64,7 @@ where
     /// Update the receiver
     /// * `dt`: Duration since the previous edge
     pub fn event(&mut self, dt: R::Duration) -> Result<R::Output, Error<Pin::Error>> {
-        let level = self.pin.is_low().map(Level::from_active_low).map_err(Error::Hal)?;
+        let level = self.pin.is_low().map(Level::from_active_low).map_err(Error::Pin)?;
         self.recv.event_edge(dt, level).map_err(Into::into)
     }
 
@@ -72,7 +72,7 @@ where
     ///
     /// The duration since the previous edge is tracked internally.
     pub fn event_instant(&mut self, t: R::Instant) -> Result<R::Output, Error<Pin::Error>> {
-        let level = self.pin.is_low().map(Level::from_active_low).map_err(Error::Hal)?;
+        let level = self.pin.is_low().map(Level::from_active_low).map_err(Error::Pin)?;
         self.recv.event_edge_instant(t, level).map_err(Into::into)
     }
 }
@@ -99,7 +99,7 @@ where
     ///
     /// To be called periodically at the receiver's sample frequency
     pub fn poll(&mut self) -> Result<R::Output, Error<Pin::Error>> {
-        let level = self.pin.is_low().map(Level::from_active_low).map_err(Error::Hal)?;
+        let level = self.pin.is_low().map(Level::from_active_low).map_err(Error::Pin)?;
         self.recv.poll_edge(level).map_err(Into::into)
     }
 }

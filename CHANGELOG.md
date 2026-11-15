@@ -13,6 +13,7 @@
    - `NecDebug`/`NecDebugCmd` are now `NecRaw`/`NecRawCommand`
    - `Builder::nec_apple()` is now `apple_nec()`; `ProtocolId` variants renamed to match the types
  - New `Level` enum (`Mark`/`Space`) replaces the `edge: bool` and `level: bool` arguments, with `Level::from_active_low(pin.is_low())` and `from_active_high()` helpers. The duration now always comes first: `ProtocolDecoder::event(dt, level)` (was `event(edge, dt)`)
+ - Errors: `Error<PinErr>` is now `Error::Decode(DecodingError)` or `Error::Pin(PinErr)` (was a copy of the `DecodingError` variants plus `Hal`). Removed the unused `DecodingError::RemoteControlError` and made `DecodingError` `#[non_exhaustive]`. Both implement `Display` and `core::error::Error`
  - `Samsung36Command` no longer has a `valid` field: frames with a bad checksum are a `DecodingError::Validation`
  - `DenonCommand` is decoded as Denon-K (Kaseikyo): 12 bit `address` and 8 bit `command` instead of the raw `bits`. The vendor id and parity are validated
  - Apple NEC: commands can now be encoded (`pack()` panicked), fixed an overflow in `command()`, and the device id is now the address

@@ -96,7 +96,7 @@ where
 
         match edge {
             Some(res) => {
-                res.map_err(Error::Hal)?;
+                res.map_err(Error::Pin)?;
                 self.level = next_level;
                 self.recv.event(next_level).map_err(Into::into)
             }
@@ -146,7 +146,7 @@ where
         loop {
             match self.next().await {
                 Ok(Some(cmd)) => return Ok(cmd),
-                Err(Error::Hal(err)) => return Err(err),
+                Err(Error::Pin(err)) => return Err(err),
                 _ => {}
             }
         }
@@ -179,7 +179,7 @@ where
                         return Ok(cmd);
                     }
                 }
-                Err(Error::Hal(err)) => return Err(err),
+                Err(Error::Pin(err)) => return Err(err),
                 Err(_) => {}
             }
         }

@@ -367,7 +367,7 @@ where
     ///
     /// To be called from the pin interrupt.
     pub fn event(&mut self) -> Result<R::Output, Error<Pin::Error>> {
-        let level = self.pin_mut().is_low().map(Level::from_active_low).map_err(Error::Hal)?;
+        let level = self.pin_mut().is_low().map(Level::from_active_low).map_err(Error::Pin)?;
         self.receiver_mut().event(level).map_err(Into::into)
     }
 }
