@@ -1,4 +1,5 @@
 use crate::{
+    Level,
     protocol::{rc6::Rc6Command, Rc6},
     receiver::{
         time::{InfraMonotonic, PulseSpans},
@@ -36,7 +37,8 @@ impl<Mono: InfraMonotonic> DecoderBuilder<Mono> for Rc6 {
 
 impl<Mono: InfraMonotonic> ProtocolDecoder<Rc6, Mono> for Rc6Decoder<Mono> {
     #[rustfmt::skip]
-    fn event(&mut self, rising: bool, dt: Mono::Duration) -> DecoderState {
+    fn event(&mut self, dt: Mono::Duration, level: Level) -> DecoderState {
+        let mark = level.is_mark();
         use Rc6State::*;
 
         // Find the nbr of time unit ticks the dt represents
@@ -51,7 +53,7 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Rc6, Mono> for Rc6Decoder<Mono> {
 
         let odd = self.clock & 1 == 1;
 
-        self.state = match (self.state, rising, ticks) {
+        self.state = match (self.state, mark, ticks) {
             (Idle,          false,    _)            => Idle,
             (Idle,          true,     _)            => { self.clock = 0; Leading },
             (Leading,       false,    Some(6))      => LeadingPaus,
@@ -60,7 +62,7 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Rc6, Mono> for Rc6Decoder<Mono> {
             (LeadingPaus,   _,        _)            => Idle,
 
             (HeaderData(n), _,          Some(_)) if odd => {
-                self.headerdata |= if rising { 0 } else { 1 } << n;
+                self.headerdata |= if mark { 0 } else { 1 } << n;
                 if n == 0 {
                     Trailing
                 } else {

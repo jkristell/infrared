@@ -3,10 +3,11 @@
 use embedded_hal::digital::InputPin;
 
 use crate::{
-    cmd::AnyCommand,
+    Level,
+    protocol::Message,
     receiver::{
         time::InfraMonotonic, DecoderBuilder, EdgeDriven, Error, MultiReceiver, PolledReceiver,
-        PollDriven, Receiver, ReceiverSet,
+        PollDriven, Receiver, ReceiverSet, Timeout,
     },
     Protocol,
 };
@@ -63,16 +64,29 @@ where
     /// Update the receiver
     /// * `dt`: Duration since the previous edge
     pub fn event(&mut self, dt: R::Duration) -> Result<R::Output, Error<Pin::Error>> {
-        let edge = self.pin.is_low().map_err(Error::Hal)?;
-        self.recv.event_edge(dt, edge).map_err(Into::into)
+        let level = self.pin.is_low().map(Level::from_active_low).map_err(Error::Hal)?;
+        self.recv.event_edge(dt, level).map_err(Into::into)
     }
 
     /// Update the receiver with an edge at instant `t`
     ///
     /// The duration since the previous edge is tracked internally.
     pub fn event_instant(&mut self, t: R::Instant) -> Result<R::Output, Error<Pin::Error>> {
-        let edge = self.pin.is_low().map_err(Error::Hal)?;
-        self.recv.event_edge_instant(t, edge).map_err(Into::into)
+        let level = self.pin.is_low().map(Level::from_active_low).map_err(Error::Hal)?;
+        self.recv.event_edge_instant(t, level).map_err(Into::into)
+    }
+}
+
+impl<R, Pin> PinReceiver<R, Pin>
+where
+    R: Timeout,
+    Pin: InputPin,
+{
+    /// Notify the receiver that the input has been idle
+    ///
+    /// See [`Timeout`].
+    pub fn timeout(&mut self) -> Result<R::Output, Error<Pin::Error>> {
+        self.recv.timeout().map_err(Into::into)
     }
 }
 
@@ -85,8 +99,8 @@ where
     ///
     /// To be called periodically at the receiver's sample frequency
     pub fn poll(&mut self) -> Result<R::Output, Error<Pin::Error>> {
-        let edge = self.pin.is_low().map_err(Error::Hal)?;
-        self.recv.poll_edge(edge).map_err(Into::into)
+        let level = self.pin.is_low().map(Level::from_active_low).map_err(Error::Hal)?;
+        self.recv.poll_edge(level).map_err(Into::into)
     }
 }
 
@@ -160,7 +174,7 @@ where
     pub fn event_iter(
         &mut self,
         dt: Mono::Duration,
-    ) -> Result<impl Iterator<Item = AnyCommand>, Error<Pin::Error>> {
+    ) -> Result<impl Iterator<Item = Message>, Error<Pin::Error>> {
         Ok(self.event(dt)?.into_iter().flatten())
     }
 
@@ -169,7 +183,7 @@ where
     pub fn event_instant_iter(
         &mut self,
         t: Mono::Instant,
-    ) -> Result<impl Iterator<Item = AnyCommand>, Error<Pin::Error>> {
+    ) -> Result<impl Iterator<Item = Message>, Error<Pin::Error>> {
         Ok(self.event_instant(t)?.into_iter().flatten())
     }
 }

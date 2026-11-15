@@ -1,11 +1,14 @@
 use core::{iter::FusedIterator, marker::PhantomData};
 
 use crate::{
+    Level,
     receiver::{time::InfraMonotonic, DecoderBuilder, ProtocolDecoder, DecoderState},
     Protocol,
 };
 
 /// Iterator over the commands decoded from a buffer of pulse durations
+///
+/// Frames that fail to decode are skipped.
 ///
 /// Returned by [`BufferReceiver::iter`](crate::receiver::BufferReceiver::iter).
 pub struct BufferIterator<'a, Proto, Mono, Cmd>
@@ -50,11 +53,12 @@ where
                 break None;
             }
 
-            let pos_edge = self.pos & 0x1 == 0;
-            let dt_us = self.buf[self.pos];
+            // The buffer starts with a mark
+            let level = if self.pos & 0x1 == 0 { Level::Mark } else { Level::Space };
+            let dt = self.buf[self.pos];
             self.pos += 1;
 
-            let state = self.decoder.event(pos_edge, dt_us);
+            let state = self.decoder.event(dt, level);
 
             match state {
                 DecoderState::Idle | DecoderState::Receiving => {
@@ -67,7 +71,7 @@ where
                 }
                 DecoderState::Error(_) => {
                     self.decoder.reset();
-                    break None;
+                    continue;
                 }
             }
         }

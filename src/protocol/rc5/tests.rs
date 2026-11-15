@@ -1,4 +1,5 @@
 use crate::{
+    Level,
     protocol::{rc5::Rc5Command, Rc5},
     receiver::BufferReceiver,
     remotecontrol::{Action, Button},
@@ -24,8 +25,8 @@ fn test_bufrecv() {
     assert_eq!(v.len(), 2);
 
     for c in &v {
-        assert_eq!(c.addr, 20);
-        assert_eq!(c.cmd, 9);
+        assert_eq!(c.address, 20);
+        assert_eq!(c.command, 9);
     }
 }
 
@@ -48,8 +49,8 @@ fn command_mixed() {
     assert_eq!(v.len(), 3);
 
     for c in &v {
-        assert_eq!(c.addr, 20);
-        assert_eq!(c.cmd, 1);
+        assert_eq!(c.address, 20);
+        assert_eq!(c.command, 1);
     }
 
     let r = BufferReceiver::<Rc5, u32, Button< rc5::CdPlayer>>::with_resolution(40_000);
@@ -74,14 +75,14 @@ fn all_commands() {
             ptb.reset();
 
             let cmd: Rc5Command = Rc5Command::new(address, cmdnum, false);
-            ptb.load::<Rc5, SAMPLERATE>(&cmd);
+            ptb.load::<Rc5>(&cmd, SAMPLERATE);
 
             let r = BufferReceiver::<Rc5>::with_resolution(SAMPLERATE);
 
-            let cmdres = r.iter(&ptb.buf).next().unwrap();
+            let cmdres = r.iter(ptb.buffer()).next().unwrap();
 
-            assert_eq!(cmd.addr, cmdres.addr);
-            assert_eq!(cmd.cmd, cmdres.cmd);
+            assert_eq!(cmd.address, cmdres.address);
+            assert_eq!(cmd.command, cmdres.command);
         }
     }
 }
@@ -96,13 +97,13 @@ fn timer_resolution() {
 fn test_freq<const F: u32>() {
     let mut ptb = PulseBuffer::<96>::new();
     let cmd: Rc5Command = Rc5Command::new(10, 2, false);
-    ptb.load::<Rc5, F>(&cmd);
+    ptb.load::<Rc5>(&cmd, F);
     //let mut r = Builder::new().rc5().resolution(F).buffer(&ptb.buf).build();
     let r = BufferReceiver::<Rc5>::with_resolution(F);
 
-    let cmdres = r.iter(&ptb.buf).next().unwrap();
-    assert_eq!(cmd.addr, cmdres.addr);
-    assert_eq!(cmd.cmd, cmdres.cmd);
+    let cmdres = r.iter(ptb.buffer()).next().unwrap();
+    assert_eq!(cmd.address, cmdres.address);
+    assert_eq!(cmd.command, cmdres.command);
 }
 
 #[cfg(feature = "fugit")]
@@ -122,14 +123,14 @@ fn rc5_fugit_u64() {
     let mut cmds = std::vec::Vec::new();
     let mut t = 0;
     for (i, dt) in DISTS.iter().enumerate() {
-        let edge = i % 2 == 0;
+        let level = if i % 2 == 0 { Level::Mark } else { Level::Space };
         t += dt * 25;
-        if let Ok(Some(cmd)) = recv.event_instant(TimerInstantU64::from_ticks(t), edge) {
+        if let Ok(Some(cmd)) = recv.event_instant(TimerInstantU64::from_ticks(t), level) {
             cmds.push(cmd);
         }
     }
 
     assert_eq!(cmds.len(), 1);
-    assert_eq!(cmds[0].addr, 20);
-    assert_eq!(cmds[0].cmd, 9);
+    assert_eq!(cmds[0].address, 20);
+    assert_eq!(cmds[0].command, 9);
 }

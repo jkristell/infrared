@@ -66,7 +66,7 @@ fn TIM2() {
     let receiver = unsafe { RECEIVER.as_mut().unwrap() };
 
     match receiver.poll() {
-        Ok(Some(cmd)) => info!("Cmd: {} {}", cmd.addr, cmd.cmd),
+        Ok(Some(cmd)) => info!("Cmd: {} {}", cmd.address, cmd.command),
         Ok(None) => (),
         Err(err) => warn!("Err: {:?}", err),
     }

@@ -11,13 +11,17 @@
 //!  - [`MultiReceiver`]: Multiple protocol decoders sharing the input signal.
 //!  - [`PolledReceiver`]: Polling based receiver.
 //!  - [`BufferReceiver`]: Decodes buffers of edge timings.
+//!  - [`ClockedReceiver`]: [`Receiver`] or [`MultiReceiver`] with its own
+//!    [`Clock`], timestamping the edges itself.
+//!  - `AsyncReceiver` (`async` feature): waits for edges on an
+//!    embedded-hal-async pin. `async fn receive()` returns the next command.
 //!
 //! ### Event / Interrupt based Receiver with embedded-hal pin
 //!
 //! Example:
 //! ```
 //! use infrared::{PinReceiver,
-//!     remotecontrol::rc5::CdPlayer, cmd::AddressedCommand,
+//!     remotecontrol::rc5::CdPlayer, Command,
 //!     protocol::rc5::Rc5Command,
 //! };
 //! use dummy_pin::DummyPin;
@@ -60,7 +64,7 @@
 //! The core [`Receiver`] is hardware independent and can be used by feeding
 //! it edge events manually:
 //! ```
-//! use infrared::{Receiver, protocol::Nec};
+//! use infrared::{Level, Receiver, protocol::Nec};
 //!
 //! // Resolution of the clock used
 //! const RESOLUTION: u32 = 1_000_000;
@@ -71,11 +75,12 @@
 //! // Input interrupt handler
 //! // -------------------------------------------
 //!
-//! let dt = 0;        // Time since last pin flip
-//! let edge = false;  // Edge read from the pin
+//! let dt = 0;  // Time since last pin flip
+//! // Level read from the pin, here an active-low IR receiver module
+//! let level = Level::from_active_low(true);
 //!
-//! if let Ok(Some(cmd)) = receiver.event(dt, edge) {
-//!     println!("{} {}", cmd.addr, cmd.cmd);
+//! if let Ok(Some(cmd)) = receiver.event(dt, level) {
+//!     println!("{} {}", cmd.address, cmd.command);
 //! }
 //! ```
 //!
@@ -114,8 +119,38 @@
 //! // -------------------------------------------
 //!
 //! if let Ok(Some(cmd)) = receiver.poll() {
-//!     println!("{} {}", cmd.addr, cmd.cmd);
+//!     println!("{} {}", cmd.address, cmd.command);
 //! }
+//! ```
+//!
+//! ### Idle timeout
+//!
+//! A frame that is interrupted, or noise that looks like the start of a frame,
+//! leaves the decoder waiting for the rest of it. Call `timeout()` once no edge
+//! has been seen for the receiver's `idle_timeout()` to discard it.
+//! [`PolledReceiver`] does this by itself, and [`ClockedReceiver`] checks the
+//! elapsed time itself so its `timeout()` can be called at any time.
+//!
+//! ### Receiver with a clock
+//!
+//! ```
+//! use infrared::{protocol::Nec, receiver::FnClock};
+//! use dummy_pin::DummyPin;
+//!
+//! // Any time source, here a 1 MHz counter
+//! let clock: FnClock<_, u32> = FnClock::new(1_000_000, || 0);
+//!
+//! let mut receiver = infrared::receiver()
+//!     .nec()
+//!     .build_clocked_with_pin(clock, DummyPin::new_high());
+//!
+//! // Pin interrupt: no timing bookkeeping needed
+//! if let Ok(Some(cmd)) = receiver.event() {
+//!     println!("{} {}", cmd.address, cmd.command);
+//! }
+//!
+//! // Periodic timer, e.g. every 10 ms: discards interrupted frames
+//! let _ = receiver.timeout();
 //! ```
 //!
 //! ## Construction of receiver
@@ -146,10 +181,13 @@
 //! ```
 use core::marker::PhantomData;
 
-use crate::{receiver::time::InfraMonotonic, Protocol};
+use crate::{receiver::time::InfraMonotonic, Level, Protocol};
 
+#[cfg(feature = "async")]
+mod asynch;
 mod bufferinput;
 mod builder;
+mod clock;
 mod decoder;
 mod error;
 mod iter;
@@ -159,9 +197,16 @@ mod pin;
 mod ppoll;
 pub mod time;
 
+#[cfg(feature = "async")]
+pub use asynch::AsyncReceiver;
+#[cfg(feature = "embassy")]
+pub use asynch::EmbassyClock;
 pub use bufferinput::BufferReceiver;
 pub use iter::BufferIterator;
 pub use builder::Builder;
+#[cfg(feature = "std")]
+pub use clock::StdClock;
+pub use clock::{Clock, ClockedReceiver, FnClock};
 pub use decoder::{DecoderBuilder, ProtocolDecoder, DecoderState};
 pub use error::{DecodingError, Error};
 pub use multi::{MultiReceiver, ReceiverSet};
@@ -184,16 +229,36 @@ pub trait EdgeDriven {
 
     /// Update the receiver with an edge event
     /// * `dt`: Duration since the previous edge
-    /// * `edge`: true = start of an IR mark (the pin reading low on an active-low receiver module), false = start of a space
-    fn event_edge(&mut self, dt: Self::Duration, edge: bool)
+    /// * `level`: The input level after the edge, see [`Level`]
+    fn event_edge(&mut self, dt: Self::Duration, level: Level)
         -> Result<Self::Output, DecodingError>;
 
     /// Update the receiver with an edge event at instant `t`
     fn event_edge_instant(
         &mut self,
         t: Self::Instant,
-        edge: bool,
+        level: Level,
     ) -> Result<Self::Output, DecodingError>;
+
+    /// Time without edges after which the input is considered idle
+    fn idle_timeout(&self) -> Self::Duration;
+}
+
+/// Receiver that can be told that its input has gone idle
+///
+/// Implemented by all receiver cores and wrappers. Calling
+/// [`timeout`](Timeout::timeout) when no edge has been seen for at least the
+/// receiver's idle timeout discards partially received frames, so that noise
+/// or an interrupted transmission doesn't linger in the decoder until the next
+/// frame arrives.
+pub trait Timeout {
+    /// Output produced on a successful decode
+    type Output;
+
+    /// Notify the receiver that the input has been idle
+    ///
+    /// Returns a command if the protocol completes its frames on silence.
+    fn timeout(&mut self) -> Result<Self::Output, DecodingError>;
 }
 
 /// Poll driven receiver
@@ -205,7 +270,7 @@ pub trait PollDriven {
     type Output;
 
     /// Update the receiver with the current pin state
-    fn poll_edge(&mut self, edge: bool) -> Result<Self::Output, DecodingError>;
+    fn poll_edge(&mut self, level: Level) -> Result<Self::Output, DecodingError>;
 }
 
 /// Event based Receiver
@@ -244,23 +309,29 @@ where
 
     /// Update the receiver
     /// * `dt`: Duration since the previous edge
-    /// * `edge`: true = start of an IR mark (the pin reading low on an active-low receiver module), false = start of a space
-    pub fn event(&mut self, dt: Mono::Duration, edge: bool) -> Result<Option<Cmd>, DecodingError> {
-        // Update state machine
-        let state = self.decoder.event(edge, dt);
+    /// * `level`: The input level after the edge, see [`Level`]
+    pub fn event(&mut self, dt: Mono::Duration, level: Level) -> Result<Option<Cmd>, DecodingError> {
+        self.decoder
+            .event_total(dt, level)
+            .map(|cmd| cmd.map(Into::into))
+    }
 
-        match state {
-            DecoderState::Done => {
-                let cmd = self.decoder.command().map(Into::into);
-                self.decoder.reset();
-                Ok(cmd)
-            }
-            DecoderState::Error(err) => {
-                self.decoder.reset();
-                Err(err)
-            }
-            DecoderState::Idle | DecoderState::Receiving => Ok(None),
-        }
+    /// Notify the receiver that the input has been idle for at least
+    /// [`idle_timeout`](Receiver::idle_timeout)
+    ///
+    /// Discards any partially received frame. Calling it while no frame is
+    /// in progress is harmless.
+    pub fn timeout(&mut self) -> Result<Option<Cmd>, DecodingError> {
+        self.decoder
+            .timeout_total()
+            .map(|cmd| cmd.map(Into::into))
+    }
+
+    /// Time without edges after which the input is considered idle
+    ///
+    /// Derived from the protocol timing: twice the longest valid symbol.
+    pub fn idle_timeout(&self) -> Mono::Duration {
+        self.decoder.spans().idle_timeout()
     }
 
     /// Update the receiver with an edge event at instant `t`
@@ -269,12 +340,12 @@ where
     pub fn event_instant(
         &mut self,
         t: Mono::Instant,
-        edge: bool,
+        level: Level,
     ) -> Result<Option<Cmd>, DecodingError> {
         let dt = Mono::checked_sub(t, self.prev_instant).unwrap_or(Mono::ZERO_DURATION);
         self.prev_instant = t;
 
-        self.event(dt, edge)
+        self.event(dt, level)
     }
 }
 
@@ -315,16 +386,33 @@ where
     fn event_edge(
         &mut self,
         dt: Self::Duration,
-        edge: bool,
+        level: Level,
     ) -> Result<Self::Output, DecodingError> {
-        self.event(dt, edge)
+        self.event(dt, level)
     }
 
     fn event_edge_instant(
         &mut self,
         t: Self::Instant,
-        edge: bool,
+        level: Level,
     ) -> Result<Self::Output, DecodingError> {
-        self.event_instant(t, edge)
+        self.event_instant(t, level)
+    }
+
+    fn idle_timeout(&self) -> Self::Duration {
+        Receiver::idle_timeout(self)
+    }
+}
+
+impl<Proto, Mono, Cmd> Timeout for Receiver<Proto, Mono, Cmd>
+where
+    Proto: DecoderBuilder<Mono>,
+    Mono: InfraMonotonic,
+    Cmd: From<Proto::Cmd>,
+{
+    type Output = Option<Cmd>;
+
+    fn timeout(&mut self) -> Result<Self::Output, DecodingError> {
+        Receiver::timeout(self)
     }
 }

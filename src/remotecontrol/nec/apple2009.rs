@@ -28,7 +28,7 @@ const BUTTONS: &[((u8, u8), Action)] = &[
 impl RemoteControl for Apple2009 {
     const MODEL: &'static str = "Apple Remote";
     const DEVTYPE: DeviceType = DeviceType::Generic;
-    const PROTOCOL: ProtocolId = ProtocolId::NecApple;
+    const PROTOCOL: ProtocolId = ProtocolId::AppleNec;
     const ADDRESS: u32 = 0;
     type Cmd = AppleNecCommand;
 

@@ -20,7 +20,7 @@ fn main() -> io::Result<()> {
     let mut ir_recv = infrared::receiver()
         .resolution(resolution)
         .monotonic::<u64>()
-        .nec_samsung()
+        .samsung32()
         .build();
 
     let mut clock = 0;
@@ -29,8 +29,8 @@ fn main() -> io::Result<()> {
         let vc = vc?;
         match vc {
             vcd::Command::ChangeScalar(i, v) if i == irdata => {
-                let edge = v == vcd::Value::V1;
-                match ir_recv.event_instant(clock, edge) {
+                let level = infrared::Level::from_active_high(v == vcd::Value::V1);
+                match ir_recv.event_instant(clock, level) {
                     Ok(Some(cmd)) => {
                         println!("Cmd: {:?}", cmd);
                     }

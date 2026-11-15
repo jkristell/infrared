@@ -1,10 +1,18 @@
-//! Nec
+//! NEC and its variants
+//!
+//! | Type            | Also known as       | Address | Command |
+//! |-----------------|---------------------|---------|---------|
+//! | [`Nec`]         | NEC1                | 8 bit   | 8 bit   |
+//! | [`NecExtended`] | NECext, NEC16       | 16 bit  | 8 bit   |
+//! | [`Samsung32`]   | NECx2, Samsung      | 8 bit   | 8 bit   |
+//! | [`AppleNec`]    | Apple               | 8 bit   | 12 bit  |
+//! | [`NecRaw`]      |                     | -       | -       |
 
 pub mod decoder;
 pub mod encoder;
 
 mod apple;
-mod nec16;
+mod extended;
 mod raw;
 mod samsung;
 mod standard;
@@ -14,14 +22,14 @@ mod tests;
 use core::marker::PhantomData;
 
 pub use apple::AppleNecCommand;
-pub use nec16::Nec16Command;
-pub use raw::NecDebugCmd;
-pub use samsung::SamsungNecCommand;
+pub use extended::NecExtendedCommand;
+pub use raw::NecRawCommand;
+pub use samsung::Samsung32Command;
 pub use standard::NecCommand;
 
 use crate::protocol::Protocol;
 
-/// Nec Receiver with Nec standard bit encoding and Standard timing
+/// NEC protocol, generic over the command variant
 pub struct Nec<C: NecCommandVariant = NecCommand> {
     // Nec Command type
     pub(crate) cmd: PhantomData<C>,
@@ -31,21 +39,25 @@ impl<C: NecCommandVariant> Protocol for Nec<C> {
     type Cmd = C;
 }
 
-/// Nec variant with Samsung bit encoding and Samsung timing
-pub type SamsungNec = Nec<SamsungNecCommand>;
+/// Samsung32, the NEC variant used by Samsung TVs
+pub type Samsung32 = Nec<Samsung32Command>;
 
-/// Nec variant with 16 bit address and Nec standard timing
-pub type Nec16 = Nec<Nec16Command>;
+/// NEC extended, NEC with 16 bit addresses
+pub type NecExtended = Nec<NecExtendedCommand>;
 
-/// Nec variant with Apple specific bit encoding and Standard timing
+/// NEC variant used by Apple remotes
 pub type AppleNec = Nec<AppleNecCommand>;
 
-/// Nec variant without any specific bit unpacking, useful for debugging
-pub type NecDebug = Nec<NecDebugCmd>;
+/// NEC frames without interpretation of the bits, useful for debugging
+pub type NecRaw = Nec<NecRawCommand>;
 
 /// Nec Command Variant
 pub trait NecCommandVariant: Sized {
     const PULSE_DISTANCE: &'static NecPulseLen;
+
+    /// Repeats are sent as a short repeat frame (header and stop mark).
+    /// If false, the whole frame is sent again.
+    const SHORT_REPEAT: bool = true;
 
     /// Validate the bits as a Command of this type
     fn validate(bits: u32) -> bool;
@@ -55,6 +67,9 @@ pub trait NecCommandVariant: Sized {
 
     /// Pack command into a u32
     fn pack(&self) -> u32;
+
+    /// True if this is a repeat of the previous command
+    fn repeat(&self) -> bool;
 }
 
 const NEC_STANDARD_TIMING: &NecPulseLen = &NecPulseLen {

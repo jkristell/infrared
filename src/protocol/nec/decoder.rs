@@ -1,6 +1,7 @@
 use core::marker::PhantomData;
 
 use crate::{
+    Level,
     protocol::{
         nec::{NecCommand, NecCommandVariant},
         Nec,
@@ -87,12 +88,13 @@ where
     Cmd: NecCommandVariant,
 {
     #[rustfmt::skip]
-    fn event(&mut self, rising: bool, dur: Mono::Duration) -> DecoderState {
+    fn event(&mut self, dur: Mono::Duration, level: Level) -> DecoderState {
+        let mark = level.is_mark();
 
         use NecState::*;
         use NecSymbol::*;
 
-        if rising {
+        if mark {
 
             let total_duration = dur + self.dt_save;
 

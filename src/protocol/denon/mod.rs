@@ -1,13 +1,28 @@
+//! # Denon-K
+//!
+//! The Denon member of the Kaseikyo (Panasonic/Japanese) protocol family.
+//! 48 bit frames, sent LSB first:
+//!
+//! | Bits   | Content                                     |
+//! |--------|---------------------------------------------|
+//! | 0..16  | Vendor id, 0x3254 for Denon                 |
+//! | 16..20 | Vendor parity, zero for Denon               |
+//! | 20..32 | Address                                     |
+//! | 32..40 | Command                                     |
+//! | 40..48 | Parity, the XOR of the bytes 2, 3 and 4     |
+//!
+//! The address and command split is the same as IRremote's `Kaseikyo_Denon`.
+
 use crate::{
-    cmd::AnyCommand,
-    protocol::Protocol,
+    Level,
+    protocol::{Command, Protocol, ProtocolId},
     receiver::{
         time::{InfraMonotonic, PulseSpans},
-        DecoderBuilder, ProtocolDecoder, DecoderState,
+        DecoderBuilder, DecodingError, ProtocolDecoder, DecoderState,
     },
-    ProtocolId,
 };
 
+mod encoder;
 #[cfg(test)]
 mod test;
 
@@ -29,7 +44,7 @@ const PULSE: [u32; 8] = [
 
 const TOL: [u32; 8] = [8, 10, 10, 0, 0, 0, 0, 0];
 
-/// Denon protocol
+/// Denon-K protocol
 pub struct Denon;
 
 impl Protocol for Denon {
@@ -49,6 +64,7 @@ impl<Mono: InfraMonotonic> DecoderBuilder<Mono> for Denon {
     }
 }
 
+/// Denon-K decoder
 pub struct DenonDecoder<Mono: InfraMonotonic> {
     state: DenonState,
     buf: u64,
@@ -56,41 +72,94 @@ pub struct DenonDecoder<Mono: InfraMonotonic> {
     spans: PulseSpans<Mono>,
 }
 
-#[derive(Debug)]
+const VENDOR: u64 = 0x3254;
+
+/// Denon-K command, 12 bit address and 8 bit command
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct DenonCommand {
-    pub bits: u64,
+    /// Address, 12 bits
+    pub address: u16,
+    /// Command
+    pub command: u8,
 }
 
-impl From<DenonCommand> for AnyCommand {
-    fn from(cmd: DenonCommand) -> AnyCommand {
-        AnyCommand {
-            protocol: ProtocolId::Denon,
-            raw: cmd.bits,
-            address: 0,
-            command: 0,
-            repeat: false,
+impl DenonCommand {
+    /// Create a new command. Only the lower 12 bits of the address are used.
+    pub const fn new(address: u16, command: u8) -> Self {
+        Self { address, command }
+    }
+
+    /// Pack the command into the 48 bits of a frame
+    pub const fn pack(&self) -> u64 {
+        let data = ((self.address as u64 & 0xFFF) << 4) | ((self.command as u64) << 16);
+        let parity = (data ^ (data >> 8) ^ (data >> 16)) & 0xFF;
+        VENDOR | (data << 16) | (parity << 40)
+    }
+
+    /// Unpack the 48 bits of a frame
+    pub const fn unpack(bits: u64) -> Result<Self, DecodingError> {
+        // Vendor id and vendor parity
+        if bits & 0xF_FFFF != VENDOR {
+            return Err(DecodingError::Address);
         }
+        let data = bits >> 16;
+        if (data ^ (data >> 8) ^ (data >> 16) ^ (data >> 24)) & 0xFF != 0 {
+            return Err(DecodingError::Validation);
+        }
+        Ok(DenonCommand {
+            address: ((bits >> 20) & 0xFFF) as u16,
+            command: ((bits >> 32) & 0xFF) as u8,
+        })
+    }
+}
+
+impl Command for DenonCommand {
+    const PROTOCOL: ProtocolId = ProtocolId::Denon;
+
+    fn address(&self) -> u32 {
+        self.address.into()
+    }
+
+    fn command(&self) -> u32 {
+        self.command.into()
+    }
+
+    fn is_repeat(&self) -> bool {
+        false
+    }
+
+    fn raw(&self) -> u64 {
+        self.pack()
+    }
+
+    fn from_parts(address: u32, command: u32) -> Option<Self> {
+        if address >= 1 << 12 {
+            return None;
+        }
+        Some(DenonCommand::new(address as u16, command.try_into().ok()?))
     }
 }
 
 impl<Mono: InfraMonotonic> ProtocolDecoder<Denon, Mono> for DenonDecoder<Mono> {
     #[rustfmt::skip]
-    fn event(&mut self, rising: bool, dt: Mono::Duration) -> DecoderState {
+    fn event(&mut self, dt: Mono::Duration, level: Level) -> DecoderState {
+        let mark = level.is_mark();
 
-        if rising {
+        if mark {
             let symbol = self.spans.get::<DenonSymbol>( self.dt_save + dt)
                 .unwrap_or(DenonSymbol::Fail);
 
             self.state = match (self.state, symbol) {
                 (DenonState::Idle,          DenonSymbol::Sync)   => DenonState::Data(0),
                 (DenonState::Idle,          _)                  => DenonState::Idle,
-                (DenonState::Data(47),      DenonSymbol::Zero)   => DenonState::Done,
-                (DenonState::Data(47),      DenonSymbol::One)    => DenonState::Done,
+                (DenonState::Data(47),      DenonSymbol::Zero)   => self.check(),
+                (DenonState::Data(47),      DenonSymbol::One)    => { self.buf |= 1 << 47; self.check() }
                 (DenonState::Data(idx),     DenonSymbol::Zero)   => DenonState::Data(idx + 1),
                 (DenonState::Data(idx),     DenonSymbol::One)    => { self.buf |= 1 << idx; DenonState::Data(idx + 1) }
                 (DenonState::Data(_ix),     _)                  => DenonState::Idle,
                 (DenonState::Done,          _)                  => DenonState::Done,
+                (DenonState::Err(err),      _)                  => DenonState::Err(err),
             };
 
             self.dt_save = Mono::ZERO_DURATION;
@@ -103,7 +172,7 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Denon, Mono> for DenonDecoder<Mono> {
 
     fn command(&self) -> Option<DenonCommand> {
         if self.state == DenonState::Done {
-            Some(DenonCommand { bits: self.buf })
+            DenonCommand::unpack(self.buf).ok()
         } else {
             None
         }
@@ -119,12 +188,22 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Denon, Mono> for DenonDecoder<Mono> {
     }
 }
 
+impl<Mono: InfraMonotonic> DenonDecoder<Mono> {
+    fn check(&self) -> DenonState {
+        match DenonCommand::unpack(self.buf) {
+            Ok(_) => DenonState::Done,
+            Err(err) => DenonState::Err(err),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum DenonState {
     Idle,
     Data(u8),
     Done,
+    Err(DecodingError),
 }
 
 impl From<DenonState> for DecoderState {
@@ -133,6 +212,7 @@ impl From<DenonState> for DecoderState {
             DenonState::Idle => DecoderState::Idle,
             DenonState::Data(_) => DecoderState::Receiving,
             DenonState::Done => DecoderState::Done,
+            DenonState::Err(err) => DecoderState::Error(err),
         }
     }
 }

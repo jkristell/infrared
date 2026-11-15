@@ -1,4 +1,5 @@
 use crate::{
+    Level,
     protocol::{rc6::Rc6Command, Rc6},
     receiver::{BufferReceiver, ProtocolDecoder},
     sender::PulseBuffer,
@@ -13,26 +14,24 @@ fn state_debug() {
 
     let mut sender = PulseBuffer::<96>::new();
 
-    sender.load::<Rc6, SAMPLE_RATE>(&cmd);
+    sender.load::<Rc6>(&cmd, SAMPLE_RATE);
 
-    let b = sender.buf;
-    let len = sender.offset;
 
-    let mut edge = false;
+    let mut level = Level::Space;
 
     let mut recv = Receiver::<Rc6>::new(SAMPLE_RATE);
 
     let mut res = None;
 
-    for dist in &b[..len] {
-        edge = !edge;
+    for dist in sender.buffer() {
+        level = level.toggle();
 
         let s0 = recv.decoder.state;
-        let cmd = recv.event(*dist, edge);
+        let cmd = recv.event(*dist, level);
 
         println!(
             "{} ({}): {:?} -> {:?}",
-            edge as u32, dist, s0, recv.decoder.state
+            level.is_mark() as u32, dist, s0, recv.decoder.state
         );
 
         if let Ok(Some(cmd)) = cmd {
@@ -63,8 +62,8 @@ fn decode_buffer() {
     assert_eq!(cmds.len(), 1);
 
     for cmd in &cmds {
-        assert_eq!(cmd.addr, 70);
-        assert_eq!(cmd.cmd, 2);
+        assert_eq!(cmd.address, 70);
+        assert_eq!(cmd.command, 2);
     }
 }
 
@@ -78,14 +77,14 @@ fn all_commands() {
             ptb.reset();
 
             let cmd = Rc6Command::new(address, cmdnum);
-            ptb.load::<Rc6, FREQ>(&cmd);
+            ptb.load::<Rc6>(&cmd, FREQ);
 
             let recv = BufferReceiver::<Rc6>::with_resolution(FREQ);
 
-            let cmdres = recv.iter(&ptb.buf).next().unwrap();
+            let cmdres = recv.iter(ptb.buffer()).next().unwrap();
 
-            assert_eq!(cmd.addr, cmdres.addr);
-            assert_eq!(cmd.cmd, cmdres.cmd);
+            assert_eq!(cmd.address, cmdres.address);
+            assert_eq!(cmd.command, cmdres.command);
         }
     }
 }

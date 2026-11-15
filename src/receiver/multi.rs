@@ -1,6 +1,9 @@
 use crate::{
-    cmd::AnyCommand,
-    receiver::{time::InfraMonotonic, DecoderBuilder, DecodingError, EdgeDriven, Receiver},
+    Level,
+    protocol::Message,
+    receiver::{
+        time::InfraMonotonic, DecoderBuilder, DecodingError, EdgeDriven, Receiver, Timeout,
+    },
 };
 
 /// Multi Receiver
@@ -31,28 +34,43 @@ impl<const N: usize, Receivers: ReceiverSet<N, Mono>, Mono: InfraMonotonic>
 
     /// Update the receivers
     /// * `dt`: Duration since the previous edge
-    /// * `edge`: true = start of an IR mark (the pin reading low on an active-low receiver module), false = start of a space
-    pub fn event(&mut self, dt: Mono::Duration, edge: bool) -> [Option<AnyCommand>; N] {
-        Receivers::event(&mut self.receivers, dt, edge)
+    /// * `level`: The input level after the edge, see [`Level`]
+    pub fn event(&mut self, dt: Mono::Duration, level: Level) -> [Option<Message>; N] {
+        Receivers::event(&mut self.receivers, dt, level)
     }
 
     /// Update the receivers and get an iterator over the decoded commands
     pub fn event_iter(
         &mut self,
         dt: Mono::Duration,
-        edge: bool,
-    ) -> impl Iterator<Item = AnyCommand> {
-        self.event(dt, edge).into_iter().flatten()
+        level: Level,
+    ) -> impl Iterator<Item = Message> {
+        self.event(dt, level).into_iter().flatten()
     }
 
     /// Update the receivers with an edge event at instant `t`
     ///
     /// The duration since the previous edge is tracked internally.
-    pub fn event_instant(&mut self, t: Mono::Instant, edge: bool) -> [Option<AnyCommand>; N] {
+    pub fn event_instant(&mut self, t: Mono::Instant, level: Level) -> [Option<Message>; N] {
         let dt = Mono::checked_sub(t, self.prev_instant).unwrap_or(Mono::ZERO_DURATION);
         self.prev_instant = t;
 
-        self.event(dt, edge)
+        self.event(dt, level)
+    }
+
+    /// Notify the receivers that the input has been idle for at least
+    /// [`idle_timeout`](MultiReceiver::idle_timeout)
+    ///
+    /// Discards any partially received frames.
+    pub fn timeout(&mut self) -> [Option<Message>; N] {
+        Receivers::timeout(&mut self.receivers)
+    }
+
+    /// Time without edges after which the input is considered idle
+    ///
+    /// The longest idle timeout of the protocols.
+    pub fn idle_timeout(&self) -> Mono::Duration {
+        Receivers::idle_timeout(&self.receivers)
     }
 }
 
@@ -63,22 +81,38 @@ where
 {
     type Duration = Mono::Duration;
     type Instant = Mono::Instant;
-    type Output = [Option<AnyCommand>; N];
+    type Output = [Option<Message>; N];
 
     fn event_edge(
         &mut self,
         dt: Self::Duration,
-        edge: bool,
+        level: Level,
     ) -> Result<Self::Output, DecodingError> {
-        Ok(self.event(dt, edge))
+        Ok(self.event(dt, level))
     }
 
     fn event_edge_instant(
         &mut self,
         t: Self::Instant,
-        edge: bool,
+        level: Level,
     ) -> Result<Self::Output, DecodingError> {
-        Ok(self.event_instant(t, edge))
+        Ok(self.event_instant(t, level))
+    }
+
+    fn idle_timeout(&self) -> Self::Duration {
+        MultiReceiver::idle_timeout(self)
+    }
+}
+
+impl<const N: usize, Receivers, Mono> Timeout for MultiReceiver<N, Receivers, Mono>
+where
+    Receivers: ReceiverSet<N, Mono>,
+    Mono: InfraMonotonic,
+{
+    type Output = [Option<Message>; N];
+
+    fn timeout(&mut self) -> Result<Self::Output, DecodingError> {
+        Ok(MultiReceiver::timeout(self))
     }
 }
 
@@ -87,7 +121,11 @@ pub trait ReceiverSet<const N: usize, Mono: InfraMonotonic> {
 
     fn make(res: u32) -> Self::Receivers;
 
-    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, edge: bool) -> [Option<AnyCommand>; N];
+    fn event(rs: &mut Self::Receivers, dt: Mono::Duration, level: Level) -> [Option<Message>; N];
+
+    fn timeout(rs: &mut Self::Receivers) -> [Option<Message>; N];
+
+    fn idle_timeout(rs: &Self::Receivers) -> Mono::Duration;
 }
 
 macro_rules! impl_receiver_wrapper {
@@ -95,7 +133,7 @@ macro_rules! impl_receiver_wrapper {
         impl<$($P,)+ Mono: InfraMonotonic> ReceiverSet<$N, Mono> for ($($P,)+)
         where
             $($P: DecoderBuilder<Mono>,)+
-            $($P::Cmd: Into<AnyCommand>,)+
+            $($P::Cmd: Into<Message>,)+
         {
             type Receivers = ($(Receiver<$P, Mono>,)+);
 
@@ -106,9 +144,24 @@ macro_rules! impl_receiver_wrapper {
             fn event(
                 rs: &mut Self::Receivers,
                 dt: Mono::Duration,
-                edge: bool,
-            ) -> [Option<AnyCommand>; $N] {
-                [$(rs.$idx.event(dt, edge).unwrap_or_default().map(Into::into),)+]
+                level: Level,
+            ) -> [Option<Message>; $N] {
+                [$(rs.$idx.event(dt, level).unwrap_or_default().map(Into::into),)+]
+            }
+
+            fn timeout(rs: &mut Self::Receivers) -> [Option<Message>; $N] {
+                [$(rs.$idx.timeout().unwrap_or_default().map(Into::into),)+]
+            }
+
+            fn idle_timeout(rs: &Self::Receivers) -> Mono::Duration {
+                let mut max = Mono::ZERO_DURATION;
+                $(
+                    let t = rs.$idx.idle_timeout();
+                    if t > max {
+                        max = t;
+                    }
+                )+
+                max
             }
         }
     };

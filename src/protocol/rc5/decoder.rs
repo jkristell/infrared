@@ -1,4 +1,5 @@
 use crate::{
+    Level,
     protocol::{rc5::Rc5Command, Rc5},
     receiver::{
         time::{InfraMonotonic, PulseSpans},
@@ -24,7 +25,8 @@ impl<Mono: InfraMonotonic> DecoderBuilder<Mono> for Rc5 {
 }
 
 impl<Mono: InfraMonotonic> ProtocolDecoder<Rc5, Mono> for Rc5Decoder<Mono> {
-    fn event(&mut self, rising: bool, delta_t: Mono::Duration) -> DecoderState {
+    fn event(&mut self, delta_t: Mono::Duration, level: Level) -> DecoderState {
+        let mark = level.is_mark();
         use Rc5State::*;
 
         // Find this delta t in the defined ranges
@@ -38,7 +40,7 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Rc5, Mono> for Rc5Decoder<Mono> {
 
         let is_odd = self.clock & 1 == 0;
 
-        self.state = match (self.state, rising, clock_ticks) {
+        self.state = match (self.state, mark, clock_ticks) {
             (Idle, false, _) => Idle,
             (Idle, true, _) => {
                 self.clock = 0;
