@@ -22,11 +22,11 @@
  - Async receiver: new `async` feature with `AsyncReceiver`, which waits on an embedded-hal-async `Wait` pin and uses a `DelayNs` for the idle timeout. `receive().await` returns the next command and skips decode errors; `next().await` returns every decoder result. The `embassy` feature adds `EmbassyClock` and `AsyncReceiver::embassy(pin)`. Builder: `build_async(clock, pin, delay)` and `build_embassy(pin)`
  - `InfraMonotonic` has a new required method `to_micros()`
  - Sender rework:
-   - `ProtocolEncoder` no longer has a `FREQ` const parameter. Encoders produce mark/space durations in µs (with `MAX_PULSES`), and the senders convert them at their runtime resolution: `PulseSender::new(resolution)`, `PwmSender::new(pwm, resolution)`, `PwmSender::with_duty_fraction(pwm, resolution, num, denom)`
+   - `ProtocolEncoder` no longer has a `FREQ` const parameter. Encoders produce mark/space durations in µs (with `MAX_PULSES`), and the senders convert them at their runtime resolution: `TickSender::new(resolution)`, `PwmSender::new(pwm, resolution)`, `PwmSender::with_duty_fraction(pwm, resolution, num, denom)`
    - The buffer size parameter defaults to 128 (`DEFAULT_BUFFER_SIZE`) and is checked against the protocol at compile time. `PwmSender<Pwm, FREQ, N>` is now `PwmSender<Pwm, N = 128>`
-   - `PwmSender::load` returns `Err(Busy)` instead of silently ignoring a command during a transmission. `PulseSender::load_command::<P, F>` is now `PulseSender::load::<P>`
+   - `PwmSender::load` returns `Err(Busy)` instead of silently ignoring a command during a transmission. `TickSender::load_command::<P, F>` is now `TickSender::load::<P>`
    - New `AsyncSender` (`async` feature): `send::<P>(&cmd).await` with a `SetDutyCycle` pwm and an embedded-hal-async delay; `AsyncSender::embassy(pwm)` with the `embassy` feature. The carrier is turned off if a send is cancelled. The `async` feature now enables `embedded-hal`
-   - New Denon and SBP encoders
+   - New Denon and Samsung36 encoders
    - Fixed the final mark of NEC and RC5 frames being cut to a single tick, which IR receiver modules don't detect
    - NEC repeat commands are now encoded as short repeat frames (Samsung NEC resends the full frame, see `NecCommandVariant::SHORT_REPEAT`). `NecCommandVariant` has a new required `repeat()` method
    - Fixed overflow and precision loss when converting pulse lengths to ticks (e.g. RC6 above ~9.6 MHz)
@@ -36,10 +36,10 @@
  - Rewrote the embedded-hal sender for embedded-hal 1.0 (`SetDutyCycle`), with configurable carrier duty cycle
  - Type renames for a cleaner API: `PeriodicPoll` → `PolledReceiver`, the `EdgeReceiver`/`PollReceiver` traits → `EdgeDriven`/`PollDriven`, `ReceiverWrapper` → `ReceiverSet`, `receiver::State` → `DecoderState`, the embedded-hal sender → `PwmSender`, `RemoteControlModel` → `RemoteControl`, `AddressCommand` → `AddressedCommand`
  - Iterator cleanup: `BufferReceiver::iter` takes `&self`; `BufferIterator` is exported and implements `FusedIterator`; removed the unused `iter_with` and the hand-rolled `PulseIterator` (slice iterator used instead)
- - Fixed `PulseBuffer::get` reading stale data past the loaded pulse train, which made `PulseSender` toggle rapidly after each transmission
+ - Fixed `PulseBuffer::get` reading stale data past the loaded pulse train, which made `TickSender` toggle rapidly after each transmission
  - Terminology cleanup:
    - `BufferInputReceiver` is now `BufferReceiver`, and `with_frequenzy` is `with_resolution`
-   - `PulsedataBuffer`/`PulsedataSender` are now `PulseBuffer`/`PulseSender`
+   - `PulsedataBuffer`/`PulsedataSender` are now `PulseBuffer`/`TickSender`
    - `Builder::frequency()` is now `Builder::resolution()`
    - The pulse period enums are now named symbols: `NecSymbol`, `DenonSymbol`, `SbpSymbol` (they classify mark+space periods, not pulse widths)
    - Documented the edge semantics: `edge == true` means start of an IR mark (low pin on an active-low receiver module)

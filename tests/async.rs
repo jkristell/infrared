@@ -14,7 +14,7 @@ use embedded_hal_async::{delay::DelayNs, digital::Wait};
 use infrared::{
     protocol::{nec::NecCommand, Nec},
     receiver::{AsyncReceiver, FnClock},
-    sender::PulseSender,
+    sender::TickSender,
     Receiver,
 };
 
@@ -127,7 +127,7 @@ fn setup() -> (SharedSim, AsyncReceiver<Receiver<Nec>, SimClock, SimPin, SimDela
 }
 
 fn nec_frame(address: u8, command: u8) -> Vec<u32> {
-    let mut sender: PulseSender = PulseSender::new(RES);
+    let mut sender: TickSender = TickSender::new(RES);
     sender.load::<Nec>(&NecCommand {
         address,
         command,

@@ -2,7 +2,7 @@
 
 use embedded_hal::pwm::SetDutyCycle;
 
-use crate::sender::{Busy, DEFAULT_BUFFER_SIZE, ProtocolEncoder, PulseSender, Status};
+use crate::sender::{Busy, DEFAULT_BUFFER_SIZE, ProtocolEncoder, TickSender, Status};
 
 /// Embedded-hal `SetDutyCycle` based sender
 ///
@@ -15,7 +15,7 @@ pub struct PwmSender<Pwm, const S: usize = DEFAULT_BUFFER_SIZE> {
     duty_on: u16,
     counter: u32,
     status: Status,
-    buffer: PulseSender<S>,
+    buffer: TickSender<S>,
 }
 
 impl<Pwm, const S: usize> PwmSender<Pwm, S>
@@ -38,7 +38,7 @@ where
             duty_on,
             counter: 0,
             status: Status::Idle,
-            buffer: PulseSender::new(resolution),
+            buffer: TickSender::new(resolution),
         }
     }
 

@@ -7,14 +7,14 @@ use infrared::{
     PolledReceiver, Receiver,
     protocol::{Nec, nec::NecCommand},
     receiver::{ClockedReceiver, FnClock, MultiReceiver},
-    sender::PulseSender,
+    sender::TickSender,
 };
 
 const RES: u32 = 1_000_000;
 
 /// Edge distances in µs of an encoded NEC frame. The first edge is the start of an IR mark.
 fn nec_frame(address: u8, command: u8) -> Vec<u32> {
-    let mut sender: PulseSender = PulseSender::new(RES);
+    let mut sender: TickSender = TickSender::new(RES);
     sender.load::<Nec>(&NecCommand {
         address,
         command,

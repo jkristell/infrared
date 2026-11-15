@@ -2,10 +2,10 @@ use crate::sender::{DEFAULT_BUFFER_SIZE, ProtocolEncoder, PulseBuffer};
 
 /// Hardware independent sender, driven by a periodic tick
 ///
-/// Load a command with [`load`](PulseSender::load) and call
-/// [`tick`](PulseSender::tick) with a timestamp counting at `resolution` Hz.
+/// Load a command with [`load`](TickSender::load) and call
+/// [`tick`](TickSender::tick) with a timestamp counting at `resolution` Hz.
 /// The returned [`Status`] tells whether the carrier should be on.
-pub struct PulseSender<const S: usize = DEFAULT_BUFFER_SIZE> {
+pub struct TickSender<const S: usize = DEFAULT_BUFFER_SIZE> {
     ptb: PulseBuffer<S>,
     resolution: u32,
     pos: usize,
@@ -13,7 +13,7 @@ pub struct PulseSender<const S: usize = DEFAULT_BUFFER_SIZE> {
     ts_lastedge: u32,
 }
 
-impl<const S: usize> PulseSender<S> {
+impl<const S: usize> TickSender<S> {
     /// Create a sender with timestamps counting at `resolution` Hz
     pub fn new(resolution: u32) -> Self {
         Self {

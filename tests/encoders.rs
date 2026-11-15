@@ -1,7 +1,7 @@
 use infrared::{
     protocol::Protocol,
     receiver::{BufferReceiver, DecoderBuilder},
-    sender::{ProtocolEncoder, PulseSender},
+    sender::{ProtocolEncoder, TickSender},
 };
 
 /// Encode `cmd` at `resolution` Hz and decode it again
@@ -9,7 +9,7 @@ fn roundtrip<P>(cmd: &P::Cmd, resolution: u32) -> Vec<P::Cmd>
 where
     P: ProtocolEncoder + DecoderBuilder<u32>,
 {
-    let mut sender: PulseSender = PulseSender::new(resolution);
+    let mut sender: TickSender = TickSender::new(resolution);
     sender.load::<P>(cmd);
     BufferReceiver::<P>::with_resolution(resolution)
         .iter(sender.buffer())
@@ -18,7 +18,7 @@ where
 
 /// The loaded pulse train in µs, without the leading zero
 fn pulses<P: ProtocolEncoder>(cmd: &<P as Protocol>::Cmd) -> Vec<u32> {
-    let mut sender: PulseSender = PulseSender::new(1_000_000);
+    let mut sender: TickSender = TickSender::new(1_000_000);
     sender.load::<P>(cmd);
     sender.buffer()[1..].to_vec()
 }

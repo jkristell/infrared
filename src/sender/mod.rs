@@ -4,8 +4,8 @@
 //! and space (carrier off) durations in microseconds, starting and ending with
 //! a mark. The senders convert it to their own time base:
 //!
-//! - [`PulseSender`]: hardware independent core, driven by a periodic `tick`
-//! - [`PwmSender`]: `PulseSender` driving an embedded-hal `SetDutyCycle` pwm
+//! - [`TickSender`]: hardware independent core, driven by a periodic `tick`
+//! - [`PwmSender`]: `TickSender` driving an embedded-hal `SetDutyCycle` pwm
 //! - [`AsyncSender`]: sends a whole command with an embedded-hal-async delay (`async` feature)
 
 use crate::protocol::Protocol;
