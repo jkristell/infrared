@@ -25,7 +25,7 @@ impl ProtocolEncoder for Rc6 {
         // Toggle bit, double length
         bit(&mut w, cmd.toggle, 2 * UNIT);
 
-        let bits = (u16::from(cmd.addr) << 8) | u16::from(cmd.cmd);
+        let bits = (u16::from(cmd.address) << 8) | u16::from(cmd.command);
         for b in (0..16).rev() {
             bit(&mut w, bits & (1 << b) != 0, UNIT);
         }

@@ -34,8 +34,8 @@ async fn main(_spawner: Spawner) {
     let mut sender = AsyncSender::embassy(pwm);
 
     let cmd = NecCommand {
-        addr: 0,
-        cmd: 12,
+        address: 0,
+        command: 12,
         repeat: false,
     };
 

@@ -24,8 +24,8 @@ fn test_bufrecv() {
     assert_eq!(v.len(), 2);
 
     for c in &v {
-        assert_eq!(c.addr, 20);
-        assert_eq!(c.cmd, 9);
+        assert_eq!(c.address, 20);
+        assert_eq!(c.command, 9);
     }
 }
 
@@ -48,8 +48,8 @@ fn command_mixed() {
     assert_eq!(v.len(), 3);
 
     for c in &v {
-        assert_eq!(c.addr, 20);
-        assert_eq!(c.cmd, 1);
+        assert_eq!(c.address, 20);
+        assert_eq!(c.command, 1);
     }
 
     let r = BufferReceiver::<Rc5, u32, Button< rc5::CdPlayer>>::with_resolution(40_000);
@@ -80,8 +80,8 @@ fn all_commands() {
 
             let cmdres = r.iter(ptb.buffer()).next().unwrap();
 
-            assert_eq!(cmd.addr, cmdres.addr);
-            assert_eq!(cmd.cmd, cmdres.cmd);
+            assert_eq!(cmd.address, cmdres.address);
+            assert_eq!(cmd.command, cmdres.command);
         }
     }
 }
@@ -101,8 +101,8 @@ fn test_freq<const F: u32>() {
     let r = BufferReceiver::<Rc5>::with_resolution(F);
 
     let cmdres = r.iter(ptb.buffer()).next().unwrap();
-    assert_eq!(cmd.addr, cmdres.addr);
-    assert_eq!(cmd.cmd, cmdres.cmd);
+    assert_eq!(cmd.address, cmdres.address);
+    assert_eq!(cmd.command, cmdres.command);
 }
 
 #[cfg(feature = "fugit")]
@@ -130,6 +130,6 @@ fn rc5_fugit_u64() {
     }
 
     assert_eq!(cmds.len(), 1);
-    assert_eq!(cmds[0].addr, 20);
-    assert_eq!(cmds[0].cmd, 9);
+    assert_eq!(cmds[0].address, 20);
+    assert_eq!(cmds[0].command, 9);
 }

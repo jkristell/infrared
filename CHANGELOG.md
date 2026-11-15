@@ -1,6 +1,21 @@
 # Changelog
 
 ## [0.15.0] - Unreleased
+ - Command model, aligned with the terminology of other IR libraries (IRremote, Flipper, IRP):
+   - All commands use `address`/`command`/`repeat`/`toggle` fields (was `addr`/`cmd`), and derive `Copy`, `Clone`, `PartialEq`, `Eq` and `Hash`
+   - `Command` and `AddressedCommand` merged into `protocol::Command` with `PROTOCOL`, `address()`, `command()`, `is_repeat()`, `raw()` and `from_parts()` (was `create()`). The `cmd` module is removed; `Command` and `Message` are re-exported from the crate root
+   - `AnyCommand` is now `Message`
+   - `ProtocolId`: `From<u8>` and the `Unknown` variant replaced by `TryFrom<u8>` (`UnknownProtocol` error); added `as_str()` and `Display`
+ - Protocol renames:
+   - `Sbp` is now `Samsung36` (its name in IRremote and the IRP database), with the `samsung36` feature, `protocol::samsung36` module and `Builder::samsung36()`
+   - `SamsungNec` is now `Samsung32`, `Builder::nec_samsung()` is `samsung32()`
+   - `Nec16` is now `NecExtended`, `Builder::nec16()` is `nec_extended()`
+   - `NecDebug`/`NecDebugCmd` are now `NecRaw`/`NecRawCommand`
+   - `Builder::nec_apple()` is now `apple_nec()`; `ProtocolId` variants renamed to match the types
+ - `Samsung36Command` no longer has a `valid` field: frames with a bad checksum are a `DecodingError::Validation`
+ - `DenonCommand` is decoded as Denon-K (Kaseikyo): 12 bit `address` and 8 bit `command` instead of the raw `bits`. The vendor id and parity are validated
+ - Apple NEC: commands can now be encoded (`pack()` panicked), fixed an overflow in `command()`, and the device id is now the address
+ - `BufferIterator` skips frames that fail to decode instead of ending the iteration
  - Idle timeout handling: `timeout()` on `Receiver`, `MultiReceiver`, `PolledReceiver` and `PinReceiver` (new `Timeout` trait) discards partially received frames once the input has been idle for `idle_timeout()`, which is derived from the protocol timing. `PolledReceiver` does this automatically. `ProtocolDecoder::timeout` lets protocols whose frames end on silence finish the frame. `EdgeDriven` gained `idle_timeout()`
  - Clock support: new `Clock` trait with `FnClock` (adapts any time source, e.g. a hardware timer, RTIC monotonic or fugit instant) and `StdClock` (new `std` feature). `ClockedReceiver` timestamps edges itself: `event(edge)`, a self-checking `timeout()`, and `poll(level)` that detects edges and idle input from the level alone. With a pin, `PinReceiver::event()` takes no arguments. Builder: `build_clocked(clock)` and `build_clocked_with_pin(clock, pin)`
  - Async receiver: new `async` feature with `AsyncReceiver`, which waits on an embedded-hal-async `Wait` pin and uses a `DelayNs` for the idle timeout. `receive().await` returns the next command and skips decode errors; `next().await` returns every decoder result. The `embassy` feature adds `EmbassyClock` and `AsyncReceiver::embassy(pin)`. Builder: `build_async(clock, pin, delay)` and `build_embassy(pin)`

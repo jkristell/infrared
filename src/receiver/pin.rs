@@ -3,7 +3,7 @@
 use embedded_hal::digital::InputPin;
 
 use crate::{
-    cmd::AnyCommand,
+    protocol::Message,
     receiver::{
         time::InfraMonotonic, DecoderBuilder, EdgeDriven, Error, MultiReceiver, PolledReceiver,
         PollDriven, Receiver, ReceiverSet, Timeout,
@@ -173,7 +173,7 @@ where
     pub fn event_iter(
         &mut self,
         dt: Mono::Duration,
-    ) -> Result<impl Iterator<Item = AnyCommand>, Error<Pin::Error>> {
+    ) -> Result<impl Iterator<Item = Message>, Error<Pin::Error>> {
         Ok(self.event(dt)?.into_iter().flatten())
     }
 
@@ -182,7 +182,7 @@ where
     pub fn event_instant_iter(
         &mut self,
         t: Mono::Instant,
-    ) -> Result<impl Iterator<Item = AnyCommand>, Error<Pin::Error>> {
+    ) -> Result<impl Iterator<Item = Message>, Error<Pin::Error>> {
         Ok(self.event_instant(t)?.into_iter().flatten())
     }
 }

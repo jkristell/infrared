@@ -1,20 +1,23 @@
-//!NEC Samsung Command variant
+//! Samsung32, the NEC variant used by Samsung
 
-use crate::{
-    cmd::{AddressedCommand, Command},
-    protocol::nec::{NecCommandVariant, NecPulseLen, NEC_SAMSUNG_TIMING},
-    ProtocolId,
+use crate::protocol::{
+    Command, ProtocolId,
+    nec::{NEC_SAMSUNG_TIMING, NecCommandVariant, NecPulseLen},
 };
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+/// Samsung32 command, 8 bit address and 8 bit command
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub struct SamsungNecCommand {
-    pub addr: u8,
-    pub cmd: u8,
+pub struct Samsung32Command {
+    /// Address
+    pub address: u8,
+    /// Command
+    pub command: u8,
+    /// Repeat
     pub repeat: bool,
 }
 
-impl NecCommandVariant for SamsungNecCommand {
+impl NecCommandVariant for Samsung32Command {
     const PULSE_DISTANCE: &'static NecPulseLen = NEC_SAMSUNG_TIMING;
     const SHORT_REPEAT: bool = false;
 
@@ -23,15 +26,19 @@ impl NecCommandVariant for SamsungNecCommand {
     }
 
     fn unpack(bits: u32, repeat: bool) -> Option<Self> {
-        let addr = (bits & 0xFF) as u8;
-        let cmd = ((bits >> 16) & 0xFF) as u8;
-        Some(SamsungNecCommand { addr, cmd, repeat })
+        let address = (bits & 0xFF) as u8;
+        let command = ((bits >> 16) & 0xFF) as u8;
+        Some(Samsung32Command {
+            address,
+            command,
+            repeat,
+        })
     }
 
     fn pack(&self) -> u32 {
-        let addr = u32::from(self.addr) | (u32::from(self.addr) << 8);
-        let cmd = (u32::from(self.cmd) << 16) | (u32::from(!self.cmd) << 24);
-        addr | cmd
+        let address = u32::from(self.address) | (u32::from(self.address) << 8);
+        let command = (u32::from(self.command) << 16) | (u32::from(!self.command) << 24);
+        address | command
     }
 
     fn repeat(&self) -> bool {
@@ -39,27 +46,29 @@ impl NecCommandVariant for SamsungNecCommand {
     }
 }
 
-impl Command for SamsungNecCommand {
-    fn is_repeat(&self) -> bool {
-        self.repeat
-    }
-}
-
-impl AddressedCommand for SamsungNecCommand {
-    const ID: ProtocolId = ProtocolId::NecSamsung;
+impl Command for Samsung32Command {
+    const PROTOCOL: ProtocolId = ProtocolId::Samsung32;
 
     fn address(&self) -> u32 {
-        self.addr.into()
+        self.address.into()
     }
 
     fn command(&self) -> u32 {
-        self.cmd.into()
+        self.command.into()
     }
 
-    fn create(addr: u32, cmd: u32) -> Option<Self> {
-        Some(SamsungNecCommand {
-            addr: addr as u8,
-            cmd: cmd as u8,
+    fn is_repeat(&self) -> bool {
+        self.repeat
+    }
+
+    fn raw(&self) -> u64 {
+        self.pack().into()
+    }
+
+    fn from_parts(address: u32, command: u32) -> Option<Self> {
+        Some(Samsung32Command {
+            address: address.try_into().ok()?,
+            command: command.try_into().ok()?,
             repeat: false,
         })
     }

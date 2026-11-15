@@ -7,6 +7,8 @@ use crate::{
 
 /// Iterator over the commands decoded from a buffer of pulse durations
 ///
+/// Frames that fail to decode are skipped.
+///
 /// Returned by [`BufferReceiver::iter`](crate::receiver::BufferReceiver::iter).
 pub struct BufferIterator<'a, Proto, Mono, Cmd>
 where
@@ -67,7 +69,7 @@ where
                 }
                 DecoderState::Error(_) => {
                     self.decoder.reset();
-                    break None;
+                    continue;
                 }
             }
         }

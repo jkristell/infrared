@@ -12,7 +12,7 @@ use embedded_hal::digital::InputPin;
 #[cfg(feature = "embedded-hal")]
 use crate::receiver::{Error, PinReceiver};
 use crate::{
-    cmd::AnyCommand,
+    protocol::Message,
     receiver::{
         DecoderBuilder, DecodingError, EdgeDriven, MultiReceiver, PollDriven, Receiver,
         ReceiverSet, Timeout, time::InfraMonotonic,
@@ -146,7 +146,7 @@ impl Clock for StdClock {
 /// // Pin interrupt
 /// let edge = true;
 /// if let Ok(Some(cmd)) = receiver.event(edge) {
-///     println!("{} {}", cmd.addr, cmd.cmd);
+///     println!("{} {}", cmd.address, cmd.command);
 /// }
 ///
 /// // Periodic timer
@@ -350,7 +350,7 @@ where
     }
 
     /// Report an edge that occurred now and get an iterator over the decoded commands
-    pub fn event_iter(&mut self, edge: bool) -> impl Iterator<Item = AnyCommand> {
+    pub fn event_iter(&mut self, edge: bool) -> impl Iterator<Item = Message> {
         self.event(edge).into_iter().flatten().flatten()
     }
 }

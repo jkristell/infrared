@@ -21,7 +21,7 @@
 //! Example:
 //! ```
 //! use infrared::{PinReceiver,
-//!     remotecontrol::rc5::CdPlayer, cmd::AddressedCommand,
+//!     remotecontrol::rc5::CdPlayer, Command,
 //!     protocol::rc5::Rc5Command,
 //! };
 //! use dummy_pin::DummyPin;
@@ -79,7 +79,7 @@
 //! let edge = false;  // Edge read from the pin
 //!
 //! if let Ok(Some(cmd)) = receiver.event(dt, edge) {
-//!     println!("{} {}", cmd.addr, cmd.cmd);
+//!     println!("{} {}", cmd.address, cmd.command);
 //! }
 //! ```
 //!
@@ -118,7 +118,7 @@
 //! // -------------------------------------------
 //!
 //! if let Ok(Some(cmd)) = receiver.poll() {
-//!     println!("{} {}", cmd.addr, cmd.cmd);
+//!     println!("{} {}", cmd.address, cmd.command);
 //! }
 //! ```
 //!
@@ -145,7 +145,7 @@
 //!
 //! // Pin interrupt: no timing bookkeeping needed
 //! if let Ok(Some(cmd)) = receiver.event() {
-//!     println!("{} {}", cmd.addr, cmd.cmd);
+//!     println!("{} {}", cmd.address, cmd.command);
 //! }
 //!
 //! // Periodic timer, e.g. every 10 ms: discards interrupted frames

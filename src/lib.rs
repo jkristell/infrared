@@ -18,7 +18,6 @@
 
 pub(crate) mod fmt;
 
-pub mod cmd;
 pub mod protocol;
 pub mod receiver;
 pub mod sender;
@@ -27,7 +26,7 @@ pub mod sender;
 pub mod remotecontrol;
 
 #[doc(inline)]
-pub use protocol::{Protocol, ProtocolId};
+pub use protocol::{Command, Message, Protocol, ProtocolId};
 #[cfg(feature = "embedded-hal")]
 #[doc(inline)]
 pub use receiver::PinReceiver;

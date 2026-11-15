@@ -2,7 +2,7 @@ use fugit::{TimerDurationU32, TimerInstantU32};
 
 use crate::{
     protocol::{
-        nec::{AppleNecCommand, Nec16Command, NecCommand, NecCommandVariant, SamsungNecCommand},
+        nec::{AppleNecCommand, NecExtendedCommand, NecCommand, NecCommandVariant, Samsung32Command},
         Nec,
     },
     receiver::BufferReceiver,
@@ -32,16 +32,16 @@ fn standard_nec() {
     assert_eq!(cmds.len(), 2);
 
     for cmd in &cmds {
-        assert_eq!(cmd.addr, 0);
-        assert_eq!(cmd.cmd, 12);
+        assert_eq!(cmd.address, 0);
+        assert_eq!(cmd.command, 12);
     }
 }
 
 #[test]
 fn cmd_standard() {
     let cmd = NecCommand {
-        addr: 7,
-        cmd: 44,
+        address: 7,
+        command: 44,
         repeat: false,
     };
     let bits = cmd.pack();
@@ -59,38 +59,38 @@ fn cmd_standard() {
 
 #[test]
 fn cmd_samsumg() {
-    let cmd = SamsungNecCommand {
-        addr: 7,
-        cmd: 44,
+    let cmd = Samsung32Command {
+        address: 7,
+        command: 44,
         repeat: false,
     };
 
     let bits = cmd.pack();
-    SamsungNecCommand::validate(bits);
+    Samsung32Command::validate(bits);
 
     assert_eq!(bits, 0xD32C0707);
     assert_eq!((bits >> 24) & 0xFF, (!(bits >> 16) & 0xFF));
     assert_eq!((bits >> 8) & 0xFF, (bits & 0xFF));
 
-    let cmd2 = SamsungNecCommand::unpack(bits, false).unwrap();
+    let cmd2 = Samsung32Command::unpack(bits, false).unwrap();
     assert_eq!(cmd, cmd2);
 }
 
 #[test]
-fn cmd_nec16() {
-    let cmd = Nec16Command {
-        addr: 28114,
-        cmd: 220,
+fn cmd_nec_extended() {
+    let cmd = NecExtendedCommand {
+        address: 28114,
+        command: 220,
         repeat: false,
     };
     let bits = cmd.pack();
 
-    assert!(Nec16Command::validate(bits));
+    assert!(NecExtendedCommand::validate(bits));
 
     assert_eq!(bits, 0x23DC6DD2);
     assert_eq!((bits >> 24) & 0xFF, (!(bits >> 16) & 0xFF));
 
-    let cmd2 = Nec16Command::unpack(bits, false).unwrap();
+    let cmd2 = NecExtendedCommand::unpack(bits, false).unwrap();
     assert_eq!(cmd, cmd2);
 }
 
@@ -103,16 +103,16 @@ fn all_nec_commands() {
         for cmdnum in 0..255 {
             ptb.reset();
             let cmd = NecCommand {
-                addr: address,
-                cmd: cmdnum,
+                address,
+                command: cmdnum,
                 repeat: false,
             };
             ptb.load::<Nec>(&cmd, FREQUENCY);
             let brecv = BufferReceiver::<Nec>::with_resolution(40_000);
 
             let cmdres = brecv.iter(ptb.buffer()).next().unwrap();
-            assert_eq!(cmd.addr, cmdres.addr);
-            assert_eq!(cmd.cmd, cmdres.cmd);
+            assert_eq!(cmd.address, cmdres.address);
+            assert_eq!(cmd.command, cmdres.command);
         }
     }
 }
@@ -128,8 +128,8 @@ fn one_freq<const F: u32>() {
     let mut ptb = PulseBuffer::<96>::new();
 
     let cmd: NecCommand = NecCommand {
-        addr: 20,
-        cmd: 10,
+        address: 20,
+        command: 10,
         repeat: false,
     };
     ptb.load::<Nec>(&cmd, F);
@@ -137,8 +137,8 @@ fn one_freq<const F: u32>() {
     let receiver = BufferReceiver::<Nec>::with_resolution(F);
 
     if let Some(cmd) = receiver.iter(ptb.buffer()).next() {
-        assert_eq!(cmd.addr, 20);
-        assert_eq!(cmd.cmd, 10);
+        assert_eq!(cmd.address, 20);
+        assert_eq!(cmd.command, 10);
     } else {
         panic!("Failed to parse command at samplerate: {}.", F)
     }
@@ -165,6 +165,7 @@ fn cmd_apple2009() {
 
         assert_eq!(cmd.command_page, 0xE);
         assert_eq!(cmd.command, *cmdnum);
+        assert_eq!(cmd.pack(), *bits);
     }
 }
 

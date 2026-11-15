@@ -19,7 +19,7 @@ const MONO_FREQ: u32 = 1_000_000;
 type Instant = TimerInstantU32<MONO_FREQ>;
 type IrPin = PB8<Input<Floating>>;
 type IrReceiver =
-    PinReceiver<MultiReceiver<6, (SamsungNec, Rc5, Rc6, AppleNec, Nec, Denon), Instant>, IrPin>;
+    PinReceiver<MultiReceiver<6, (Samsung32, Rc5, Rc6, AppleNec, Nec, Denon), Instant>, IrPin>;
 
 static mut RECEIVER: Option<IrReceiver> = None;
 static mut MONO: Option<MonoTimerUs<TIM2>> = None;

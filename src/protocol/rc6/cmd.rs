@@ -1,52 +1,62 @@
-use core::convert::TryInto;
+use crate::protocol::{Command, ProtocolId};
 
-use crate::{
-    cmd::{AddressedCommand, Command},
-    ProtocolId,
-};
-
-#[derive(Debug, PartialEq)]
+/// RC6 (mode 0) command, 8 bit address and 8 bit command
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Rc6Command {
-    pub addr: u8,
-    pub cmd: u8,
+    /// Address
+    pub address: u8,
+    /// Command
+    pub command: u8,
+    /// Toggle bit, flips on every new key press
     pub toggle: bool,
 }
 
 impl Rc6Command {
-    pub fn new(addr: u8, cmd: u8) -> Self {
+    /// Create a new command
+    pub const fn new(address: u8, command: u8) -> Self {
         Self {
-            addr,
-            cmd,
+            address,
+            command,
             toggle: false,
         }
     }
 
-    pub fn from_bits(bits: u16, toggle: bool) -> Self {
-        let addr = (bits >> 8) as u8;
-        let cmd = (bits & 0xFF) as u8;
-        Self { addr, cmd, toggle }
+    /// Create a command from the 16 data bits of a frame
+    pub const fn from_bits(bits: u16, toggle: bool) -> Self {
+        let address = (bits >> 8) as u8;
+        let command = (bits & 0xFF) as u8;
+        Self {
+            address,
+            command,
+            toggle,
+        }
     }
 }
 
 impl Command for Rc6Command {
-    fn is_repeat(&self) -> bool {
-        self.toggle
-    }
-}
-
-impl AddressedCommand for Rc6Command {
-    const ID: ProtocolId = ProtocolId::Rc6;
+    const PROTOCOL: ProtocolId = ProtocolId::Rc6;
 
     fn address(&self) -> u32 {
-        self.addr.into()
+        self.address.into()
     }
 
     fn command(&self) -> u32 {
-        self.cmd.into()
+        self.command.into()
     }
 
-    fn create(addr: u32, cmd: u32) -> Option<Self> {
-        Some(Rc6Command::new(addr.try_into().ok()?, cmd.try_into().ok()?))
+    fn is_repeat(&self) -> bool {
+        self.toggle
+    }
+
+    fn raw(&self) -> u64 {
+        (u64::from(self.address) << 8) | u64::from(self.command)
+    }
+
+    fn from_parts(address: u32, command: u32) -> Option<Self> {
+        Some(Rc6Command::new(
+            address.try_into().ok()?,
+            command.try_into().ok()?,
+        ))
     }
 }

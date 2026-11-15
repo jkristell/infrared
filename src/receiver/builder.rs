@@ -9,10 +9,10 @@ use crate::protocol::Denon;
 use crate::protocol::Rc5;
 #[cfg(feature = "rc6")]
 use crate::protocol::Rc6;
-#[cfg(feature = "sbp")]
-use crate::protocol::Sbp;
+#[cfg(feature = "samsung36")]
+use crate::protocol::Samsung36;
 #[cfg(feature = "nec")]
-use crate::protocol::{nec::NecCommand, AppleNec, Nec, Nec16, SamsungNec};
+use crate::protocol::{nec::NecCommand, AppleNec, Nec, NecExtended, Samsung32};
 #[cfg(feature = "async")]
 use crate::receiver::AsyncReceiver;
 #[cfg(feature = "embassy")]
@@ -63,6 +63,7 @@ where
         }
     }
 
+    /// Use protocol `NewProto`
     pub fn protocol<NewProto: Protocol>(self) -> Builder<NewProto, Mono, NewProto::Cmd> {
         Builder {
             freq: self.freq,
@@ -73,41 +74,49 @@ where
     }
 
     #[cfg(feature = "nec")]
+    /// Use the NEC protocol
     pub fn nec(self) -> Builder<Nec, Mono, NecCommand> {
         self.protocol()
     }
 
     #[cfg(feature = "nec")]
-    pub fn nec16(self) -> Builder<Nec16, Mono, <Nec16 as Protocol>::Cmd> {
+    /// Use the NEC extended protocol, NEC with 16 bit addresses
+    pub fn nec_extended(self) -> Builder<NecExtended, Mono, <NecExtended as Protocol>::Cmd> {
         self.protocol()
     }
 
     #[cfg(feature = "nec")]
-    pub fn nec_samsung(self) -> Builder<SamsungNec, Mono, <SamsungNec as Protocol>::Cmd> {
+    /// Use the Samsung32 protocol, the NEC variant used by Samsung TVs
+    pub fn samsung32(self) -> Builder<Samsung32, Mono, <Samsung32 as Protocol>::Cmd> {
         self.protocol()
     }
 
     #[cfg(feature = "nec")]
-    pub fn nec_apple(self) -> Builder<AppleNec, Mono, <AppleNec as Protocol>::Cmd> {
+    /// Use the Apple NEC variant
+    pub fn apple_nec(self) -> Builder<AppleNec, Mono, <AppleNec as Protocol>::Cmd> {
         self.protocol()
     }
 
     #[cfg(feature = "rc5")]
+    /// Use the Philips RC5 protocol
     pub fn rc5(self) -> Builder<Rc5, Mono, <Rc5 as Protocol>::Cmd> {
         self.protocol()
     }
 
     #[cfg(feature = "rc6")]
+    /// Use the Philips RC6 (mode 0) protocol
     pub fn rc6(self) -> Builder<Rc6, Mono, <Rc6 as Protocol>::Cmd> {
         self.protocol()
     }
 
-    #[cfg(feature = "sbp")]
-    pub fn samsung_bluray(self) -> Builder<Sbp, Mono, <Sbp as Protocol>::Cmd> {
+    #[cfg(feature = "samsung36")]
+    /// Use the Samsung36 protocol, used by Samsung Blu-ray players
+    pub fn samsung36(self) -> Builder<Samsung36, Mono, <Samsung36 as Protocol>::Cmd> {
         self.protocol()
     }
 
     #[cfg(feature = "denon")]
+    /// Use the Denon-K protocol
     pub fn denon(self) -> Builder<Denon, Mono, <Denon as Protocol>::Cmd> {
         self.protocol()
     }
@@ -126,6 +135,7 @@ where
         }
     }
 
+    /// Set the resolution of the timer, in Hz
     pub fn resolution(mut self, hz: u32) -> Self {
         self.freq = hz;
         self

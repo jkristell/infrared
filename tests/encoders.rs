@@ -29,8 +29,8 @@ fn nec_frame_ends_with_stop_mark() {
     use infrared::protocol::{Nec, nec::NecCommand};
 
     let p = pulses::<Nec>(&NecCommand {
-        addr: 1,
-        cmd: 2,
+        address: 1,
+        command: 2,
         repeat: false,
     });
     // Header, 32 bits and the stop mark
@@ -45,16 +45,16 @@ fn nec_repeat() {
     use infrared::protocol::{Nec, nec::NecCommand};
 
     let repeat = NecCommand {
-        addr: 1,
-        cmd: 2,
+        address: 1,
+        command: 2,
         repeat: true,
     };
     assert_eq!(pulses::<Nec>(&repeat), [9000, 2250, 560]);
 
     // A frame followed by a repeat 40 ms later
     let cmd = NecCommand {
-        addr: 1,
-        cmd: 2,
+        address: 1,
+        command: 2,
         repeat: false,
     };
     let mut train = vec![0];
@@ -71,11 +71,18 @@ fn nec_repeat() {
 #[cfg(feature = "nec")]
 #[test]
 fn samsung_nec_repeats_the_full_frame() {
-    use infrared::protocol::{nec::SamsungNecCommand, SamsungNec};
+    use infrared::protocol::{Samsung32, nec::Samsung32Command};
 
-    let cmd = SamsungNecCommand { addr: 7, cmd: 2, repeat: false };
-    let repeat = SamsungNecCommand { repeat: true, ..cmd };
-    assert_eq!(pulses::<SamsungNec>(&repeat), pulses::<SamsungNec>(&cmd));
+    let cmd = Samsung32Command {
+        address: 7,
+        command: 2,
+        repeat: false,
+    };
+    let repeat = Samsung32Command {
+        repeat: true,
+        ..cmd
+    };
+    assert_eq!(pulses::<Samsung32>(&repeat), pulses::<Samsung32>(&cmd));
 }
 
 #[cfg(feature = "rc5")]
@@ -102,39 +109,47 @@ fn rc6_high_resolution() {
     }
 }
 
+#[cfg(feature = "nec")]
+#[test]
+fn apple_nec_roundtrip() {
+    use infrared::{
+        Command,
+        protocol::{AppleNec, nec::AppleNecCommand},
+    };
+
+    for (address, command) in [(0x9B, 0x704), (0, 0), (0xFF, 0xFFF)] {
+        let cmd = AppleNecCommand::from_parts(address, command).unwrap();
+        let decoded = roundtrip::<AppleNec>(&cmd, 1_000_000);
+        assert_eq!(decoded, [cmd]);
+        assert_eq!(
+            (decoded[0].address(), decoded[0].command()),
+            (address, command)
+        );
+    }
+}
+
 #[cfg(feature = "denon")]
 #[test]
 fn denon_roundtrip() {
     use infrared::protocol::{Denon, denon::DenonCommand};
 
-    for bits in [0, 1, 0x2A4C_0280_E86E, 0xFFFF_FFFF_FFFF] {
+    for (address, command) in [(0, 0), (0x014, 0x01), (0xABC, 0x5D), (0xFFF, 0xFF)] {
+        let cmd = DenonCommand::new(address, command);
         for res in [20_000, 1_000_000] {
-            let cmds = roundtrip::<Denon>(&DenonCommand { bits }, res);
-            assert_eq!(cmds.len(), 1);
-            assert_eq!(cmds[0].bits, bits, "at {res} Hz");
+            assert_eq!(roundtrip::<Denon>(&cmd, res), [cmd], "at {res} Hz");
         }
     }
 }
 
-#[cfg(feature = "sbp")]
+#[cfg(feature = "samsung36")]
 #[test]
-fn sbp_roundtrip() {
-    use infrared::protocol::{Sbp, sbp::SbpCommand};
+fn samsung36_roundtrip() {
+    use infrared::protocol::{Samsung36, samsung36::Samsung36Command};
 
     for (address, command) in [(0, 0), (0x2CA3, 0x2E), (0xFFFF, 0xFF)] {
         for res in [20_000, 1_000_000] {
-            let cmd = SbpCommand {
-                address,
-                command,
-                valid: true,
-            };
-            let cmds = roundtrip::<Sbp>(&cmd, res);
-            assert_eq!(cmds.len(), 1);
-            assert_eq!(
-                (cmds[0].address, cmds[0].command, cmds[0].valid),
-                (address, command, true),
-                "at {res} Hz"
-            );
+            let cmd = Samsung36Command::new(address, command);
+            assert_eq!(roundtrip::<Samsung36>(&cmd, res), [cmd], "at {res} Hz");
         }
     }
 }

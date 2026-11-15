@@ -13,7 +13,7 @@ impl ProtocolEncoder for Denon {
 
         w.mark(HEADER_HIGH);
         w.space(HEADER_LOW);
-        w.pulse_distance(cmd.bits, 48, DATA_HIGH, ZERO_LOW, ONE_LOW);
+        w.pulse_distance(cmd.pack(), 48, DATA_HIGH, ZERO_LOW, ONE_LOW);
         w.mark(DATA_HIGH);
 
         w.finish()

@@ -8,12 +8,12 @@ pub mod nec;
 pub mod rc5;
 #[cfg(feature = "rc6")]
 pub mod rc6;
-#[cfg(feature = "sbp")]
-pub mod sbp;
+#[cfg(feature = "samsung36")]
+pub mod samsung36;
 
 pub use mapper::Button;
 
-use crate::{cmd::AddressedCommand, ProtocolId};
+use crate::{Command, ProtocolId};
 
 /// A trait describing a Remote Control
 pub trait RemoteControl: Default {
@@ -26,7 +26,7 @@ pub trait RemoteControl: Default {
     /// Device address
     const ADDRESS: u32;
     /// The type of command
-    type Cmd: AddressedCommand;
+    type Cmd: Command;
     /// command byte to action mapping
     const BUTTONS: &'static [(u32, Action)] = &[];
 
@@ -47,7 +47,7 @@ pub trait RemoteControl: Default {
         Self::BUTTONS
             .iter()
             .find(|(_, b)| b == button)
-            .and_then(|(c, _)| Self::Cmd::create(Self::ADDRESS, *c))
+            .and_then(|(c, _)| Self::Cmd::from_parts(Self::ADDRESS, *c))
     }
 }
 

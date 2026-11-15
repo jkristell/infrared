@@ -12,11 +12,11 @@ use infrared::{
 const RES: u32 = 1_000_000;
 
 /// Edge distances in µs of an encoded NEC frame. The first edge is the start of an IR mark.
-fn nec_frame(addr: u8, cmd: u8) -> Vec<u32> {
+fn nec_frame(address: u8, command: u8) -> Vec<u32> {
     let mut sender: PulseSender = PulseSender::new(RES);
     sender.load::<Nec>(&NecCommand {
-        addr,
-        cmd,
+        address,
+        command,
         repeat: false,
     });
     sender.buffer().to_vec()
@@ -65,7 +65,7 @@ fn timeout_discards_partial_frame() {
     assert!(res.iter().all(Result::is_ok));
     let cmds: Vec<_> = res.into_iter().flatten().flatten().collect();
     assert_eq!(cmds.len(), 1);
-    assert_eq!((cmds[0].addr, cmds[0].cmd), (0x12, 0x34));
+    assert_eq!((cmds[0].address, cmds[0].command), (0x12, 0x34));
 }
 
 #[test]
@@ -146,7 +146,7 @@ fn polled_receiver_flushes_on_idle() {
     assert!(res.iter().all(Result::is_ok));
     let cmds: Vec<_> = res.into_iter().flatten().flatten().collect();
     assert_eq!(cmds.len(), 1);
-    assert_eq!((cmds[0].addr, cmds[0].cmd), (0x12, 0x34));
+    assert_eq!((cmds[0].address, cmds[0].command), (0x12, 0x34));
 }
 
 type TestClock = FnClock<Box<dyn FnMut() -> u32>, u32>;
@@ -173,7 +173,7 @@ fn clocked_receiver_decodes() {
         }
     }
     assert_eq!(cmds.len(), 1);
-    assert_eq!((cmds[0].addr, cmds[0].cmd), (0x56, 0x78));
+    assert_eq!((cmds[0].address, cmds[0].command), (0x56, 0x78));
 }
 
 #[test]
@@ -247,7 +247,7 @@ fn clocked_receiver_poll() {
         }
     }
     assert_eq!(cmds.len(), 1);
-    assert_eq!((cmds[0].addr, cmds[0].cmd), (0x9a, 0xbc));
+    assert_eq!((cmds[0].address, cmds[0].command), (0x9a, 0xbc));
 }
 
 #[cfg(feature = "embedded-hal")]
@@ -286,7 +286,7 @@ fn clocked_pin_receiver() {
         }
     }
     assert_eq!(cmds.len(), 1);
-    assert_eq!((cmds[0].addr, cmds[0].cmd), (0x11, 0x22));
+    assert_eq!((cmds[0].address, cmds[0].command), (0x11, 0x22));
 
     time.set(time.get() + 100_000);
     assert_eq!(recv.timeout(), Ok(None));
@@ -329,7 +329,7 @@ fn clocked_receiver_handles_clock_wraparound() {
         cmds.extend(recv.event(edge).unwrap());
     }
     assert_eq!(cmds.len(), 1);
-    assert_eq!((cmds[0].addr, cmds[0].cmd), (0x12, 0x34));
+    assert_eq!((cmds[0].address, cmds[0].command), (0x12, 0x34));
 
     // An interrupted frame is discarded across the wrap as well
     time.set(u32::MAX - half);

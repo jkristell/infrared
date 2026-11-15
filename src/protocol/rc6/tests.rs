@@ -61,8 +61,8 @@ fn decode_buffer() {
     assert_eq!(cmds.len(), 1);
 
     for cmd in &cmds {
-        assert_eq!(cmd.addr, 70);
-        assert_eq!(cmd.cmd, 2);
+        assert_eq!(cmd.address, 70);
+        assert_eq!(cmd.command, 2);
     }
 }
 
@@ -82,8 +82,8 @@ fn all_commands() {
 
             let cmdres = recv.iter(ptb.buffer()).next().unwrap();
 
-            assert_eq!(cmd.addr, cmdres.addr);
-            assert_eq!(cmd.cmd, cmdres.cmd);
+            assert_eq!(cmd.address, cmdres.address);
+            assert_eq!(cmd.command, cmdres.command);
         }
     }
 }

@@ -126,11 +126,11 @@ fn setup() -> (SharedSim, AsyncReceiver<Receiver<Nec>, SimClock, SimPin, SimDela
     (sim, recv)
 }
 
-fn nec_frame(addr: u8, cmd: u8) -> Vec<u32> {
+fn nec_frame(address: u8, command: u8) -> Vec<u32> {
     let mut sender: PulseSender = PulseSender::new(RES);
     sender.load::<Nec>(&NecCommand {
-        addr,
-        cmd,
+        address,
+        command,
         repeat: false,
     });
     sender.buffer().to_vec()
@@ -143,7 +143,7 @@ fn receive() {
     sim.borrow_mut().schedule(&nec_frame(0x12, 0x34)[1..]);
 
     let cmd = run(&sim, recv.receive()).unwrap();
-    assert_eq!((cmd.addr, cmd.cmd), (0x12, 0x34));
+    assert_eq!((cmd.address, cmd.command), (0x12, 0x34));
 }
 
 #[test]
@@ -171,7 +171,7 @@ fn interrupted_frame_is_discarded_on_idle() {
         }
     };
     assert!(results.iter().all(Result::is_ok), "{results:?}");
-    assert_eq!((cmd.addr, cmd.cmd), (0x12, 0x34));
+    assert_eq!((cmd.address, cmd.command), (0x12, 0x34));
 }
 
 #[test]
@@ -185,8 +185,8 @@ fn back_to_back_frames() {
 
     let first = run(&sim, recv.receive()).unwrap();
     let second = run(&sim, recv.receive()).unwrap();
-    assert_eq!((first.addr, first.cmd), (1, 2));
-    assert_eq!((second.addr, second.cmd), (3, 4));
+    assert_eq!((first.address, first.command), (1, 2));
+    assert_eq!((second.address, second.command), (3, 4));
 }
 
 #[cfg(feature = "rc5")]
@@ -241,7 +241,7 @@ fn async_sender() {
     // Initially off
     assert_eq!(sender.pwm().log, [(0, 0)]);
 
-    let cmd = NecCommand { addr: 0x12, cmd: 0x34, repeat: false };
+    let cmd = NecCommand { address: 0x12, command: 0x34, repeat: false };
     run(&sim, sender.send::<Nec>(&cmd)).unwrap();
 
     let log = &sender.pwm().log[1..];
@@ -264,7 +264,7 @@ fn async_sender_cancelled_turns_carrier_off() {
     let pwm = RecordingPwm { sim: sim.clone(), log: vec![] };
     let mut sender = AsyncSender::new(pwm, SimDelay(sim.clone()));
 
-    let cmd = NecCommand { addr: 1, cmd: 2, repeat: false };
+    let cmd = NecCommand { address: 1, command: 2, repeat: false };
     {
         // Start sending, then drop the future in the middle of the header mark
         let mut fut = pin!(sender.send::<Nec>(&cmd));

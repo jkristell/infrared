@@ -1,4 +1,7 @@
-use crate::{protocol::Denon, receiver::BufferReceiver};
+use crate::{
+    protocol::{Denon, denon::DenonCommand},
+    receiver::{BufferReceiver, DecodingError},
+};
 
 #[test]
 fn denon() {
@@ -22,13 +25,24 @@ fn denon() {
     let brecv = BufferReceiver::<Denon>::with_resolution(40_000);
     let cmds = brecv.iter(dists).collect::<Vec<_>>();
 
-    assert_eq!(cmds.len(), 2);
+    // The second frame has a corrupted vendor id and is rejected, the third
+    // is cut short in the capture
+    assert_eq!(cmds, [DenonCommand::new(0x014, 0x01)]);
+    assert_eq!(cmds[0].pack(), 0x4001_0140_3254);
+}
 
-    // Regression values for this capture; the second frame has inverted bits
-    assert_eq!(cmds[0].bits, 70373060129364);
-    assert_eq!(cmds[1].bits, 70373060125268);
-
-    for cmd in &cmds {
-        println!("{:?}", cmd);
-    }
+#[test]
+fn unpack_validates() {
+    let bits = DenonCommand::new(0xABC, 0x5D).pack();
+    assert_eq!(
+        DenonCommand::unpack(bits),
+        Ok(DenonCommand::new(0xABC, 0x5D))
+    );
+    // Wrong vendor
+    assert_eq!(DenonCommand::unpack(bits ^ 1), Err(DecodingError::Address));
+    // Wrong parity
+    assert_eq!(
+        DenonCommand::unpack(bits ^ (1 << 47)),
+        Err(DecodingError::Validation)
+    );
 }

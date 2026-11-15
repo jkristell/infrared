@@ -20,7 +20,7 @@ fn main() -> io::Result<()> {
     let mut ir_recv = infrared::receiver()
         .resolution(resolution)
         .monotonic::<u64>()
-        .nec_samsung()
+        .samsung32()
         .build();
 
     let mut clock = 0;

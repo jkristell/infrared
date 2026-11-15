@@ -4,7 +4,7 @@ use embassy_futures::select::{select, Either};
 use embedded_hal_async::{delay::DelayNs, digital::Wait};
 
 use crate::{
-    cmd::AnyCommand,
+    protocol::Message,
     receiver::{
         time::InfraMonotonic, Clock, ClockedReceiver, DecoderBuilder, EdgeDriven, Error,
         MultiReceiver, Receiver, ReceiverSet, Timeout,
@@ -28,7 +28,7 @@ type DurationOf<C> = <<C as Clock>::Mono as InfraMonotonic>::Duration;
 ///
 /// loop {
 ///     let cmd = receiver.receive().await?;
-///     defmt::info!("{} {}", cmd.addr, cmd.cmd);
+///     defmt::info!("{} {}", cmd.address, cmd.command);
 /// }
 /// ```
 ///
@@ -170,7 +170,7 @@ where
     /// Decoding errors are skipped. Only pin errors are returned. In the
     /// unlikely case that several protocols decode the same frame, the first
     /// one in the protocol list is returned.
-    pub async fn receive(&mut self) -> Result<AnyCommand, Pin::Error> {
+    pub async fn receive(&mut self) -> Result<Message, Pin::Error> {
         loop {
             match self.next().await {
                 Ok(cmds) => {

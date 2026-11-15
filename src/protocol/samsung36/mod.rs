@@ -1,33 +1,29 @@
-//! # Samsung Blu-Ray Player Protocol
+//! # Samsung36
 //!
-//! Protocol used on some Samsung BluRay players and probably other devices from Samsung.
+//! Protocol used by Samsung Blu-ray players and other Samsung devices. Known
+//! as Samsung36 in IRremote and the IRP protocol database.
 //!
 //! Pulse distance coding is used. After the header the 16 bit address is sent.
-//! Then a pause and then 4 bits of unknown function (could be repeat indicator?)
-//! After this the 8 bit command is sent twice, second time inverted.
-//!
-
-use core::convert::TryInto;
+//! Then a pause and 4 bits of unknown function (sent as zero), followed by
+//! the 8 bit command, sent twice, the second time inverted.
 
 mod encoder;
 #[cfg(test)]
 mod tests;
 
 use crate::{
-    cmd::{AddressedCommand, Command},
-    protocol::Protocol,
+    protocol::{Command, Protocol, ProtocolId},
     receiver::{
         time::{InfraMonotonic, PulseSpans},
         DecoderBuilder, DecodingError, ProtocolDecoder, DecoderState,
     },
-    ProtocolId,
 };
 
-/// Samsung BluRay player protocol
-pub struct Sbp;
+/// Samsung36 protocol
+pub struct Samsung36;
 
-impl Protocol for Sbp {
-    type Cmd = SbpCommand;
+impl Protocol for Samsung36 {
+    type Cmd = Samsung36Command;
 }
 
 const HEADER_MARK: u32 = 4500;
@@ -49,12 +45,12 @@ const PULSE: [u32; 8] = [
 ];
 const TOL: [u32; 8] = [5, 5, 10, 10, 0, 0, 0, 0];
 
-impl<Mono: InfraMonotonic> DecoderBuilder<Mono> for Sbp {
-    type Decoder = SbpDecoder<Mono>;
+impl<Mono: InfraMonotonic> DecoderBuilder<Mono> for Samsung36 {
+    type Decoder = Samsung36Decoder<Mono>;
 
     fn build(freq: u32) -> Self::Decoder {
-        SbpDecoder {
-            state: SbpState::Init,
+        Samsung36Decoder {
+            state: Samsung36State::Init,
             address: 0,
             command: 0,
             since_rising: Mono::ZERO_DURATION,
@@ -63,47 +59,46 @@ impl<Mono: InfraMonotonic> DecoderBuilder<Mono> for Sbp {
     }
 }
 
-/// Samsung Blu-ray protocol
-pub struct SbpDecoder<Mono: InfraMonotonic> {
-    state: SbpState,
+/// Samsung36 decoder
+pub struct Samsung36Decoder<Mono: InfraMonotonic> {
+    state: Samsung36State,
     address: u16,
     command: u32,
     since_rising: Mono::Duration,
     spans: PulseSpans<Mono>,
 }
 
-#[derive(Debug)]
+/// Samsung36 command, 16 bit address and 8 bit command
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub struct SbpCommand {
+pub struct Samsung36Command {
+    /// Address
     pub address: u16,
+    /// Command
     pub command: u8,
-    pub valid: bool,
 }
 
-impl SbpCommand {
-    pub fn unpack(address: u16, mut command: u32) -> Self {
-        // Discard the 4 unknown bits
-        command >>= 4;
+impl Samsung36Command {
+    /// Create a new command
+    pub const fn new(address: u16, command: u8) -> Self {
+        Self { address, command }
+    }
 
-        // Check the checksum
-        let valid = ((command ^ (command >> 8)) & 0xFF) == 0xFF;
-
-        Self {
-            address,
-            command: (command) as u8,
-            valid,
-        }
+    /// The 20 bits after the pause: 4 unknown bits (zero), the command and
+    /// the inverted command
+    const fn command_bits(&self) -> u32 {
+        ((self.command as u32) | ((!self.command as u32) << 8)) << 4
     }
 }
 
-impl Command for SbpCommand {
-    fn is_repeat(&self) -> bool {
-        false
-    }
+/// Check the inverted command copy of the 20 bits after the pause
+const fn command_bits_valid(bits: u32) -> bool {
+    let bits = bits >> 4;
+    ((bits ^ (bits >> 8)) & 0xFF) == 0xFF
 }
 
-impl AddressedCommand for SbpCommand {
-    const ID: ProtocolId = ProtocolId::Sbp;
+impl Command for Samsung36Command {
+    const PROTOCOL: ProtocolId = ProtocolId::Samsung36;
 
     fn address(&self) -> u32 {
         self.address.into()
@@ -113,19 +108,26 @@ impl AddressedCommand for SbpCommand {
         self.command.into()
     }
 
-    fn create(address: u32, command: u32) -> Option<Self> {
-        Some(SbpCommand {
-            address: address.try_into().ok()?,
-            command: command.try_into().ok()?,
-            valid: true,
-        })
+    fn is_repeat(&self) -> bool {
+        false
+    }
+
+    fn raw(&self) -> u64 {
+        u64::from(self.address) | (u64::from(self.command_bits()) << 16)
+    }
+
+    fn from_parts(address: u32, command: u32) -> Option<Self> {
+        Some(Samsung36Command::new(
+            address.try_into().ok()?,
+            command.try_into().ok()?,
+        ))
     }
 }
 
 #[derive(Debug, Copy, Clone)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 // Internal receiver state
-pub enum SbpState {
+pub enum Samsung36State {
     // Waiting for first pulse
     Init,
     // Receiving address
@@ -140,15 +142,15 @@ pub enum SbpState {
     Err(DecodingError),
 }
 
-impl<Mono: InfraMonotonic> ProtocolDecoder<Sbp, Mono> for SbpDecoder<Mono> {
+impl<Mono: InfraMonotonic> ProtocolDecoder<Samsung36, Mono> for Samsung36Decoder<Mono> {
     #[rustfmt::skip]
     fn event(&mut self, rising: bool, dt: Mono::Duration) -> DecoderState {
-        use SbpSymbol::*;
-        use SbpState::*;
+        use Samsung36Symbol::*;
+        use Samsung36State::*;
 
         if rising {
             let dt = self.since_rising + dt;
-            let pulsewidth = self.spans.get::<SbpSymbol>(dt).unwrap_or(SbpSymbol::Invalid);
+            let pulsewidth = self.spans.get::<Samsung36Symbol>(dt).unwrap_or(Samsung36Symbol::Invalid);
 
             self.state = match (self.state, pulsewidth) {
                 (Init,          Sync)   => Address(0),
@@ -163,8 +165,8 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Sbp, Mono> for SbpDecoder<Mono> {
                 (Divider,       Pause)   => Command(0),
                 (Divider,       _)      => Err(DecodingError::Data),
 
-                (Command(19),   One)    => { self.command |= 1 << 19; Done }
-                (Command(19),   Zero)   => Done,
+                (Command(19),   One)    => { self.command |= 1 << 19; self.check() }
+                (Command(19),   Zero)   => self.check(),
                 (Command(bit),  One)    => { self.command |= 1 << bit; Command(bit + 1) }
                 (Command(bit),  Zero)   => Command(bit + 1),
                 (Command(_),    _)      => Err(DecodingError::Data),
@@ -178,12 +180,12 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Sbp, Mono> for SbpDecoder<Mono> {
 
         self.state.into()
     }
-    fn command(&self) -> Option<SbpCommand> {
-        Some(SbpCommand::unpack(self.address, self.command))
+    fn command(&self) -> Option<Samsung36Command> {
+        Some(Samsung36Command::new(self.address, (self.command >> 4) as u8))
     }
 
     fn reset(&mut self) {
-        self.state = SbpState::Init;
+        self.state = Samsung36State::Init;
         self.address = 0;
         self.command = 0;
         self.since_rising = Mono::ZERO_DURATION;
@@ -194,9 +196,19 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Sbp, Mono> for SbpDecoder<Mono> {
     }
 }
 
-impl From<SbpState> for DecoderState {
-    fn from(state: SbpState) -> DecoderState {
-        use SbpState::*;
+impl<Mono: InfraMonotonic> Samsung36Decoder<Mono> {
+    fn check(&self) -> Samsung36State {
+        if command_bits_valid(self.command) {
+            Samsung36State::Done
+        } else {
+            Samsung36State::Err(DecodingError::Validation)
+        }
+    }
+}
+
+impl From<Samsung36State> for DecoderState {
+    fn from(state: Samsung36State) -> DecoderState {
+        use Samsung36State::*;
         match state {
             Init => DecoderState::Idle,
             Done => DecoderState::Done,
@@ -206,35 +218,9 @@ impl From<SbpState> for DecoderState {
     }
 }
 
-/*
-struct SbpTiming {
-    /// Header high
-    hh: u32,
-    /// Header low
-    hl: u32,
-    /// Repeat low
-    pause: u32,
-    /// Data high
-    data: u32,
-    /// Zero low
-    zero: u32,
-    /// One low
-    one: u32,
-}
-
-const TIMING: SbpTiming = SbpTiming {
-    hh: 4500,
-    hl: 4500,
-    pause: 4500,
-    data: 500,
-    zero: 500,
-    one: 1500,
-};
-*/
-
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub enum SbpSymbol {
+pub enum Samsung36Symbol {
     Sync = 0,
     Pause = 1,
     Zero = 2,
@@ -242,14 +228,14 @@ pub enum SbpSymbol {
     Invalid = 4,
 }
 
-impl From<usize> for SbpSymbol {
+impl From<usize> for Samsung36Symbol {
     fn from(v: usize) -> Self {
         match v {
-            0 => SbpSymbol::Sync,
-            1 => SbpSymbol::Pause,
-            2 => SbpSymbol::Zero,
-            3 => SbpSymbol::One,
-            _ => SbpSymbol::Invalid,
+            0 => Samsung36Symbol::Sync,
+            1 => Samsung36Symbol::Pause,
+            2 => Samsung36Symbol::Zero,
+            3 => Samsung36Symbol::One,
+            _ => Samsung36Symbol::Invalid,
         }
     }
 }

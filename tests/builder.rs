@@ -74,6 +74,6 @@ fn build_receiver_with_pin() {
     }
 
     assert_eq!(cmds.len(), 1);
-    assert_eq!(cmds[0].addr, 20);
-    assert_eq!(cmds[0].cmd, 9);
+    assert_eq!(cmds[0].address, 20);
+    assert_eq!(cmds[0].command, 9);
 }

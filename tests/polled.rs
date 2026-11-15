@@ -31,8 +31,8 @@ fn polled_rc5() {
     assert_eq!(
         res,
         Some(Rc5Command {
-            addr: 20,
-            cmd: 1,
+            address: 20,
+            command: 1,
             start: 3,
             toggle: false
         })
@@ -91,8 +91,8 @@ fn polled_rc5_with_pin() {
     assert_eq!(
         res,
         Some(Rc5Command {
-            addr: 20,
-            cmd: 1,
+            address: 20,
+            command: 1,
             start: 3,
             toggle: false
         })

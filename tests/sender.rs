@@ -68,8 +68,8 @@ fn send_receive_roundtrip() {
     let cmds: Vec<_> = receiver.iter(&dists).collect();
 
     assert_eq!(cmds.len(), 1);
-    assert_eq!(cmds[0].addr, 20);
-    assert_eq!(cmds[0].cmd, 9);
+    assert_eq!(cmds[0].address, 20);
+    assert_eq!(cmds[0].command, 9);
 }
 
 #[test]
