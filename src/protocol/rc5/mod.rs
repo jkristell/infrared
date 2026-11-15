@@ -1,13 +1,7 @@
 //! Philips Rc5
 
-use core::convert::TryInto;
-
 pub mod decoder;
-use crate::{
-    cmd::{AddressedCommand, Command},
-    protocol::Protocol,
-    ProtocolId,
-};
+use crate::protocol::{Command, Protocol, ProtocolId};
 
 pub mod encoder;
 
@@ -30,68 +24,79 @@ impl Protocol for Rc5 {
     type Cmd = Rc5Command;
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+/// RC5 command, 5 bit address and 6 bit command
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Rc5Command {
-    pub addr: u8,
-    pub cmd: u8,
+    /// Address
+    pub address: u8,
+    /// Command
+    pub command: u8,
+    /// The two start bits. The second start bit is the inverted bit 6 of the
+    /// command in the RC5X extension
     pub start: u8,
+    /// Toggle bit, flips on every new key press
     pub toggle: bool,
 }
 
 impl Rc5Command {
-    pub const fn new(addr: u8, cmd: u8, toggle: bool) -> Self {
+    /// Create a new command
+    pub const fn new(address: u8, command: u8, toggle: bool) -> Self {
         Self {
-            addr,
-            cmd,
+            address,
+            command,
             start: 0b11,
             toggle,
         }
     }
 
+    /// Unpack the 14 bits of a frame
     pub const fn unpack(bits: u16) -> Self {
-        let addr = ((bits & ADDR_MASK) >> ADDR_SHIFT) as u8;
-        let cmd = (bits & CMD_MASK) as u8;
+        let address = ((bits & ADDR_MASK) >> ADDR_SHIFT) as u8;
+        let command = (bits & CMD_MASK) as u8;
         let start = ((bits & START_MASK) >> START_SHIFT) as u8;
         let toggle = (bits & TOGGLE_MASK) != 0;
 
         Self {
-            addr,
-            cmd,
+            address,
+            command,
             start,
             toggle,
         }
     }
 
+    /// Pack the command into the 14 bits of a frame
     pub fn pack(&self) -> u16 {
-        (u16::from(self.addr) << ADDR_SHIFT)
-            | u16::from(self.cmd)
+        (u16::from(self.address) << ADDR_SHIFT)
+            | u16::from(self.command)
             | (u16::from(self.toggle) << TOGGLE_SHIFT)
             | (u16::from(self.start) << START_SHIFT)
     }
 }
 
 impl Command for Rc5Command {
-    fn is_repeat(&self) -> bool {
-        self.toggle
-    }
-}
-
-impl AddressedCommand for Rc5Command {
-    const ID: ProtocolId = ProtocolId::Rc5;
+    const PROTOCOL: ProtocolId = ProtocolId::Rc5;
 
     fn address(&self) -> u32 {
-        self.addr.into()
+        self.address.into()
     }
 
     fn command(&self) -> u32 {
-        self.cmd.into()
+        self.command.into()
     }
 
-    fn create(addr: u32, cmd: u32) -> Option<Rc5Command> {
-        let addr: u8 = addr.try_into().ok()?;
-        let cmd = cmd.try_into().ok()?;
+    fn is_repeat(&self) -> bool {
+        self.toggle
+    }
 
-        Some(Rc5Command::new(addr, cmd, false))
+    fn raw(&self) -> u64 {
+        self.pack().into()
+    }
+
+    fn from_parts(address: u32, command: u32) -> Option<Rc5Command> {
+        if address >= 1 << 5 || command >= 1 << 6 {
+            return None;
+        }
+        Some(Rc5Command::new(address as u8, command as u8, false))
     }
 }

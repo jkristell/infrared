@@ -72,7 +72,7 @@ mod app {
         ir_sensor_pin.set_interrupt_enabled(Interrupt::EdgeLow, true);
         ir_sensor_pin.set_interrupt_enabled(Interrupt::EdgeHigh, true);
 
-        let ir_recv = PinReceiver::with_fugit64(ir_sensor_pin);
+        let ir_recv = PinReceiver::new(Receiver::with_fugit64(), ir_sensor_pin);
 
         defmt::info!("Init done");
 
@@ -94,7 +94,7 @@ mod app {
         let ir = c.shared.ir_recv;
 
         // Write out our debug info
-        if let Ok(Some(cmd)) = ir.event_instant(now) {
+        if let Ok(Some(cmd)) = ir.event_at(now) {
             defmt::info!("Cmd: {:?}", cmd);
         }
 

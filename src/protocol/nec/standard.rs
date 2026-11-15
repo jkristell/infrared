@@ -1,16 +1,19 @@
 //! The Standard NEC variant
 
-use crate::{
-    cmd::{AddressedCommand, Command},
-    protocol::nec::{NecCommandVariant, NecPulseLen, NEC_STANDARD_TIMING},
-    ProtocolId,
+use crate::protocol::{
+    Command, ProtocolId,
+    nec::{NEC_STANDARD_TIMING, NecCommandVariant, NecPulseLen},
 };
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+/// NEC command, 8 bit address and 8 bit command
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct NecCommand {
-    pub addr: u8,
-    pub cmd: u8,
+    /// Address
+    pub address: u8,
+    /// Command
+    pub command: u8,
+    /// Repeat
     pub repeat: bool,
 }
 
@@ -22,40 +25,50 @@ impl NecCommandVariant for NecCommand {
     }
 
     fn unpack(bits: u32, repeat: bool) -> Option<Self> {
-        let addr = ((bits) & 0xFF) as u8;
-        let cmd = ((bits >> 16) & 0xFF) as u8;
+        let address = ((bits) & 0xFF) as u8;
+        let command = ((bits >> 16) & 0xFF) as u8;
 
-        Some(NecCommand { addr, cmd, repeat })
+        Some(NecCommand {
+            address,
+            command,
+            repeat,
+        })
     }
 
     fn pack(&self) -> u32 {
-        let addr = u32::from(self.addr) | ((u32::from(!self.addr) & 0xFF) << 8);
-        let cmd = (u32::from(self.cmd) << 16) | (u32::from(!self.cmd) << 24);
-        addr | cmd
+        let address = u32::from(self.address) | ((u32::from(!self.address) & 0xFF) << 8);
+        let command = (u32::from(self.command) << 16) | (u32::from(!self.command) << 24);
+        address | command
     }
-}
 
-impl Command for NecCommand {
-    fn is_repeat(&self) -> bool {
+    fn repeat(&self) -> bool {
         self.repeat
     }
 }
 
-impl AddressedCommand for NecCommand {
-    const ID: ProtocolId = ProtocolId::Nec;
+impl Command for NecCommand {
+    const PROTOCOL: ProtocolId = ProtocolId::Nec;
 
     fn address(&self) -> u32 {
-        self.addr.into()
+        self.address.into()
     }
 
     fn command(&self) -> u32 {
-        self.cmd.into()
+        self.command.into()
     }
 
-    fn create(addr: u32, cmd: u32) -> Option<Self> {
+    fn is_repeat(&self) -> bool {
+        self.repeat
+    }
+
+    fn raw(&self) -> u64 {
+        self.pack().into()
+    }
+
+    fn from_parts(address: u32, command: u32) -> Option<Self> {
         Some(NecCommand {
-            addr: addr as u8,
-            cmd: cmd as u8,
+            address: address.try_into().ok()?,
+            command: command.try_into().ok()?,
             repeat: false,
         })
     }

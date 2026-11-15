@@ -17,8 +17,8 @@
 #![no_std]
 
 pub(crate) mod fmt;
+mod level;
 
-pub mod cmd;
 pub mod protocol;
 pub mod receiver;
 pub mod sender;
@@ -27,7 +27,9 @@ pub mod sender;
 pub mod remotecontrol;
 
 #[doc(inline)]
-pub use protocol::{Protocol, ProtocolId};
+pub use level::Level;
+#[doc(inline)]
+pub use protocol::{Command, Message, Protocol, ProtocolId};
 #[cfg(feature = "embedded-hal")]
 #[doc(inline)]
 pub use receiver::PinReceiver;
@@ -39,6 +41,6 @@ pub fn receiver() -> receiver::Builder {
     receiver::Builder::default()
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "std"))]
 #[macro_use]
 extern crate std;

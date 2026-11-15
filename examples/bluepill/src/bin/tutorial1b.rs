@@ -7,7 +7,6 @@ use defmt::info;
 use infrared::{
     protocol::{rc6::Rc6Command, Rc6},
     remotecontrol::{Action, Button, DeviceType, RemoteControl},
-    ProtocolId,
 };
 use stm32f1xx_hal::{
     gpio::{gpiob::PB8, Floating, Input},
@@ -33,8 +32,7 @@ struct Rc6Tv;
 
 impl RemoteControl for Rc6Tv {
     const MODEL: &'static str = "Rc6 Tv";
-    const DEVTYPE: DeviceType = DeviceType::TV;
-    const PROTOCOL: ProtocolId = ProtocolId::Rc6;
+    const DEVICE_TYPE: DeviceType = DeviceType::Tv;
     const ADDRESS: u32 = 0;
     type Cmd = Rc6Command;
     const BUTTONS: &'static [(u32, Action)] = &[
@@ -73,7 +71,7 @@ fn main() -> ! {
     timer.start(TIMER_FREQ.Hz()).unwrap();
     timer.listen(Event::Update);
 
-    let receiver = infrared::PolledReceiver::with_pin(TIMER_FREQ, pin);
+    let receiver = infrared::PinReceiver::new(infrared::PolledReceiver::new(TIMER_FREQ), pin);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {

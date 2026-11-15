@@ -41,7 +41,7 @@ fn main() -> ! {
     timer.start(TIMER_FREQ.Hz()).unwrap();
     timer.listen(Event::Update);
 
-    let receiver = infrared::PolledReceiver::with_pin(TIMER_FREQ, pin);
+    let receiver = PinReceiver::new(PolledReceiver::new(TIMER_FREQ), pin);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
@@ -66,7 +66,7 @@ fn TIM2() {
     let receiver = unsafe { RECEIVER.as_mut().unwrap() };
 
     match receiver.poll() {
-        Ok(Some(cmd)) => info!("Cmd: {} {}", cmd.addr, cmd.cmd),
+        Ok(Some(cmd)) => info!("Cmd: {} {}", cmd.address, cmd.command),
         Ok(None) => (),
         Err(err) => warn!("Err: {:?}", err),
     }

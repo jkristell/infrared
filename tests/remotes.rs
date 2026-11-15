@@ -9,8 +9,8 @@ use infrared::{
 fn remote_encode_decode_roundtrip() {
     // Encode a button press into a command
     let cmd = CdPlayer::encode(&Action::Next).unwrap();
-    assert_eq!(cmd.addr, 20);
-    assert_eq!(cmd.cmd, 32);
+    assert_eq!(cmd.address, 20);
+    assert_eq!(cmd.command, 32);
 
     // And map the command back to a button
     let button: Button<CdPlayer> = cmd.into();

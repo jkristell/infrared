@@ -1,5 +1,5 @@
 use crate::{
-    cmd::AddressedCommand,
+    Command,
     remotecontrol::{Action, RemoteControl},
 };
 
@@ -17,7 +17,7 @@ where
 impl<Rc, Cmd> Button<Rc, Cmd>
 where
     Rc: RemoteControl,
-    Cmd: AddressedCommand,
+    Cmd: Command,
 {
     pub fn action(&self) -> Option<Action> {
         self.action

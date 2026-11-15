@@ -19,7 +19,7 @@ const MONO_FREQ: u32 = 1_000_000;
 type Instant = TimerInstantU32<MONO_FREQ>;
 type IrPin = PB8<Input<Floating>>;
 type IrReceiver =
-    PinReceiver<MultiReceiver<6, (SamsungNec, Rc5, Rc6, AppleNec, Nec, Denon), Instant>, IrPin>;
+    PinReceiver<MultiReceiver<6, (Samsung32, Rc5, Rc6, AppleNec, Nec, Denon), Instant>, IrPin>;
 
 static mut RECEIVER: Option<IrReceiver> = None;
 static mut MONO: Option<MonoTimerUs<TIM2>> = None;
@@ -45,7 +45,7 @@ fn main() -> ! {
 
     let mono = d.TIM2.monotonic_us(&mut rcc);
 
-    let receiver = PinReceiver::with_pin_multi(MONO_FREQ, inpin);
+    let receiver = PinReceiver::new(MultiReceiver::new(MONO_FREQ), inpin);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
@@ -72,7 +72,7 @@ fn EXTI9_5() {
 
     let now = rtic_monotonic::Monotonic::now(mono);
 
-    if let Ok(cmds) = receiver.event_instant_iter(now) {
+    if let Ok(cmds) = receiver.event_at_iter(now) {
         for cmd in cmds {
             info!("cmd: {:?}", cmd);
         }

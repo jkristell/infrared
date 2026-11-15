@@ -2,6 +2,7 @@
 #[test]
 fn polled_rc5() {
     use infrared::{
+        Level,
         protocol::{rc5::Rc5Command, Rc5},
         PolledReceiver,
     };
@@ -15,7 +16,7 @@ fn polled_rc5() {
 
     let mut recv: PolledReceiver<Rc5> = infrared::receiver().rc5().resolution(40_000).build_polled();
 
-    let mut pinstate = false;
+    let mut pinstate = Level::Space;
 
     let mut res = None;
 
@@ -25,14 +26,14 @@ fn polled_rc5() {
                 res = Some(cmd);
             }
         }
-        pinstate = !pinstate;
+        pinstate = pinstate.toggle();
     }
 
     assert_eq!(
         res,
         Some(Rc5Command {
-            addr: 20,
-            cmd: 1,
+            address: 20,
+            command: 1,
             start: 3,
             toggle: false
         })
@@ -47,7 +48,7 @@ fn polled_rc5_with_pin() {
     use embedded_hal::digital::{ErrorType, InputPin};
     use infrared::{
         protocol::{rc5::Rc5Command, Rc5},
-        PolledReceiver,
+        PinReceiver, PolledReceiver,
     };
 
     struct TestPin {
@@ -75,7 +76,7 @@ fn polled_rc5_with_pin() {
         71, 36,
     ];
 
-    let mut recv = PolledReceiver::<Rc5>::with_pin(40_000, TestPin { low: false });
+    let mut recv = PinReceiver::new(PolledReceiver::<Rc5>::new(40_000), TestPin { low: false });
 
     let mut res = None;
     for n in data {
@@ -91,8 +92,8 @@ fn polled_rc5_with_pin() {
     assert_eq!(
         res,
         Some(Rc5Command {
-            addr: 20,
-            cmd: 1,
+            address: 20,
+            command: 1,
             start: 3,
             toggle: false
         })

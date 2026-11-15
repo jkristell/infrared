@@ -1,7 +1,8 @@
 use crate::{
+    Level,
     protocol::{rc6::Rc6Command, Rc6},
     receiver::{
-        time::{InfraMonotonic, PulseSpans},
+        time::{TimeBase, PulseSpans},
         DecoderBuilder, DecodingError, ProtocolDecoder, DecoderState,
     },
 };
@@ -19,8 +20,8 @@ const PULSE: [u32; 8] = [
 ];
 const TOL: [u32; 8] = [12, 12, 12, 12, 12, 12, 12, 12];
 
-impl<Mono: InfraMonotonic> DecoderBuilder<Mono> for Rc6 {
-    type Decoder = Rc6Decoder<Mono>;
+impl<Time: TimeBase> DecoderBuilder<Time> for Rc6 {
+    type Decoder = Rc6Decoder<Time>;
 
     fn build(freq: u32) -> Self::Decoder {
         Rc6Decoder {
@@ -34,9 +35,10 @@ impl<Mono: InfraMonotonic> DecoderBuilder<Mono> for Rc6 {
     }
 }
 
-impl<Mono: InfraMonotonic> ProtocolDecoder<Rc6, Mono> for Rc6Decoder<Mono> {
+impl<Time: TimeBase> ProtocolDecoder<Rc6, Time> for Rc6Decoder<Time> {
     #[rustfmt::skip]
-    fn event(&mut self, rising: bool, dt: Mono::Duration) -> DecoderState {
+    fn event(&mut self, dt: Time::Duration, level: Level) -> DecoderState {
+        let mark = level.is_mark();
         use Rc6State::*;
 
         // Find the nbr of time unit ticks the dt represents
@@ -51,7 +53,7 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Rc6, Mono> for Rc6Decoder<Mono> {
 
         let odd = self.clock & 1 == 1;
 
-        self.state = match (self.state, rising, ticks) {
+        self.state = match (self.state, mark, ticks) {
             (Idle,          false,    _)            => Idle,
             (Idle,          true,     _)            => { self.clock = 0; Leading },
             (Leading,       false,    Some(6))      => LeadingPaus,
@@ -60,7 +62,7 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Rc6, Mono> for Rc6Decoder<Mono> {
             (LeadingPaus,   _,        _)            => Idle,
 
             (HeaderData(n), _,          Some(_)) if odd => {
-                self.headerdata |= if rising { 0 } else { 1 } << n;
+                self.headerdata |= if mark { 0 } else { 1 } << n;
                 if n == 0 {
                     Trailing
                 } else {
@@ -103,18 +105,18 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Rc6, Mono> for Rc6Decoder<Mono> {
         self.clock = 0;
     }
 
-    fn spans(&self) -> &PulseSpans<Mono> {
+    fn spans(&self) -> &PulseSpans<Time> {
         &self.spans
     }
 }
 
-pub struct Rc6Decoder<Mono: InfraMonotonic> {
+pub struct Rc6Decoder<Time: TimeBase> {
     pub(crate) state: Rc6State,
     data: u16,
     headerdata: u16,
     toggle: bool,
     clock: usize,
-    spans: PulseSpans<Mono>,
+    spans: PulseSpans<Time>,
 }
 
 #[derive(Clone, Copy, Debug)]

@@ -8,25 +8,25 @@ pub mod nec;
 pub mod rc5;
 #[cfg(feature = "rc6")]
 pub mod rc6;
-#[cfg(feature = "sbp")]
-pub mod sbp;
+#[cfg(feature = "samsung36")]
+pub mod samsung36;
 
 pub use mapper::Button;
 
-use crate::{cmd::AddressedCommand, ProtocolId};
+use core::fmt;
+
+use crate::Command;
 
 /// A trait describing a Remote Control
 pub trait RemoteControl: Default {
     /// Remote control model
     const MODEL: &'static str = "<NONAME>";
     /// Type of device that this remote controls
-    const DEVTYPE: DeviceType = DeviceType::Generic;
-    /// Protocol
-    const PROTOCOL: ProtocolId;
+    const DEVICE_TYPE: DeviceType = DeviceType::Generic;
     /// Device address
     const ADDRESS: u32;
-    /// The type of command
-    type Cmd: AddressedCommand;
+    /// The command type, which also determines the protocol
+    type Cmd: Command;
     /// command byte to action mapping
     const BUTTONS: &'static [(u32, Action)] = &[];
 
@@ -47,23 +47,28 @@ pub trait RemoteControl: Default {
         Self::BUTTONS
             .iter()
             .find(|(_, b)| b == button)
-            .and_then(|(c, _)| Self::Cmd::create(Self::ADDRESS, *c))
+            .and_then(|(c, _)| Self::Cmd::from_parts(Self::ADDRESS, *c))
     }
 }
 
-#[derive(Debug)]
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 /// Device type that the remote control controls
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[non_exhaustive]
 pub enum DeviceType {
+    /// Unspecified device
     Generic,
-    TV,
-    DVDPlayer,
-    CDPlayer,
+    /// Television
+    Tv,
+    /// DVD player
+    DvdPlayer,
+    /// CD player
+    CdPlayer,
+    /// Blu-ray player
     BluRayPlayer,
 }
 
-#[allow(non_camel_case_types)]
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[non_exhaustive]
 /// Remote control actions
@@ -109,19 +114,19 @@ pub enum Action {
     Stop,
     Rewind,
     Play,
-    Paus,
-    Play_Pause,
-    Play_Pause2,
+    Pause,
+    PlayPause,
+    PlayPause2,
 
     Forward,
     Mode,
     Shuffle,
-    U_SD,
+    UsbSd,
     Plus,
     Minus,
     Next,
     Prev,
-    Eq,
+    Equalizer,
     Mute,
 
     Random,
@@ -133,13 +138,14 @@ pub enum Action {
     PitchReset,
     PitchPlus,
     PitchMinus,
-    Prog,
+    Program,
 
     BatteryLow,
 }
 
 impl Action {
-    pub fn to_str(&self) -> &str {
+    /// Name of the action in snake case, e.g. `"volume_up"`
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Action::Power => "power",
             Action::Source => "source",
@@ -180,18 +186,18 @@ impl Action {
             Action::Stop => "stop",
             Action::Rewind => "rewind",
             Action::Play => "play",
-            Action::Paus => "pause",
-            Action::Play_Pause => "play_pause",
-            Action::Play_Pause2 => "play_pause2",
+            Action::Pause => "pause",
+            Action::PlayPause => "play_pause",
+            Action::PlayPause2 => "play_pause2",
             Action::Forward => "forward",
             Action::Mode => "mode",
             Action::Shuffle => "shuffle",
-            Action::U_SD => "u_sd",
+            Action::UsbSd => "usb_sd",
             Action::Plus => "plus",
             Action::Minus => "minus",
             Action::Next => "next",
             Action::Prev => "prev",
-            Action::Eq => "equalizer",
+            Action::Equalizer => "equalizer",
             Action::Mute => "mute",
             Action::Random => "random",
             Action::Repeat => "repeat",
@@ -201,8 +207,14 @@ impl Action {
             Action::PitchReset => "pitch_reset",
             Action::PitchPlus => "pitch_plus",
             Action::PitchMinus => "pitch_minus",
-            Action::Prog => "program",
+            Action::Program => "program",
             Action::BatteryLow => "battery_low",
         }
+    }
+}
+
+impl fmt::Display for Action {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
     }
 }

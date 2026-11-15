@@ -1,8 +1,12 @@
 use std::vec::Vec;
 
-use crate::{protocol::Sbp, receiver::BufferReceiver};
+use crate::{
+    Level,
+    protocol::Samsung36,
+    receiver::{BufferReceiver, DecodingError, Receiver},
+};
 
-/// Build an SBP pulse train as edge distances in µs, starting with a rising edge
+/// Build a Samsung36 pulse train as edge distances in µs, starting with a rising edge
 fn pulsetrain(address: u16, cmd: u8, checksum_ok: bool, dists: &mut Vec<u32>) {
     // Leading rising edge
     dists.push(0);
@@ -28,43 +32,45 @@ fn pulsetrain(address: u16, cmd: u8, checksum_ok: bool, dists: &mut Vec<u32>) {
 }
 
 #[test]
-fn sbp_decode() {
+fn decode() {
     let mut dists = Vec::new();
     pulsetrain(0xA55A, 0x37, true, &mut dists);
 
-    let r = BufferReceiver::<Sbp>::with_resolution(1_000_000);
+    let r = BufferReceiver::<Samsung36>::with_resolution(1_000_000);
     let cmds: Vec<_> = r.iter(&dists).collect();
 
     assert_eq!(cmds.len(), 1);
     assert_eq!(cmds[0].address, 0xA55A);
     assert_eq!(cmds[0].command, 0x37);
-    assert!(cmds[0].valid);
 }
 
 #[test]
-fn sbp_decode_all_commands() {
+fn decode_all_commands() {
     for cmd in 0..=255 {
         let mut dists = Vec::new();
         pulsetrain(0x0101, cmd, true, &mut dists);
 
-        let r = BufferReceiver::<Sbp>::with_resolution(1_000_000);
+        let r = BufferReceiver::<Samsung36>::with_resolution(1_000_000);
         let cmds: Vec<_> = r.iter(&dists).collect();
 
         assert_eq!(cmds.len(), 1);
         assert_eq!(cmds[0].address, 0x0101);
         assert_eq!(cmds[0].command, cmd);
-        assert!(cmds[0].valid);
     }
 }
 
 #[test]
-fn sbp_invalid_checksum() {
+fn invalid_checksum() {
     let mut dists = Vec::new();
     pulsetrain(0xA55A, 0x37, false, &mut dists);
 
-    let r = BufferReceiver::<Sbp>::with_resolution(1_000_000);
-    let cmds: Vec<_> = r.iter(&dists).collect();
+    let mut r: Receiver<Samsung36> = Receiver::new(1_000_000);
+    let results: Vec<_> = dists
+        .iter()
+        .enumerate()
+        .map(|(i, dt)| r.event(*dt, if i % 2 == 0 { Level::Mark } else { Level::Space }))
+        .filter(|res| !matches!(res, Ok(None)))
+        .collect();
 
-    assert_eq!(cmds.len(), 1);
-    assert!(!cmds[0].valid);
+    assert_eq!(results, [Err(DecodingError::Validation)]);
 }

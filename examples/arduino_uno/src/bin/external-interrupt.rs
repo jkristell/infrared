@@ -86,8 +86,8 @@ fn main() -> ! {
             ufmt::uwriteln!(
                 &mut serial,
                 "Cmd: Address: {}, Command: {}, repeat: {}\r",
-                cmd.addr,
-                cmd.cmd,
+                cmd.address,
+                cmd.command,
                 cmd.repeat
             )
             .unwrap_infallible();
