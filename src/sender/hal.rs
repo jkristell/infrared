@@ -76,11 +76,10 @@ where
 
         // Only touch the pwm on state changes
         if status != self.status {
-            match status {
-                Status::Transmit(true) => self.pwm.set_duty_cycle(self.duty_on)?,
-                Status::Transmit(false) | Status::Idle | Status::Error => {
-                    self.pwm.set_duty_cycle_fully_off()?
-                }
+            if status.is_carrier_on() {
+                self.pwm.set_duty_cycle(self.duty_on)?
+            } else {
+                self.pwm.set_duty_cycle_fully_off()?
             }
             self.status = status;
         }

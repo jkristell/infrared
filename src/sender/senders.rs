@@ -1,4 +1,7 @@
-use crate::sender::{DEFAULT_BUFFER_SIZE, ProtocolEncoder, PulseBuffer};
+use crate::{
+    Level,
+    sender::{DEFAULT_BUFFER_SIZE, ProtocolEncoder, PulseBuffer},
+};
 
 /// Hardware independent sender, driven by a periodic tick
 ///
@@ -46,7 +49,7 @@ impl<const S: usize> TickSender<S> {
         self.ptb.load::<Proto>(cmd, self.resolution);
         // Busy until the pulse train has been sent
         if !self.ptb.buffer().is_empty() {
-            self.status = Status::Transmit(false);
+            self.status = Status::Transmit(Level::Space);
         }
     }
 
@@ -61,8 +64,8 @@ impl<const S: usize> TickSender<S> {
             let delta_ts = ts.wrapping_sub(self.ts_lastedge);
             if delta_ts >= dist {
                 let newstate = match self.status {
-                    Status::Idle | Status::Transmit(false) => Status::Transmit(true),
-                    _ => Status::Transmit(false),
+                    Status::Idle | Status::Transmit(Level::Space) => Status::Transmit(Level::Mark),
+                    Status::Transmit(Level::Mark) => Status::Transmit(Level::Space),
                 };
 
                 self.status = newstate;
@@ -82,17 +85,22 @@ impl<const S: usize> TickSender<S> {
     }
 }
 
-#[derive(Debug, PartialEq, Copy, Clone, Default)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, Default)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 /// Sender state
 pub enum Status {
     /// Sender is ready for transmitting
     #[default]
     Idle,
-    /// Transmitting, `true` while the carrier is on
-    Transmit(bool),
-    /// Error
-    Error,
+    /// Transmitting, at the given signal level
+    Transmit(Level),
+}
+
+impl Status {
+    /// True if the carrier should be on
+    pub const fn is_carrier_on(self) -> bool {
+        matches!(self, Status::Transmit(Level::Mark))
+    }
 }
 
 /// A command was loaded while a transmission was in progress

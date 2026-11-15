@@ -50,7 +50,7 @@ fn send_receive_roundtrip() {
     let mut carrier_on = false;
     for tick in 0..2000u32 {
         let status = sender.tick().unwrap();
-        let on = status == Status::Transmit(true);
+        let on = status.is_carrier_on();
         if on != carrier_on {
             edges.push(tick);
             carrier_on = on;
@@ -89,7 +89,7 @@ fn duty_cycle_and_write_behavior() {
             transitions += 1;
             prev = status;
         }
-        if status == Status::Transmit(true) {
+        if status.is_carrier_on() {
             assert_eq!(sender.pwm().duty, 333);
         } else {
             assert_eq!(sender.pwm().duty, 0);
