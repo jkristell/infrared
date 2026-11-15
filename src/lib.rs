@@ -39,6 +39,6 @@ pub fn receiver() -> receiver::Builder {
     receiver::Builder::default()
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "std"))]
 #[macro_use]
 extern crate std;
