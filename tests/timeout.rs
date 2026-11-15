@@ -311,3 +311,46 @@ fn clocked_multireceiver() {
     assert_eq!(cmds.len(), 1);
     assert_eq!(cmds[0].protocol, ProtocolId::Nec);
 }
+
+#[test]
+fn clocked_receiver_handles_clock_wraparound() {
+    let (time, clock) = test_clock();
+    let frame = nec_frame(0x12, 0x34);
+    let half: u32 = frame[..frame.len() / 2].iter().sum();
+    // Start so that the counter wraps in the middle of the first frame
+    time.set(u32::MAX - half);
+    let mut recv: ClockedReceiver<Receiver<Nec>, _> = ClockedReceiver::with_clock(clock);
+
+    let mut edge = false;
+    let mut cmds = vec![];
+    for &dt in &frame {
+        time.set(time.get().wrapping_add(dt));
+        edge = !edge;
+        cmds.extend(recv.event(edge).unwrap());
+    }
+    assert_eq!(cmds.len(), 1);
+    assert_eq!((cmds[0].addr, cmds[0].cmd), (0x12, 0x34));
+
+    // An interrupted frame is discarded across the wrap as well
+    time.set(u32::MAX - half);
+    for &dt in &frame[..frame.len() / 2] {
+        time.set(time.get().wrapping_add(dt));
+        edge = !edge;
+        recv.event(edge).unwrap();
+    }
+    time.set(time.get().wrapping_add(recv.idle_timeout()));
+    recv.timeout().unwrap();
+    let mut next = vec![50_000];
+    next.extend_from_slice(&frame[1..]);
+    if edge {
+        next.insert(0, 1);
+    }
+    let mut res = vec![];
+    for &dt in &next {
+        time.set(time.get().wrapping_add(dt));
+        edge = !edge;
+        res.push(recv.event(edge));
+    }
+    assert!(res.iter().all(Result::is_ok));
+    assert_eq!(res.into_iter().flatten().flatten().count(), 1);
+}

@@ -201,10 +201,11 @@ where
     /// * `edge`: true = start of an IR mark (the pin reading low on an active-low receiver module), false = start of a space
     pub fn event(&mut self, edge: bool) -> Result<R::Output, DecodingError> {
         let now = self.clock.now();
+        let dt = C::Mono::checked_sub(now, self.last_edge).unwrap_or(C::Mono::ZERO_DURATION);
         self.last_edge = now;
         self.level = edge;
         self.idle = false;
-        self.recv.event_edge_instant(now, edge)
+        self.recv.event_edge(dt, edge)
     }
 
     /// Get a reference to the wrapped receiver

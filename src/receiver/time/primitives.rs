@@ -10,7 +10,8 @@ impl InfraMonotonic for u32 {
     const ZERO_DURATION: Self::Duration = 0;
 
     fn checked_sub(a: Self::Instant, b: Self::Instant) -> Option<Self::Duration> {
-        a.checked_sub(b)
+        // Monotonic counter: an earlier looking `a` means it wrapped
+        Some(a.wrapping_sub(b))
     }
 
     fn create_span(freq: u32, p: u32, t: u32) -> Span<Self::Duration> {
@@ -25,7 +26,8 @@ impl InfraMonotonic for u64 {
     const ZERO_DURATION: Self::Duration = 0;
 
     fn checked_sub(a: Self::Instant, b: Self::Instant) -> Option<Self::Duration> {
-        a.checked_sub(b)
+        // Monotonic counter: an earlier looking `a` means it wrapped
+        Some(a.wrapping_sub(b))
     }
 
     fn create_span(freq: u32, p: u32, t: u32) -> Span<Self::Duration> {

@@ -18,6 +18,10 @@ pub trait InfraMonotonic: Sized {
     const ZERO_INSTANT: Self::Instant;
     const ZERO_DURATION: Self::Duration;
 
+    /// Time elapsed from `b` to the later instant `a`
+    ///
+    /// Plain integer counters are allowed to wrap around. Returns `None` if
+    /// the duration can't be determined.
     fn checked_sub(a: Self::Instant, b: Self::Instant) -> Option<Self::Duration>;
 
     fn create_span(freq: u32, p: u32, t: u32) -> Span<Self::Duration>;
