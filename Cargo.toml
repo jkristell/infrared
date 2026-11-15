@@ -39,3 +39,4 @@ fugit = { version = "0.3.5", optional = true }
 
 [dev-dependencies]
 dummy-pin = "1.0.0"
+embedded-hal = "1.0"

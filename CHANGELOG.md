@@ -1,6 +1,7 @@
 # Changelog
 
 ## [0.15.0] - Unreleased
+ - Rewrote the embedded-hal sender for embedded-hal 1.0 (`SetDutyCycle`), with configurable carrier duty cycle
  - Type renames for a cleaner API: `PeriodicPoll` → `PolledReceiver`, the `EdgeReceiver`/`PollReceiver` traits → `EdgeDriven`/`PollDriven`, `ReceiverWrapper` → `ReceiverSet`, `receiver::State` → `DecoderState`, the embedded-hal sender → `PwmSender`, `RemoteControlModel` → `RemoteControl`, `AddressCommand` → `AddressedCommand`
  - Iterator cleanup: `BufferReceiver::iter` takes `&self`; `BufferIterator` is exported and implements `FusedIterator`; removed the unused `iter_with` and the hand-rolled `PulseIterator` (slice iterator used instead)
  - Fixed `PulseBuffer::get` reading stale data past the loaded pulse train, which made `PulseSender` toggle rapidly after each transmission

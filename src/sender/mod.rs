@@ -3,9 +3,13 @@
 use crate::protocol::Protocol;
 
 mod buffer;
+#[cfg(feature = "embedded-hal")]
+mod hal;
 mod senders;
 
-pub(crate) use buffer::PulseBuffer;
+pub use buffer::*;
+#[cfg(feature = "embedded-hal")]
+pub use hal::PwmSender;
 pub use senders::*;
 
 pub trait ProtocolEncoder<const FREQ: u32>: Protocol {
