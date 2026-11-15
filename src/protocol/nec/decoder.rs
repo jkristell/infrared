@@ -7,7 +7,7 @@ use crate::{
         Nec,
     },
     receiver::{
-        time::{InfraMonotonic, PulseSpans},
+        time::{TimeBase, PulseSpans},
         DecoderBuilder, DecodingError, ProtocolDecoder, DecoderState,
     },
 };
@@ -27,21 +27,21 @@ const fn pulselens<Cmd: NecCommandVariant>() -> [u32; 8] {
 
 const TOL: [u32; 8] = [7, 7, 25, 12, 0, 0, 0, 0];
 
-impl<Mono: InfraMonotonic, Cmd: NecCommandVariant> DecoderBuilder<Mono> for Nec<Cmd> {
-    type Decoder = NecDecoder<Mono, Cmd>;
+impl<Time: TimeBase, Cmd: NecCommandVariant> DecoderBuilder<Time> for Nec<Cmd> {
+    type Decoder = NecDecoder<Time, Cmd>;
 
     fn build(freq: u32) -> Self::Decoder {
         NecDecoder {
             state: NecState::Init,
             bitbuf: 0,
             cmd_type: Default::default(),
-            dt_save: Mono::ZERO_DURATION,
+            dt_save: Time::ZERO_DURATION,
             pulsespans: PulseSpans::new(freq, &pulselens::<Cmd>(), &TOL),
         }
     }
 }
 
-pub struct NecDecoder<Mono: InfraMonotonic, C = NecCommand> {
+pub struct NecDecoder<Time: TimeBase, C = NecCommand> {
     // DecoderState
     state: NecState,
     // Data buffer
@@ -49,9 +49,9 @@ pub struct NecDecoder<Mono: InfraMonotonic, C = NecCommand> {
     // Nec Command type
     cmd_type: PhantomData<C>,
     // Saved dt
-    dt_save: Mono::Duration,
+    dt_save: Time::Duration,
 
-    pulsespans: PulseSpans<Mono>,
+    pulsespans: PulseSpans<Time>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -82,13 +82,13 @@ impl From<NecState> for DecoderState {
     }
 }
 
-impl<Mono, Cmd> ProtocolDecoder<Nec<Cmd>, Mono> for NecDecoder<Mono, Cmd>
+impl<Time, Cmd> ProtocolDecoder<Nec<Cmd>, Time> for NecDecoder<Time, Cmd>
 where
-    Mono: InfraMonotonic,
+    Time: TimeBase,
     Cmd: NecCommandVariant,
 {
     #[rustfmt::skip]
-    fn event(&mut self, dur: Mono::Duration, level: Level) -> DecoderState {
+    fn event(&mut self, dur: Time::Duration, level: Level) -> DecoderState {
         let mark = level.is_mark();
 
         use NecState::*;
@@ -126,7 +126,7 @@ where
 
             self.state = status;
 
-            self.dt_save = Mono::ZERO_DURATION;
+            self.dt_save = Time::ZERO_DURATION;
         } else {
             // Save
             self.dt_save = dur;
@@ -145,10 +145,10 @@ where
 
     fn reset(&mut self) {
         self.state = NecState::Init;
-        self.dt_save = Mono::ZERO_DURATION;
+        self.dt_save = Time::ZERO_DURATION;
     }
 
-    fn spans(&self) -> &PulseSpans<Mono> {
+    fn spans(&self) -> &PulseSpans<Time> {
         &self.pulsespans
     }
 }

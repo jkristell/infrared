@@ -54,7 +54,7 @@ fn main() -> ! {
 
     info!("Monotimer f = {:?}", MONO_FREQ);
 
-    let receiver = PinReceiver::with_fugit(pin);
+    let receiver = PinReceiver::new(Receiver::with_fugit(), pin);
 
     // Safe because the devices are only used from in the interrupt handler
     unsafe {
@@ -79,7 +79,7 @@ fn EXTI9_5() {
     let mono = unsafe { MONO.as_mut().unwrap() };
     let now = rtic_monotonic::Monotonic::now(mono);
 
-    if let Ok(Some(cmd)) = receiver.event_instant(now) {
+    if let Ok(Some(cmd)) = receiver.event_at(now) {
         info!("cmd: {:?}", cmd);
     }
 

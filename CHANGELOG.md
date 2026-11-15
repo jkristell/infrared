@@ -14,6 +14,10 @@
    - `Builder::nec_apple()` is now `apple_nec()`; `ProtocolId` variants renamed to match the types
  - New `Level` enum (`Mark`/`Space`) replaces the `edge: bool` and `level: bool` arguments, with `Level::from_active_low(pin.is_low())` and `from_active_high()` helpers. The duration now always comes first: `ProtocolDecoder::event(dt, level)` (was `event(edge, dt)`)
  - Errors: `Error<PinErr>` is now `Error::Decode(DecodingError)` or `Error::Pin(PinErr)` (was a copy of the `DecodingError` variants plus `Hal`). Removed the unused `DecodingError::RemoteControlError` and made `DecodingError` `#[non_exhaustive]`. Both implement `Display` and `core::error::Error`
+ - Receiver API cleanup:
+   - `InfraMonotonic` is now `TimeBase` (re-exported from `receiver`), `Builder::monotonic::<T>()` is `timebase::<T>()` and `Clock::Mono` is `Clock::Time`. Internal helpers (`create_span`, `Span`, `ProtocolDecoder::event_total`/`timeout_total`) are hidden from the docs
+   - `event_instant` is now `event_at` (and `event_instant_iter` → `event_at_iter`, `EdgeDriven::event_edge_instant` → `event_edge_at`)
+   - Removed the shortcut constructors `PinReceiver::with_pin`, `with_pin_poll`, `with_pin_multi`, `with_fugit`, `with_fugit64`, `PolledReceiver::with_pin` and `ClockedReceiver::with_clock_and_pin`. Use the builder or `PinReceiver::new(core, pin)`, e.g. `PinReceiver::new(Receiver::with_fugit(), pin)`
  - `Samsung36Command` no longer has a `valid` field: frames with a bad checksum are a `DecodingError::Validation`
  - `DenonCommand` is decoded as Denon-K (Kaseikyo): 12 bit `address` and 8 bit `command` instead of the raw `bits`. The vendor id and parity are validated
  - Apple NEC: commands can now be encoded (`pack()` panicked), fixed an overflow in `command()`, and the device id is now the address

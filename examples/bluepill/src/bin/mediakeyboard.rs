@@ -98,7 +98,7 @@ mod app {
         pin.trigger_on_edge(&mut cx.device.EXTI, Edge::RisingFalling);
         pin.enable_interrupt(&mut cx.device.EXTI);
 
-        let receiver = PinReceiver::with_fugit(pin);
+        let receiver = PinReceiver::new(Receiver::with_fugit(), pin);
         let mono = cx.device.TIM3.monotonic(&mut rcc);
 
         (
@@ -131,7 +131,7 @@ mod app {
         let now = monotonics::Monotonic::now();
         let receiver = cx.local.receiver;
 
-        if let Ok(Some(button)) = receiver.event_instant(now) {
+        if let Ok(Some(button)) = receiver.event_at(now) {
             if let Some(action) = button.action() {
                 info!("{:?}", button);
                 let key = super::action_to_mediakey(action);

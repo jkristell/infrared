@@ -1,8 +1,8 @@
 use fugit::{Duration, ExtU32, ExtU64, Instant};
 
-use crate::receiver::time::{InfraMonotonic, Span};
+use crate::receiver::time::{TimeBase, Span};
 
-impl<const NOM: u32, const DENOM: u32> InfraMonotonic for Instant<u32, NOM, DENOM> {
+impl<const NOM: u32, const DENOM: u32> TimeBase for Instant<u32, NOM, DENOM> {
     type Instant = Instant<u32, NOM, DENOM>;
     type Duration = Duration<u32, NOM, DENOM>;
     const ZERO_INSTANT: Self::Instant = Instant::<u32, NOM, DENOM>::from_ticks(0);
@@ -31,7 +31,7 @@ impl<const NOM: u32, const DENOM: u32> Span<Duration<u32, NOM, DENOM>> {
     }
 }
 
-impl<const NOM: u32, const DENOM: u32> InfraMonotonic for Instant<u64, NOM, DENOM> {
+impl<const NOM: u32, const DENOM: u32> TimeBase for Instant<u64, NOM, DENOM> {
     type Instant = Instant<u64, NOM, DENOM>;
     type Duration = Duration<u64, NOM, DENOM>;
     const ZERO_INSTANT: Self::Instant = Instant::<u64, NOM, DENOM>::from_ticks(0);

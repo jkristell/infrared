@@ -15,7 +15,7 @@ use crate::{
     Level,
     protocol::{Command, Protocol, ProtocolId},
     receiver::{
-        time::{InfraMonotonic, PulseSpans},
+        time::{TimeBase, PulseSpans},
         DecoderBuilder, DecodingError, ProtocolDecoder, DecoderState,
     },
 };
@@ -46,27 +46,27 @@ const PULSE: [u32; 8] = [
 ];
 const TOL: [u32; 8] = [5, 5, 10, 10, 0, 0, 0, 0];
 
-impl<Mono: InfraMonotonic> DecoderBuilder<Mono> for Samsung36 {
-    type Decoder = Samsung36Decoder<Mono>;
+impl<Time: TimeBase> DecoderBuilder<Time> for Samsung36 {
+    type Decoder = Samsung36Decoder<Time>;
 
     fn build(freq: u32) -> Self::Decoder {
         Samsung36Decoder {
             state: Samsung36State::Init,
             address: 0,
             command: 0,
-            since_mark: Mono::ZERO_DURATION,
+            since_mark: Time::ZERO_DURATION,
             spans: PulseSpans::new(freq, &PULSE, &TOL),
         }
     }
 }
 
 /// Samsung36 decoder
-pub struct Samsung36Decoder<Mono: InfraMonotonic> {
+pub struct Samsung36Decoder<Time: TimeBase> {
     state: Samsung36State,
     address: u16,
     command: u32,
-    since_mark: Mono::Duration,
-    spans: PulseSpans<Mono>,
+    since_mark: Time::Duration,
+    spans: PulseSpans<Time>,
 }
 
 /// Samsung36 command, 16 bit address and 8 bit command
@@ -143,9 +143,9 @@ pub enum Samsung36State {
     Err(DecodingError),
 }
 
-impl<Mono: InfraMonotonic> ProtocolDecoder<Samsung36, Mono> for Samsung36Decoder<Mono> {
+impl<Time: TimeBase> ProtocolDecoder<Samsung36, Time> for Samsung36Decoder<Time> {
     #[rustfmt::skip]
-    fn event(&mut self, dt: Mono::Duration, level: Level) -> DecoderState {
+    fn event(&mut self, dt: Time::Duration, level: Level) -> DecoderState {
         let mark = level.is_mark();
         use Samsung36Symbol::*;
         use Samsung36State::*;
@@ -190,15 +190,15 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Samsung36, Mono> for Samsung36Decoder
         self.state = Samsung36State::Init;
         self.address = 0;
         self.command = 0;
-        self.since_mark = Mono::ZERO_DURATION;
+        self.since_mark = Time::ZERO_DURATION;
     }
 
-    fn spans(&self) -> &PulseSpans<Mono> {
+    fn spans(&self) -> &PulseSpans<Time> {
         &self.spans
     }
 }
 
-impl<Mono: InfraMonotonic> Samsung36Decoder<Mono> {
+impl<Time: TimeBase> Samsung36Decoder<Time> {
     fn check(&self) -> Samsung36State {
         if command_bits_valid(self.command) {
             Samsung36State::Done

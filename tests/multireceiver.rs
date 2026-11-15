@@ -37,7 +37,7 @@ fn multireceiver_event_instant() {
     for (i, dt) in DISTS.iter().enumerate() {
         let level = if i % 2 == 0 { Level::Mark } else { Level::Space };
         t += dt;
-        cmds.extend(mr.event_instant(t, level).into_iter().flatten());
+        cmds.extend(mr.event_at(t, level).into_iter().flatten());
     }
 
     assert_eq!(cmds.len(), 1);

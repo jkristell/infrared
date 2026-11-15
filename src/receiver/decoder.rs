@@ -2,7 +2,7 @@ use core::fmt::Debug;
 
 use crate::{
     receiver::{
-        time::{InfraMonotonic, PulseSpans},
+        time::{TimeBase, PulseSpans},
         DecodingError,
     },
     Level, Protocol,
@@ -11,24 +11,24 @@ use crate::{
 /// Used to create a Decoder for a protocol
 ///
 /// Handles the creation of the pulse spans for the protocol
-pub trait DecoderBuilder<Mono: InfraMonotonic>: Protocol + Sized {
+pub trait DecoderBuilder<Time: TimeBase>: Protocol + Sized {
     /// Type of the decoder
-    type Decoder: ProtocolDecoder<Self, Mono>;
+    type Decoder: ProtocolDecoder<Self, Time>;
 
-    /// Create the decoder
-    fn build(freq: u32) -> Self::Decoder;
+    /// Create the decoder for timestamps counting at `resolution` Hz
+    fn build(resolution: u32) -> Self::Decoder;
 }
 
 /// Protocol decode state machine
-pub trait ProtocolDecoder<Proto, Mono>
+pub trait ProtocolDecoder<Proto, Time>
 where
     Proto: Protocol + ?Sized,
-    Mono: InfraMonotonic,
+    Time: TimeBase,
 {
     /// Notify the state machine of an edge
     /// * `dt`: Duration since the previous edge
     /// * `level`: The level the signal changed to
-    fn event(&mut self, dt: Mono::Duration, level: Level) -> DecoderState;
+    fn event(&mut self, dt: Time::Duration, level: Level) -> DecoderState;
 
     /// Get the command
     /// Returns the data if DecoderState == Done, otherwise None
@@ -49,19 +49,19 @@ where
     }
 
     /// Get the time spans
-    fn spans(&self) -> &PulseSpans<Mono>;
+    fn spans(&self) -> &PulseSpans<Time>;
 
-    /// I don't care about the details, just give me a command (or an error)!
+    #[doc(hidden)]
     fn event_total(
         &mut self,
-        dt: Mono::Duration,
+        dt: Time::Duration,
         level: Level,
     ) -> Result<Option<Proto::Cmd>, DecodingError> {
         let state = self.event(dt, level);
         self.finish(state)
     }
 
-    /// Like [`event_total`](ProtocolDecoder::event_total), but for [`timeout`](ProtocolDecoder::timeout)
+    #[doc(hidden)]
     fn timeout_total(&mut self) -> Result<Option<Proto::Cmd>, DecodingError> {
         let state = self.timeout();
         self.finish(state)

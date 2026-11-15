@@ -2,7 +2,7 @@ use core::{iter::FusedIterator, marker::PhantomData};
 
 use crate::{
     Level,
-    receiver::{time::InfraMonotonic, DecoderBuilder, ProtocolDecoder, DecoderState},
+    receiver::{time::TimeBase, DecoderBuilder, ProtocolDecoder, DecoderState},
     Protocol,
 };
 
@@ -11,25 +11,25 @@ use crate::{
 /// Frames that fail to decode are skipped.
 ///
 /// Returned by [`BufferReceiver::iter`](crate::receiver::BufferReceiver::iter).
-pub struct BufferIterator<'a, Proto, Mono, Cmd>
+pub struct BufferIterator<'a, Proto, Time, Cmd>
 where
-    Proto: DecoderBuilder<Mono>,
-    Mono: InfraMonotonic,
+    Proto: DecoderBuilder<Time>,
+    Time: TimeBase,
     Cmd: From<<Proto as Protocol>::Cmd>,
 {
     pos: usize,
-    buf: &'a [Mono::Duration],
+    buf: &'a [Time::Duration],
     pub(crate) decoder: Proto::Decoder,
     cmd: PhantomData<Cmd>,
 }
 
-impl<'a, Proto, Mono, Cmd> BufferIterator<'a, Proto, Mono, Cmd>
+impl<'a, Proto, Time, Cmd> BufferIterator<'a, Proto, Time, Cmd>
 where
-    Proto: DecoderBuilder<Mono>,
-    Mono: InfraMonotonic,
+    Proto: DecoderBuilder<Time>,
+    Time: TimeBase,
     Cmd: From<<Proto as Protocol>::Cmd>,
 {
-    pub fn new(resolution: u32, buf: &'a [Mono::Duration]) -> Self {
+    pub fn new(resolution: u32, buf: &'a [Time::Duration]) -> Self {
         BufferIterator {
             pos: 0,
             buf,
@@ -39,10 +39,10 @@ where
     }
 }
 
-impl<Proto, Mono, Cmd> Iterator for BufferIterator<'_, Proto, Mono, Cmd>
+impl<Proto, Time, Cmd> Iterator for BufferIterator<'_, Proto, Time, Cmd>
 where
-    Proto: DecoderBuilder<Mono>,
-    Mono: InfraMonotonic,
+    Proto: DecoderBuilder<Time>,
+    Time: TimeBase,
     Cmd: From<<Proto as Protocol>::Cmd>,
 {
     type Item = Cmd;
@@ -78,10 +78,10 @@ where
     }
 }
 
-impl<Proto, Mono, Cmd> FusedIterator for BufferIterator<'_, Proto, Mono, Cmd>
+impl<Proto, Time, Cmd> FusedIterator for BufferIterator<'_, Proto, Time, Cmd>
 where
-    Proto: DecoderBuilder<Mono>,
-    Mono: InfraMonotonic,
+    Proto: DecoderBuilder<Time>,
+    Time: TimeBase,
     Cmd: From<<Proto as Protocol>::Cmd>,
 {
 }

@@ -45,7 +45,7 @@ fn main() -> ! {
 
     let mono = d.TIM2.monotonic_us(&mut rcc);
 
-    let receiver = PinReceiver::with_pin_multi(MONO_FREQ, inpin);
+    let receiver = PinReceiver::new(MultiReceiver::new(MONO_FREQ), inpin);
 
     // Safe because the devices are only used in the interrupt handler
     unsafe {
@@ -72,7 +72,7 @@ fn EXTI9_5() {
 
     let now = rtic_monotonic::Monotonic::now(mono);
 
-    if let Ok(cmds) = receiver.event_instant_iter(now) {
+    if let Ok(cmds) = receiver.event_at_iter(now) {
         for cmd in cmds {
             info!("cmd: {:?}", cmd);
         }

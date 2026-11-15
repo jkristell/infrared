@@ -50,7 +50,7 @@ fn main() -> ! {
 
     timer.listen(Event::Update);
 
-    let receiver = infrared::PolledReceiver::with_pin(SAMPLERATE, pin);
+    let receiver = infrared::PinReceiver::new(infrared::PolledReceiver::new(SAMPLERATE), pin);
 
     // Safe because the devices are only used from in the interrupt handler
     unsafe {

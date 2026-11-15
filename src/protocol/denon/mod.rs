@@ -17,7 +17,7 @@ use crate::{
     Level,
     protocol::{Command, Protocol, ProtocolId},
     receiver::{
-        time::{InfraMonotonic, PulseSpans},
+        time::{TimeBase, PulseSpans},
         DecoderBuilder, DecodingError, ProtocolDecoder, DecoderState,
     },
 };
@@ -51,25 +51,25 @@ impl Protocol for Denon {
     type Cmd = DenonCommand;
 }
 
-impl<Mono: InfraMonotonic> DecoderBuilder<Mono> for Denon {
-    type Decoder = DenonDecoder<Mono>;
+impl<Time: TimeBase> DecoderBuilder<Time> for Denon {
+    type Decoder = DenonDecoder<Time>;
 
     fn build(freq: u32) -> Self::Decoder {
         DenonDecoder {
             state: DenonState::Idle,
             buf: 0,
-            dt_save: Mono::ZERO_DURATION,
+            dt_save: Time::ZERO_DURATION,
             spans: PulseSpans::new(freq, &PULSE, &TOL),
         }
     }
 }
 
 /// Denon-K decoder
-pub struct DenonDecoder<Mono: InfraMonotonic> {
+pub struct DenonDecoder<Time: TimeBase> {
     state: DenonState,
     buf: u64,
-    dt_save: Mono::Duration,
-    spans: PulseSpans<Mono>,
+    dt_save: Time::Duration,
+    spans: PulseSpans<Time>,
 }
 
 const VENDOR: u64 = 0x3254;
@@ -141,9 +141,9 @@ impl Command for DenonCommand {
     }
 }
 
-impl<Mono: InfraMonotonic> ProtocolDecoder<Denon, Mono> for DenonDecoder<Mono> {
+impl<Time: TimeBase> ProtocolDecoder<Denon, Time> for DenonDecoder<Time> {
     #[rustfmt::skip]
-    fn event(&mut self, dt: Mono::Duration, level: Level) -> DecoderState {
+    fn event(&mut self, dt: Time::Duration, level: Level) -> DecoderState {
         let mark = level.is_mark();
 
         if mark {
@@ -162,7 +162,7 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Denon, Mono> for DenonDecoder<Mono> {
                 (DenonState::Err(err),      _)                  => DenonState::Err(err),
             };
 
-            self.dt_save = Mono::ZERO_DURATION;
+            self.dt_save = Time::ZERO_DURATION;
         } else {
             self.dt_save = dt;
         }
@@ -180,15 +180,15 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Denon, Mono> for DenonDecoder<Mono> {
     fn reset(&mut self) {
         self.state = DenonState::Idle;
         self.buf = 0;
-        self.dt_save = Mono::ZERO_DURATION;
+        self.dt_save = Time::ZERO_DURATION;
     }
 
-    fn spans(&self) -> &PulseSpans<Mono> {
+    fn spans(&self) -> &PulseSpans<Time> {
         &self.spans
     }
 }
 
-impl<Mono: InfraMonotonic> DenonDecoder<Mono> {
+impl<Time: TimeBase> DenonDecoder<Time> {
     fn check(&self) -> DenonState {
         match DenonCommand::unpack(self.buf) {
             Ok(_) => DenonState::Done,

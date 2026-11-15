@@ -112,7 +112,10 @@
 //! // Frequency of the timer interrupt in Hz.
 //! const FREQ: u32 = 20_000;
 //!
-//! let mut receiver = infrared::PolledReceiver::<Nec>::with_pin(FREQ, input_pin);
+//! let mut receiver = infrared::receiver()
+//!     .nec()
+//!     .resolution(FREQ)
+//!     .build_polled_with_pin(input_pin);
 //!
 //! // -------------------------------------------
 //! // Timer interrupt handler
@@ -166,12 +169,12 @@
 //!
 //!    // Receiver for Rc6 signals, event based with embedded-hal pin
 //!    let pin = DummyPin::new_low();
-//!    let r1: PinReceiver<Receiver<Rc6>, DummyPin> = PinReceiver::with_pin(40_000, pin);
+//!    let r1: PinReceiver<Receiver<Rc6>, DummyPin> = PinReceiver::new(Receiver::new(40_000), pin);
 //!
 //!    // Periodic polled Nec Receiver
 //!    let pin = DummyPin::new_low();
 //!    let r2: PinReceiver<infrared::PolledReceiver<Nec>, DummyPin> =
-//!        infrared::PolledReceiver::with_pin(40_000, pin);
+//!        PinReceiver::new(infrared::PolledReceiver::new(40_000), pin);
 //!
 //!    let r3: BufferReceiver<Rc6> = BufferReceiver::with_resolution(20_000);
 //!
@@ -181,11 +184,11 @@
 //! ```
 use core::marker::PhantomData;
 
-use crate::{receiver::time::InfraMonotonic, Level, Protocol};
+use crate::{Level, Protocol};
 
 #[cfg(feature = "async")]
 mod asynch;
-mod bufferinput;
+mod buffer;
 mod builder;
 mod clock;
 mod decoder;
@@ -194,14 +197,14 @@ mod iter;
 mod multi;
 #[cfg(feature = "embedded-hal")]
 mod pin;
-mod ppoll;
+mod polled;
 pub mod time;
 
 #[cfg(feature = "async")]
 pub use asynch::AsyncReceiver;
 #[cfg(feature = "embassy")]
 pub use asynch::EmbassyClock;
-pub use bufferinput::BufferReceiver;
+pub use buffer::BufferReceiver;
 pub use iter::BufferIterator;
 pub use builder::Builder;
 #[cfg(feature = "std")]
@@ -212,7 +215,8 @@ pub use error::{DecodingError, Error};
 pub use multi::{MultiReceiver, ReceiverSet};
 #[cfg(feature = "embedded-hal")]
 pub use pin::PinReceiver;
-pub use ppoll::PolledReceiver;
+pub use polled::PolledReceiver;
+pub use time::TimeBase;
 
 /// Edge driven receiver
 ///
@@ -220,9 +224,9 @@ pub use ppoll::PolledReceiver;
 /// [`MultiReceiver`]) so that input wrappers such as [`PinReceiver`] can be
 /// generic over them.
 pub trait EdgeDriven {
-    /// Duration type of the monotonic clock
+    /// Duration type of the time base
     type Duration;
-    /// Instant type of the monotonic clock
+    /// Instant type of the time base
     type Instant;
     /// Output produced on a successful decode
     type Output;
@@ -234,7 +238,7 @@ pub trait EdgeDriven {
         -> Result<Self::Output, DecodingError>;
 
     /// Update the receiver with an edge event at instant `t`
-    fn event_edge_instant(
+    fn event_edge_at(
         &mut self,
         t: Self::Instant,
         level: Level,
@@ -277,32 +281,32 @@ pub trait PollDriven {
 ///
 /// The core protocol decoder state machine. Hardware independent: edge events
 /// are fed to it via [`event`](Receiver::event) or
-/// [`event_instant`](Receiver::event_instant). Combine it with
+/// [`event_at`](Receiver::event_at). Combine it with
 /// [`PinReceiver`] to let it read the edges from an embedded-hal pin.
 pub struct Receiver<
-    Proto: DecoderBuilder<Mono>,
-    Mono: InfraMonotonic = u32,
+    Proto: DecoderBuilder<Time>,
+    Time: TimeBase = u32,
     Cmd: From<Proto::Cmd> = <Proto as Protocol>::Cmd,
 > {
     /// Decoder data
     pub(crate) decoder: Proto::Decoder,
-    /// Previous instant, used by `event_instant`
-    prev_instant: Mono::Instant,
+    /// Previous instant, used by `event_at`
+    prev_instant: Time::Instant,
     /// Type of the final command output
     pub(crate) cmd: PhantomData<Cmd>,
 }
 
-impl<Proto, Mono, Cmd> Receiver<Proto, Mono, Cmd>
+impl<Proto, Time, Cmd> Receiver<Proto, Time, Cmd>
 where
-    Proto: DecoderBuilder<Mono>,
-    Mono: InfraMonotonic,
+    Proto: DecoderBuilder<Time>,
+    Time: TimeBase,
     Cmd: From<Proto::Cmd>,
 {
     /// Create a new Receiver with the given clock resolution (in Hz)
     pub fn new(freq: u32) -> Self {
         Receiver {
             decoder: Proto::build(freq),
-            prev_instant: Mono::ZERO_INSTANT,
+            prev_instant: Time::ZERO_INSTANT,
             cmd: PhantomData,
         }
     }
@@ -310,7 +314,7 @@ where
     /// Update the receiver
     /// * `dt`: Duration since the previous edge
     /// * `level`: The input level after the edge, see [`Level`]
-    pub fn event(&mut self, dt: Mono::Duration, level: Level) -> Result<Option<Cmd>, DecodingError> {
+    pub fn event(&mut self, dt: Time::Duration, level: Level) -> Result<Option<Cmd>, DecodingError> {
         self.decoder
             .event_total(dt, level)
             .map(|cmd| cmd.map(Into::into))
@@ -330,19 +334,19 @@ where
     /// Time without edges after which the input is considered idle
     ///
     /// Derived from the protocol timing: twice the longest valid symbol.
-    pub fn idle_timeout(&self) -> Mono::Duration {
+    pub fn idle_timeout(&self) -> Time::Duration {
         self.decoder.spans().idle_timeout()
     }
 
     /// Update the receiver with an edge event at instant `t`
     ///
     /// The duration since the previous edge is tracked internally.
-    pub fn event_instant(
+    pub fn event_at(
         &mut self,
-        t: Mono::Instant,
+        t: Time::Instant,
         level: Level,
     ) -> Result<Option<Cmd>, DecodingError> {
-        let dt = Mono::checked_sub(t, self.prev_instant).unwrap_or(Mono::ZERO_DURATION);
+        let dt = Time::checked_sub(t, self.prev_instant).unwrap_or(Time::ZERO_DURATION);
         self.prev_instant = t;
 
         self.event(dt, level)
@@ -373,14 +377,14 @@ where
     }
 }
 
-impl<Proto, Mono, Cmd> EdgeDriven for Receiver<Proto, Mono, Cmd>
+impl<Proto, Time, Cmd> EdgeDriven for Receiver<Proto, Time, Cmd>
 where
-    Proto: DecoderBuilder<Mono>,
-    Mono: InfraMonotonic,
+    Proto: DecoderBuilder<Time>,
+    Time: TimeBase,
     Cmd: From<Proto::Cmd>,
 {
-    type Duration = Mono::Duration;
-    type Instant = Mono::Instant;
+    type Duration = Time::Duration;
+    type Instant = Time::Instant;
     type Output = Option<Cmd>;
 
     fn event_edge(
@@ -391,12 +395,12 @@ where
         self.event(dt, level)
     }
 
-    fn event_edge_instant(
+    fn event_edge_at(
         &mut self,
         t: Self::Instant,
         level: Level,
     ) -> Result<Self::Output, DecodingError> {
-        self.event_instant(t, level)
+        self.event_at(t, level)
     }
 
     fn idle_timeout(&self) -> Self::Duration {
@@ -404,10 +408,10 @@ where
     }
 }
 
-impl<Proto, Mono, Cmd> Timeout for Receiver<Proto, Mono, Cmd>
+impl<Proto, Time, Cmd> Timeout for Receiver<Proto, Time, Cmd>
 where
-    Proto: DecoderBuilder<Mono>,
-    Mono: InfraMonotonic,
+    Proto: DecoderBuilder<Time>,
+    Time: TimeBase,
     Cmd: From<Proto::Cmd>,
 {
     type Output = Option<Cmd>;

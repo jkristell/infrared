@@ -1,9 +1,9 @@
 use crate::{
     protocol::utils::scale_with_samplerate,
-    receiver::time::{InfraMonotonic, Span},
+    receiver::time::{TimeBase, Span},
 };
 
-impl InfraMonotonic for u32 {
+impl TimeBase for u32 {
     type Instant = u32;
     type Duration = u32;
     const ZERO_INSTANT: Self::Instant = 0;
@@ -23,7 +23,7 @@ impl InfraMonotonic for u32 {
     }
 }
 
-impl InfraMonotonic for u64 {
+impl TimeBase for u64 {
     type Instant = u64;
     type Duration = u64;
     const ZERO_INSTANT: Self::Instant = 0;

@@ -7,13 +7,13 @@ use crate::{
     Level,
     protocol::Message,
     receiver::{
-        time::InfraMonotonic, Clock, ClockedReceiver, DecoderBuilder, EdgeDriven, Error,
+        time::TimeBase, Clock, ClockedReceiver, DecoderBuilder, EdgeDriven, Error,
         MultiReceiver, Receiver, ReceiverSet, Timeout,
     },
 };
 
-type InstantOf<C> = <<C as Clock>::Mono as InfraMonotonic>::Instant;
-type DurationOf<C> = <<C as Clock>::Mono as InfraMonotonic>::Duration;
+type InstantOf<C> = <<C as Clock>::Time as TimeBase>::Instant;
+type DurationOf<C> = <<C as Clock>::Time as TimeBase>::Duration;
 
 /// Async receiver
 ///
@@ -86,7 +86,7 @@ where
         let edge = if self.recv.is_idle() {
             Some(edge.await)
         } else {
-            let us = C::Mono::to_micros(self.recv.resolution(), self.recv.idle_timeout());
+            let us = C::Time::to_micros(self.recv.resolution(), self.recv.idle_timeout());
             let us = u32::try_from(us).unwrap_or(u32::MAX);
             match select(edge, self.delay.delay_us(us)).await {
                 Either::First(res) => Some(res),
@@ -126,10 +126,10 @@ where
     }
 }
 
-impl<Proto, C, Pin, D, Cmd> AsyncReceiver<Receiver<Proto, C::Mono, Cmd>, C, Pin, D>
+impl<Proto, C, Pin, D, Cmd> AsyncReceiver<Receiver<Proto, C::Time, Cmd>, C, Pin, D>
 where
     C: Clock,
-    Proto: DecoderBuilder<C::Mono>,
+    Proto: DecoderBuilder<C::Time>,
     Cmd: From<Proto::Cmd>,
     Pin: Wait,
     D: DelayNs,
@@ -154,10 +154,10 @@ where
 }
 
 impl<const N: usize, Receivers, C, Pin, D>
-    AsyncReceiver<MultiReceiver<N, Receivers, C::Mono>, C, Pin, D>
+    AsyncReceiver<MultiReceiver<N, Receivers, C::Time>, C, Pin, D>
 where
     C: Clock,
-    Receivers: ReceiverSet<N, C::Mono>,
+    Receivers: ReceiverSet<N, C::Time>,
     Pin: Wait,
     D: DelayNs,
 {
@@ -192,7 +192,7 @@ pub struct EmbassyClock;
 
 #[cfg(feature = "embassy")]
 impl Clock for EmbassyClock {
-    type Mono = u64;
+    type Time = u64;
 
     fn resolution(&self) -> u32 {
         1_000_000

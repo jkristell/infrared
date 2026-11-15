@@ -224,7 +224,7 @@ fn fugit() {
 
     let mut receiver = crate::receiver()
         .nec()
-        .monotonic::<TimerInstantU32<1_000_000>>()
+        .timebase::<TimerInstantU32<1_000_000>>()
         .build();
 
     let mut cmds = std::vec::Vec::new();

@@ -99,7 +99,7 @@ mod app {
             pin
         };
 
-        let ir_rx = infrared::PinReceiver::with_fugit(rx_pin);
+        let ir_rx = PinReceiver::new(Receiver::with_fugit(), rx_pin);
         let mono = cx.device.TIM3.monotonic(&mut rcc);
 
         let shared = Shared { usb_dev, usb_hid };
@@ -123,7 +123,7 @@ mod app {
 
         let now = monotonics::Monotonic::now();
 
-        if let Ok(Some(button)) = ir_rx.event_instant(now) {
+        if let Ok(Some(button)) = ir_rx.event_at(now) {
             let _ = process_ir_cmd::spawn(button).ok();
         }
 

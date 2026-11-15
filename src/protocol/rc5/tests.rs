@@ -125,7 +125,7 @@ fn rc5_fugit_u64() {
     for (i, dt) in DISTS.iter().enumerate() {
         let level = if i % 2 == 0 { Level::Mark } else { Level::Space };
         t += dt * 25;
-        if let Ok(Some(cmd)) = recv.event_instant(TimerInstantU64::from_ticks(t), level) {
+        if let Ok(Some(cmd)) = recv.event_at(TimerInstantU64::from_ticks(t), level) {
             cmds.push(cmd);
         }
     }

@@ -1,21 +1,32 @@
+//! Time base abstraction: the instant and duration types used by the receivers
+
 use core::ops::{Add, Sub};
 
 #[cfg(feature = "fugit")]
 mod fgt;
 mod primitives;
 
-pub trait InfraMonotonic: Sized {
+/// Time base of a receiver: the types used for timestamps and durations
+///
+/// Implemented for plain `u32` and `u64` tick counters, which may wrap
+/// around, and for the fugit `TimerInstantU32` and `TimerInstantU64` types
+/// (`fugit` feature). The tick rate is the receiver's resolution.
+pub trait TimeBase: Sized {
+    /// A point in time
     type Instant: Ord
         + Copy
         + Add<Self::Duration, Output = Self::Instant>
         + Sub<Self::Duration, Output = Self::Instant>
         + Sub<Self::Instant, Output = Self::Duration>;
+    /// The time between two instants
     type Duration: PartialOrd
         + Copy
         + Add<Self::Duration, Output = Self::Duration>
         + core::fmt::Debug;
 
+    /// The instant at tick zero
     const ZERO_INSTANT: Self::Instant;
+    /// A zero length duration
     const ZERO_DURATION: Self::Duration;
 
     /// Time elapsed from `b` to the later instant `a`
@@ -24,43 +35,48 @@ pub trait InfraMonotonic: Sized {
     /// the duration can't be determined.
     fn checked_sub(a: Self::Instant, b: Self::Instant) -> Option<Self::Duration>;
 
-    fn create_span(freq: u32, p: u32, t: u32) -> Span<Self::Duration>;
+    #[doc(hidden)]
+    fn create_span(resolution: u32, p: u32, t: u32) -> Span<Self::Duration>;
 
-    /// Convert `d` to microseconds, `freq` being the resolution in Hz
-    fn to_micros(freq: u32, d: Self::Duration) -> u64;
+    /// Convert `d` to microseconds at `resolution` Hz
+    fn to_micros(resolution: u32, d: Self::Duration) -> u64;
 }
 
+#[doc(hidden)]
 #[derive(Debug)]
 pub struct Span<Dur> {
     low: Dur,
     high: Dur,
 }
 
+/// The accepted duration ranges of the symbols of a protocol
 #[derive(Debug)]
-pub struct PulseSpans<Mono: InfraMonotonic> {
-    pub(crate) spans: [Span<Mono::Duration>; 8],
+pub struct PulseSpans<Time: TimeBase> {
+    pub(crate) spans: [Span<Time::Duration>; 8],
 }
 
-impl<Mono> PulseSpans<Mono>
+impl<Time> PulseSpans<Time>
 where
-    Mono: InfraMonotonic,
+    Time: TimeBase,
 {
-    pub fn new(freq: u32, pulse: &[u32; 8], tolerance: &[u32; 8]) -> Self {
+    /// Create the spans from nominal lengths and tolerances in µs, at `resolution` Hz
+    pub fn new(resolution: u32, pulse: &[u32; 8], tolerance: &[u32; 8]) -> Self {
         PulseSpans {
             spans: [
-                Mono::create_span(freq, pulse[0], tolerance[0]),
-                Mono::create_span(freq, pulse[1], tolerance[1]),
-                Mono::create_span(freq, pulse[2], tolerance[2]),
-                Mono::create_span(freq, pulse[3], tolerance[3]),
-                Mono::create_span(freq, pulse[4], tolerance[4]),
-                Mono::create_span(freq, pulse[5], tolerance[5]),
-                Mono::create_span(freq, pulse[6], tolerance[6]),
-                Mono::create_span(freq, pulse[7], tolerance[7]),
+                Time::create_span(resolution, pulse[0], tolerance[0]),
+                Time::create_span(resolution, pulse[1], tolerance[1]),
+                Time::create_span(resolution, pulse[2], tolerance[2]),
+                Time::create_span(resolution, pulse[3], tolerance[3]),
+                Time::create_span(resolution, pulse[4], tolerance[4]),
+                Time::create_span(resolution, pulse[5], tolerance[5]),
+                Time::create_span(resolution, pulse[6], tolerance[6]),
+                Time::create_span(resolution, pulse[7], tolerance[7]),
             ],
         }
     }
 
-    pub fn get<P: From<usize>>(&self, pl: Mono::Duration) -> Option<P> {
+    /// Index of the span containing `pl`, converted to the symbol type `P`
+    pub fn get<P: From<usize>>(&self, pl: Time::Duration) -> Option<P> {
         self.spans
             .iter()
             .position(|v| v.contains(pl))
@@ -68,19 +84,20 @@ where
     }
 
     /// The longest duration that is part of a valid symbol
-    pub fn max(&self) -> Mono::Duration {
-        self.spans.iter().fold(Mono::ZERO_DURATION, |max, span| {
+    pub fn max(&self) -> Time::Duration {
+        self.spans.iter().fold(Time::ZERO_DURATION, |max, span| {
             if span.high > max { span.high } else { max }
         })
     }
 
     /// Time without edges after which the input is considered idle: twice
     /// the longest valid symbol
-    pub fn idle_timeout(&self) -> Mono::Duration {
+    pub fn idle_timeout(&self) -> Time::Duration {
         let max = self.max();
         max + max
     }
 
+    /// True if any two spans overlap, which makes the protocol ambiguous at this resolution
     pub fn check_overlaps(&self) -> bool {
         for i in 0..self.spans.len() {
             for j in 0..self.spans.len() {

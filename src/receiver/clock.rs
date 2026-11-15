@@ -16,17 +16,17 @@ use crate::{
     protocol::Message,
     receiver::{
         DecoderBuilder, DecodingError, EdgeDriven, MultiReceiver, PollDriven, Receiver,
-        ReceiverSet, Timeout, time::InfraMonotonic,
+        ReceiverSet, Timeout, time::TimeBase,
     },
 };
 
-type InstantOf<C> = <<C as Clock>::Mono as InfraMonotonic>::Instant;
-type DurationOf<C> = <<C as Clock>::Mono as InfraMonotonic>::Duration;
+type InstantOf<C> = <<C as Clock>::Time as TimeBase>::Instant;
+type DurationOf<C> = <<C as Clock>::Time as TimeBase>::Duration;
 
 /// A source of the current time
 pub trait Clock {
     /// The time representation of the clock
-    type Mono: InfraMonotonic;
+    type Time: TimeBase;
 
     /// Resolution of the clock in Hz
     fn resolution(&self) -> u32;
@@ -51,16 +51,16 @@ pub trait Clock {
 /// });
 /// assert_eq!(clock.now(), 10);
 /// ```
-pub struct FnClock<F, Mono = u32> {
+pub struct FnClock<F, Time = u32> {
     resolution: u32,
     now: F,
-    mono: PhantomData<Mono>,
+    mono: PhantomData<Time>,
 }
 
-impl<F, Mono> FnClock<F, Mono>
+impl<F, Time> FnClock<F, Time>
 where
-    Mono: InfraMonotonic,
-    F: FnMut() -> Mono::Instant,
+    Time: TimeBase,
+    F: FnMut() -> Time::Instant,
 {
     /// Create a clock with `resolution` Hz that reads the time from `now`
     pub fn new(resolution: u32, now: F) -> Self {
@@ -72,18 +72,18 @@ where
     }
 }
 
-impl<F, Mono> Clock for FnClock<F, Mono>
+impl<F, Time> Clock for FnClock<F, Time>
 where
-    Mono: InfraMonotonic,
-    F: FnMut() -> Mono::Instant,
+    Time: TimeBase,
+    F: FnMut() -> Time::Instant,
 {
-    type Mono = Mono;
+    type Time = Time;
 
     fn resolution(&self) -> u32 {
         self.resolution
     }
 
-    fn now(&mut self) -> Mono::Instant {
+    fn now(&mut self) -> Time::Instant {
         (self.now)()
     }
 }
@@ -113,7 +113,7 @@ impl Default for StdClock {
 
 #[cfg(feature = "std")]
 impl Clock for StdClock {
-    type Mono = u64;
+    type Time = u64;
 
     fn resolution(&self) -> u32 {
         1_000_000
@@ -202,7 +202,7 @@ where
     /// * `level`: The input level after the edge, see [`Level`]
     pub fn event(&mut self, level: Level) -> Result<R::Output, DecodingError> {
         let now = self.clock.now();
-        let dt = C::Mono::checked_sub(now, self.last_edge).unwrap_or(C::Mono::ZERO_DURATION);
+        let dt = C::Time::checked_sub(now, self.last_edge).unwrap_or(C::Time::ZERO_DURATION);
         self.last_edge = now;
         self.level = level;
         self.idle = false;
@@ -258,7 +258,7 @@ where
         }
 
         let now = self.clock.now();
-        match C::Mono::checked_sub(now, self.last_edge) {
+        match C::Time::checked_sub(now, self.last_edge) {
             Some(elapsed) if elapsed >= self.idle_timeout => {
                 self.idle = true;
                 self.recv.timeout()
@@ -322,28 +322,22 @@ where
     }
 }
 
-impl<Proto, C, Cmd> ClockedReceiver<Receiver<Proto, C::Mono, Cmd>, C>
+impl<Proto, C, Cmd> ClockedReceiver<Receiver<Proto, C::Time, Cmd>, C>
 where
     C: Clock,
-    Proto: DecoderBuilder<C::Mono>,
+    Proto: DecoderBuilder<C::Time>,
     Cmd: From<Proto::Cmd>,
 {
     /// Create a [`Receiver`] that uses `clock`
     pub fn with_clock(clock: C) -> Self {
         Self::new(Receiver::new(clock.resolution()), clock)
     }
-
-    #[cfg(feature = "embedded-hal")]
-    /// Create a [`Receiver`] that uses `clock` and `pin` as input
-    pub fn with_clock_and_pin<Pin: InputPin>(clock: C, pin: Pin) -> PinReceiver<Self, Pin> {
-        PinReceiver::new(Self::with_clock(clock), pin)
-    }
 }
 
-impl<const N: usize, Receivers, C> ClockedReceiver<MultiReceiver<N, Receivers, C::Mono>, C>
+impl<const N: usize, Receivers, C> ClockedReceiver<MultiReceiver<N, Receivers, C::Time>, C>
 where
     C: Clock,
-    Receivers: ReceiverSet<N, C::Mono>,
+    Receivers: ReceiverSet<N, C::Time>,
 {
     /// Create a [`MultiReceiver`] that uses `clock`
     pub fn with_clock_multi(clock: C) -> Self {

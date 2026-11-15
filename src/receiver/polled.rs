@@ -1,10 +1,5 @@
 use core::marker::PhantomData;
 
-#[cfg(feature = "embedded-hal")]
-use embedded_hal::digital::InputPin;
-
-#[cfg(feature = "embedded-hal")]
-use crate::receiver::PinReceiver;
 use crate::{
     Level,
     receiver::{DecoderBuilder, DecodingError, PollDriven, ProtocolDecoder, Timeout},
@@ -45,9 +40,9 @@ where
     Proto: DecoderBuilder<u32>,
     Cmd: From<<Proto as Protocol>::Cmd>,
 {
-    /// Create a new PolledReceiver with the given sample frequency (in Hz)
-    pub fn new(freq: u32) -> Self {
-        let decoder = Proto::build(freq);
+    /// Create a receiver polled at `sample_rate` Hz
+    pub fn new(sample_rate: u32) -> Self {
+        let decoder = Proto::build(sample_rate);
         Self {
             idle_samples: decoder.spans().idle_timeout(),
             decoder,
@@ -93,12 +88,6 @@ where
     /// Number of samples without an edge after which the input is considered idle
     pub fn idle_timeout(&self) -> u32 {
         self.idle_samples
-    }
-
-    #[cfg(feature = "embedded-hal")]
-    /// Create a periodic poll receiver with `pin` as input
-    pub fn with_pin<Pin: InputPin>(freq: u32, pin: Pin) -> PinReceiver<Self, Pin> {
-        PinReceiver::new(Self::new(freq), pin)
     }
 }
 
