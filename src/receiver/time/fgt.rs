@@ -15,6 +15,10 @@ impl<const NOM: u32, const DENOM: u32> InfraMonotonic for Instant<u32, NOM, DENO
     fn create_span(_freq: u32, p: u32, t: u32) -> Span<Self::Duration> {
         Span::<Self::Duration>::new(p.micros(), t)
     }
+
+    fn to_micros(_freq: u32, d: Self::Duration) -> u64 {
+        d.to_micros().into()
+    }
 }
 
 impl<const NOM: u32, const DENOM: u32> Span<Duration<u32, NOM, DENOM>> {
@@ -40,6 +44,10 @@ impl<const NOM: u32, const DENOM: u32> InfraMonotonic for Instant<u64, NOM, DENO
     fn create_span(_freq: u32, p: u32, t: u32) -> Span<Self::Duration> {
         let p: u64 = p.into();
         Span::<Self::Duration>::new(p.micros(), t)
+    }
+
+    fn to_micros(_freq: u32, d: Self::Duration) -> u64 {
+        d.to_micros()
     }
 }
 

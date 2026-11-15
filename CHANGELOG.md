@@ -3,6 +3,9 @@
 ## [0.15.0] - Unreleased
  - Idle timeout handling: `timeout()` on `Receiver`, `MultiReceiver`, `PolledReceiver` and `PinReceiver` (new `Timeout` trait) discards partially received frames once the input has been idle for `idle_timeout()`, which is derived from the protocol timing. `PolledReceiver` does this automatically. `ProtocolDecoder::timeout` lets protocols whose frames end on silence finish the frame. `EdgeDriven` gained `idle_timeout()`
  - Clock support: new `Clock` trait with `FnClock` (adapts any time source, e.g. a hardware timer, RTIC monotonic or fugit instant) and `StdClock` (new `std` feature). `ClockedReceiver` timestamps edges itself: `event(edge)`, a self-checking `timeout()`, and `poll(level)` that detects edges and idle input from the level alone. With a pin, `PinReceiver::event()` takes no arguments. Builder: `build_clocked(clock)` and `build_clocked_with_pin(clock, pin)`
+ - Async receiver: new `async` feature with `AsyncReceiver`, which waits on an embedded-hal-async `Wait` pin and uses a `DelayNs` for the idle timeout. `receive().await` returns the next command and skips decode errors; `next().await` returns every decoder result. The `embassy` feature adds `EmbassyClock` and `AsyncReceiver::embassy(pin)`. Builder: `build_async(clock, pin, delay)` and `build_embassy(pin)`
+ - `InfraMonotonic` has a new required method `to_micros()`
+ - Examples: new async `embassy-rp-pico` example
  - Plain `u32`/`u64` time counters may now wrap around: elapsed time is computed with wrapping arithmetic
  - Rewrote the embedded-hal sender for embedded-hal 1.0 (`SetDutyCycle`), with configurable carrier duty cycle
  - Type renames for a cleaner API: `PeriodicPoll` → `PolledReceiver`, the `EdgeReceiver`/`PollReceiver` traits → `EdgeDriven`/`PollDriven`, `ReceiverWrapper` → `ReceiverSet`, `receiver::State` → `DecoderState`, the embedded-hal sender → `PwmSender`, `RemoteControlModel` → `RemoteControl`, `AddressCommand` → `AddressedCommand`

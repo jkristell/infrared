@@ -13,6 +13,10 @@ use crate::protocol::Rc6;
 use crate::protocol::Sbp;
 #[cfg(feature = "nec")]
 use crate::protocol::{nec::NecCommand, AppleNec, Nec, Nec16, SamsungNec};
+#[cfg(feature = "async")]
+use crate::receiver::AsyncReceiver;
+#[cfg(feature = "embassy")]
+use crate::receiver::EmbassyClock;
 #[cfg(feature = "embedded-hal")]
 use crate::receiver::PinReceiver;
 #[cfg(feature = "remotes")]
@@ -176,6 +180,41 @@ where
         Cmd: From<<Proto as Protocol>::Cmd>,
     {
         ClockedReceiver::with_clock_and_pin(clock, pin)
+    }
+
+    #[cfg(feature = "async")]
+    /// Create an async Receiver with `pin` as input, `clock` for timestamping
+    /// the edges and `delay` for the idle timeout
+    ///
+    /// The resolution and time representation are taken from the clock.
+    pub fn build_async<C, Pin, D>(
+        self,
+        clock: C,
+        pin: Pin,
+        delay: D,
+    ) -> AsyncReceiver<Receiver<Proto, C::Mono, Cmd>, C, Pin, D>
+    where
+        C: Clock,
+        Proto: DecoderBuilder<C::Mono>,
+        Cmd: From<<Proto as Protocol>::Cmd>,
+        Pin: embedded_hal_async::digital::Wait,
+        D: embedded_hal_async::delay::DelayNs,
+    {
+        AsyncReceiver::with_clock(clock, pin, delay)
+    }
+
+    #[cfg(feature = "embassy")]
+    /// Create an async Receiver with `pin` as input, using embassy-time
+    pub fn build_embassy<Pin>(
+        self,
+        pin: Pin,
+    ) -> AsyncReceiver<Receiver<Proto, u64, Cmd>, EmbassyClock, Pin, embassy_time::Delay>
+    where
+        Proto: DecoderBuilder<u64>,
+        Cmd: From<<Proto as Protocol>::Cmd>,
+        Pin: embedded_hal_async::digital::Wait,
+    {
+        AsyncReceiver::embassy(pin)
     }
 
     /// Create a polled Receiver

@@ -25,6 +25,9 @@ pub trait InfraMonotonic: Sized {
     fn checked_sub(a: Self::Instant, b: Self::Instant) -> Option<Self::Duration>;
 
     fn create_span(freq: u32, p: u32, t: u32) -> Span<Self::Duration>;
+
+    /// Convert `d` to microseconds, `freq` being the resolution in Hz
+    fn to_micros(freq: u32, d: Self::Duration) -> u64;
 }
 
 #[derive(Debug)]

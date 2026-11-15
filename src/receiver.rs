@@ -13,6 +13,8 @@
 //!  - [`BufferReceiver`]: Decodes buffers of edge timings.
 //!  - [`ClockedReceiver`]: [`Receiver`] or [`MultiReceiver`] with its own
 //!    [`Clock`], timestamping the edges itself.
+//!  - `AsyncReceiver` (`async` feature): waits for edges on an
+//!    embedded-hal-async pin. `async fn receive()` returns the next command.
 //!
 //! ### Event / Interrupt based Receiver with embedded-hal pin
 //!
@@ -180,6 +182,8 @@ use core::marker::PhantomData;
 
 use crate::{receiver::time::InfraMonotonic, Protocol};
 
+#[cfg(feature = "async")]
+mod asynch;
 mod bufferinput;
 mod builder;
 mod clock;
@@ -192,6 +196,10 @@ mod pin;
 mod ppoll;
 pub mod time;
 
+#[cfg(feature = "async")]
+pub use asynch::AsyncReceiver;
+#[cfg(feature = "embassy")]
+pub use asynch::EmbassyClock;
 pub use bufferinput::BufferReceiver;
 pub use iter::BufferIterator;
 pub use builder::Builder;

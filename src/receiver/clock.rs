@@ -208,6 +208,16 @@ where
         self.recv.event_edge(dt, edge)
     }
 
+    /// True if the input has been idle since the last timeout
+    pub fn is_idle(&self) -> bool {
+        self.idle
+    }
+
+    /// Resolution of the clock in Hz
+    pub fn resolution(&self) -> u32 {
+        self.clock.resolution()
+    }
+
     /// Get a reference to the wrapped receiver
     pub fn receiver(&self) -> &R {
         &self.recv
@@ -267,6 +277,19 @@ where
         } else {
             self.timeout()
         }
+    }
+}
+
+impl<R, C> ClockedReceiver<R, C>
+where
+    C: Clock,
+    R: EdgeDriven<Instant = InstantOf<C>, Duration = DurationOf<C>> + Timeout,
+{
+    /// Time out without checking the clock, for callers that timed the idle period themselves
+    #[cfg(feature = "async")]
+    pub(crate) fn force_timeout(&mut self) -> Result<<R as Timeout>::Output, DecodingError> {
+        self.idle = true;
+        self.recv.timeout()
     }
 }
 
