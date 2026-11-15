@@ -184,7 +184,7 @@ fn send_keycode(kbd: &HIDClass<UsbBusType>, key: MediaKey) {
 
 fn action_to_mediakey(action: Action) -> MediaKey {
     match action {
-        Action::Play_Pause => MediaKey::PlayPause,
+        Action::PlayPause => MediaKey::PlayPause,
         Action::Up => MediaKey::VolumeIncrement,
         Action::Down => MediaKey::VolumeDecrement,
         Action::Right => MediaKey::NextTrack,

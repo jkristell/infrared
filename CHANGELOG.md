@@ -19,6 +19,11 @@
    - `event_instant` is now `event_at` (and `event_instant_iter` → `event_at_iter`, `EdgeDriven::event_edge_instant` → `event_edge_at`)
    - Removed the shortcut constructors `PinReceiver::with_pin`, `with_pin_poll`, `with_pin_multi`, `with_fugit`, `with_fugit64`, `PolledReceiver::with_pin` and `ClockedReceiver::with_clock_and_pin`. Use the builder or `PinReceiver::new(core, pin)`, e.g. `PinReceiver::new(Receiver::with_fugit(), pin)`
  - Sender `Status::Transmit(bool)` is now `Transmit(Level)`, with a `Status::is_carrier_on()` helper. Removed the unused `Status::Error`
+ - Remote controls:
+   - Removed `RemoteControl::PROTOCOL`, the protocol comes from `Cmd::PROTOCOL`. `DEVTYPE` is now `DEVICE_TYPE`
+   - `DeviceType` variants are CamelCase (`Tv`, `DvdPlayer`, `CdPlayer`) and the enum is `#[non_exhaustive]`
+   - `Action` variant renames: `Paus` → `Pause`, `Play_Pause` → `PlayPause`, `Play_Pause2` → `PlayPause2`, `U_SD` → `UsbSd`, `Eq` → `Equalizer`, `Prog` → `Program`
+   - `Action::to_str` is now `as_str` (returns `&'static str`), and `Action` implements `Display`
  - `Samsung36Command` no longer has a `valid` field: frames with a bad checksum are a `DecodingError::Validation`
  - `DenonCommand` is decoded as Denon-K (Kaseikyo): 12 bit `address` and 8 bit `command` instead of the raw `bits`. The vendor id and parity are validated
  - Apple NEC: commands can now be encoded (`pack()` panicked), fixed an overflow in `command()`, and the device id is now the address

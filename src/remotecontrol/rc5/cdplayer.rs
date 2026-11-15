@@ -3,7 +3,6 @@ use Action::*;
 use crate::{
     protocol::rc5::Rc5Command,
     remotecontrol::{Action, DeviceType, RemoteControl},
-    ProtocolId,
 };
 
 #[derive(Debug, Default)]
@@ -12,8 +11,7 @@ pub struct CdPlayer;
 
 impl RemoteControl for CdPlayer {
     const MODEL: &'static str = "CD Player (Rc5)";
-    const DEVTYPE: DeviceType = DeviceType::CDPlayer;
-    const PROTOCOL: ProtocolId = ProtocolId::Rc5;
+    const DEVICE_TYPE: DeviceType = DeviceType::CdPlayer;
     const ADDRESS: u32 = 20;
     type Cmd = Rc5Command;
     const BUTTONS: &'static [(u32, Action)] = &[
@@ -41,8 +39,8 @@ impl RemoteControl for CdPlayer {
         (37, PitchReset),
         (38, PitchPlus),
         (39, PitchMinus),
-        (41, Prog),
-        (48, Paus),
+        (41, Program),
+        (48, Pause),
         (53, Play),
         (54, Stop),
     ];

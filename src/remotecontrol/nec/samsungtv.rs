@@ -3,7 +3,6 @@ use Action::*;
 use crate::{
     protocol::nec::Samsung32Command,
     remotecontrol::{Action, DeviceType, RemoteControl},
-    ProtocolId,
 };
 
 #[derive(Debug, Default)]
@@ -11,8 +10,7 @@ pub struct SamsungTv;
 
 impl RemoteControl for SamsungTv {
     const MODEL: &'static str = "Samsung TV";
-    const DEVTYPE: DeviceType = DeviceType::TV;
-    const PROTOCOL: ProtocolId = ProtocolId::Samsung32;
+    const DEVICE_TYPE: DeviceType = DeviceType::Tv;
     const ADDRESS: u32 = 7;
     type Cmd = Samsung32Command;
 
@@ -56,7 +54,7 @@ impl RemoteControl for SamsungTv {
         (70, Stop),
         (69, Rewind),
         (71, Play),
-        (74, Paus),
+        (74, Pause),
         (72, Forward),
     ];
 }

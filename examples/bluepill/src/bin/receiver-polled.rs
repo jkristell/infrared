@@ -80,7 +80,7 @@ fn TIM2() {
         Ok(Some(cmd)) => {
             if let Some(button) = cmd.action() {
                 match button {
-                    Action::Play_Pause => info!("Play was pressed!"),
+                    Action::PlayPause => info!("Play was pressed!"),
                     Action::Power => info!("Power on/off"),
                     _ => info!("Button pressed: {:?}", button),
                 };

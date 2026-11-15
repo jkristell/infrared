@@ -190,7 +190,7 @@ fn button_to_mousereport(action: Action, repeats: u32) -> MouseReport {
     let mut y = 0;
 
     match action {
-        Action::Play_Pause => {
+        Action::PlayPause => {
             // Hold the button long enough to get a repeat that we use to signal mouse button release
             buttons = u8::from(repeats == 0);
         }
