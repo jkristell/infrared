@@ -3,6 +3,7 @@
 use embedded_hal::digital::InputPin;
 
 use crate::{
+    Level,
     protocol::Message,
     receiver::{
         time::InfraMonotonic, DecoderBuilder, EdgeDriven, Error, MultiReceiver, PolledReceiver,
@@ -63,16 +64,16 @@ where
     /// Update the receiver
     /// * `dt`: Duration since the previous edge
     pub fn event(&mut self, dt: R::Duration) -> Result<R::Output, Error<Pin::Error>> {
-        let edge = self.pin.is_low().map_err(Error::Hal)?;
-        self.recv.event_edge(dt, edge).map_err(Into::into)
+        let level = self.pin.is_low().map(Level::from_active_low).map_err(Error::Hal)?;
+        self.recv.event_edge(dt, level).map_err(Into::into)
     }
 
     /// Update the receiver with an edge at instant `t`
     ///
     /// The duration since the previous edge is tracked internally.
     pub fn event_instant(&mut self, t: R::Instant) -> Result<R::Output, Error<Pin::Error>> {
-        let edge = self.pin.is_low().map_err(Error::Hal)?;
-        self.recv.event_edge_instant(t, edge).map_err(Into::into)
+        let level = self.pin.is_low().map(Level::from_active_low).map_err(Error::Hal)?;
+        self.recv.event_edge_instant(t, level).map_err(Into::into)
     }
 }
 
@@ -98,8 +99,8 @@ where
     ///
     /// To be called periodically at the receiver's sample frequency
     pub fn poll(&mut self) -> Result<R::Output, Error<Pin::Error>> {
-        let edge = self.pin.is_low().map_err(Error::Hal)?;
-        self.recv.poll_edge(edge).map_err(Into::into)
+        let level = self.pin.is_low().map(Level::from_active_low).map_err(Error::Hal)?;
+        self.recv.poll_edge(level).map_err(Into::into)
     }
 }
 

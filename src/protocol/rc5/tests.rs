@@ -1,4 +1,5 @@
 use crate::{
+    Level,
     protocol::{rc5::Rc5Command, Rc5},
     receiver::BufferReceiver,
     remotecontrol::{Action, Button},
@@ -122,9 +123,9 @@ fn rc5_fugit_u64() {
     let mut cmds = std::vec::Vec::new();
     let mut t = 0;
     for (i, dt) in DISTS.iter().enumerate() {
-        let edge = i % 2 == 0;
+        let level = if i % 2 == 0 { Level::Mark } else { Level::Space };
         t += dt * 25;
-        if let Ok(Some(cmd)) = recv.event_instant(TimerInstantU64::from_ticks(t), edge) {
+        if let Ok(Some(cmd)) = recv.event_instant(TimerInstantU64::from_ticks(t), level) {
             cmds.push(cmd);
         }
     }

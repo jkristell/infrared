@@ -5,7 +5,7 @@ use crate::{
         time::{InfraMonotonic, PulseSpans},
         DecodingError,
     },
-    Protocol,
+    Level, Protocol,
 };
 
 /// Used to create a Decoder for a protocol
@@ -25,10 +25,10 @@ where
     Proto: Protocol + ?Sized,
     Mono: InfraMonotonic,
 {
-    /// Notify the state machine of a new event
-    /// * `edge`: true = start of an IR mark (the pin reading low on an active-low receiver module), false = start of a space
-    /// * `dt` : Duration since last event
-    fn event(&mut self, edge: bool, dt: Mono::Duration) -> DecoderState;
+    /// Notify the state machine of an edge
+    /// * `dt`: Duration since the previous edge
+    /// * `level`: The level the signal changed to
+    fn event(&mut self, dt: Mono::Duration, level: Level) -> DecoderState;
 
     /// Get the command
     /// Returns the data if DecoderState == Done, otherwise None
@@ -54,10 +54,10 @@ where
     /// I don't care about the details, just give me a command (or an error)!
     fn event_total(
         &mut self,
-        edge: bool,
         dt: Mono::Duration,
+        level: Level,
     ) -> Result<Option<Proto::Cmd>, DecodingError> {
-        let state = self.event(edge, dt);
+        let state = self.event(dt, level);
         self.finish(state)
     }
 

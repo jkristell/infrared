@@ -3,6 +3,7 @@
 use std::{cell::Cell, rc::Rc};
 
 use infrared::{
+    Level,
     PolledReceiver, Receiver,
     protocol::{Nec, nec::NecCommand},
     receiver::{ClockedReceiver, FnClock, MultiReceiver},
@@ -24,12 +25,12 @@ fn nec_frame(address: u8, command: u8) -> Vec<u32> {
 
 /// Feed `dists` to `recv`, alternating edges starting with an IR mark
 fn feed(recv: &mut Receiver<Nec>, dists: &[u32]) -> Vec<Result<Option<NecCommand>, ()>> {
-    let mut edge = false;
+    let mut level = Level::Space;
     dists
         .iter()
         .map(|&dt| {
-            edge = !edge;
-            recv.event(dt, edge).map_err(|_| ())
+            level = level.toggle();
+            recv.event(dt, level).map_err(|_| ())
         })
         .collect()
 }
@@ -96,35 +97,35 @@ fn multireceiver_timeout() {
         Receiver::<Nec>::new(RES).idle_timeout()
     );
 
-    let mut edge = false;
+    let mut level = Level::Space;
     for &dt in &frame[..frame.len() / 2] {
-        edge = !edge;
-        recv.event(dt, edge);
+        level = level.toggle();
+        recv.event(dt, level);
     }
     assert!(recv.timeout().iter().all(Option::is_none));
 
-    let mut edge = false;
+    let mut level = Level::Space;
     let mut next = vec![50_000];
     next.extend_from_slice(&frame[1..]);
     let mut cmds = vec![];
     for &dt in &next {
-        edge = !edge;
-        cmds.extend(recv.event_iter(dt, edge));
+        level = level.toggle();
+        cmds.extend(recv.event_iter(dt, level));
     }
     assert_eq!(cmds.len(), 1);
 }
 
 /// Sample `dists` at 1 sample per tick into input levels (true = IR mark), ending idle
-fn sample(dists: &[u32]) -> Vec<bool> {
-    let mut level = false;
+fn sample(dists: &[u32]) -> Vec<Level> {
+    let mut level = Level::Space;
     let mut out = vec![];
     for &d in dists {
         out.extend(std::iter::repeat_n(level, d as usize));
-        level = !level;
+        level = level.toggle();
     }
     // Let the final edge be seen, then return to idle
     out.extend(std::iter::repeat_n(level, 20));
-    out.extend(std::iter::repeat_n(false, 20));
+    out.extend(std::iter::repeat_n(Level::Space, 20));
     out
 }
 
@@ -139,7 +140,7 @@ fn polled_receiver_flushes_on_idle() {
 
     // Half a frame, then idle long enough to flush, then a complete frame
     let mut samples = sample(&frame[..frame.len() / 2 + 1]);
-    samples.extend(std::iter::repeat_n(false, idle + 10));
+    samples.extend(std::iter::repeat_n(Level::Space, idle + 10));
     samples.extend(sample(&frame));
 
     let res: Vec<_> = samples.iter().map(|&l| recv.poll(l)).collect();
@@ -163,12 +164,12 @@ fn clocked_receiver_decodes() {
     let (time, clock) = test_clock();
     let mut recv = infrared::receiver().nec().build_clocked(clock);
 
-    let mut edge = false;
+    let mut level = Level::Space;
     let mut cmds = vec![];
     for &dt in &nec_frame(0x56, 0x78) {
         time.set(time.get() + dt);
-        edge = !edge;
-        if let Some(cmd) = recv.event(edge).unwrap() {
+        level = level.toggle();
+        if let Some(cmd) = recv.event(level).unwrap() {
             cmds.push(cmd);
         }
     }
@@ -183,13 +184,13 @@ fn clocked_receiver_timeout_checks_elapsed_time() {
     let frame = nec_frame(0x12, 0x34);
     let (first, second) = frame.split_at(frame.len() / 2);
 
-    let edge = Cell::new(false);
+    let level = Cell::new(Level::Space);
     let feed = |recv: &mut ClockedReceiver<Receiver<Nec>, TestClock>, dists: &[u32]| {
         let mut out = vec![];
         for &dt in dists {
             time.set(time.get() + dt);
-            edge.set(!edge.get());
-            out.push(recv.event(edge.get()));
+            level.set(level.get().toggle());
+            out.push(recv.event(level.get()));
         }
         out
     };
@@ -210,7 +211,7 @@ fn clocked_receiver_timeout_checks_elapsed_time() {
     assert_eq!(recv.timeout(), Ok(None));
     let mut next = vec![50_000];
     next.extend_from_slice(&frame[1..]);
-    if edge.get() {
+    if level.get().is_mark() {
         // Restart with an IR mark
         next.insert(0, 1);
     }
@@ -301,12 +302,12 @@ fn clocked_multireceiver() {
     let mut recv: ClockedReceiver<MultiReceiver<2, (Nec, Rc5)>, _> =
         ClockedReceiver::with_clock_multi(clock);
 
-    let mut edge = false;
+    let mut level = Level::Space;
     let mut cmds = vec![];
     for &dt in &nec_frame(1, 2) {
         time.set(time.get() + dt);
-        edge = !edge;
-        cmds.extend(recv.event_iter(edge));
+        level = level.toggle();
+        cmds.extend(recv.event_iter(level));
     }
     assert_eq!(cmds.len(), 1);
     assert_eq!(cmds[0].protocol, ProtocolId::Nec);
@@ -321,12 +322,12 @@ fn clocked_receiver_handles_clock_wraparound() {
     time.set(u32::MAX - half);
     let mut recv: ClockedReceiver<Receiver<Nec>, _> = ClockedReceiver::with_clock(clock);
 
-    let mut edge = false;
+    let mut level = Level::Space;
     let mut cmds = vec![];
     for &dt in &frame {
         time.set(time.get().wrapping_add(dt));
-        edge = !edge;
-        cmds.extend(recv.event(edge).unwrap());
+        level = level.toggle();
+        cmds.extend(recv.event(level).unwrap());
     }
     assert_eq!(cmds.len(), 1);
     assert_eq!((cmds[0].address, cmds[0].command), (0x12, 0x34));
@@ -335,21 +336,21 @@ fn clocked_receiver_handles_clock_wraparound() {
     time.set(u32::MAX - half);
     for &dt in &frame[..frame.len() / 2] {
         time.set(time.get().wrapping_add(dt));
-        edge = !edge;
-        recv.event(edge).unwrap();
+        level = level.toggle();
+        recv.event(level).unwrap();
     }
     time.set(time.get().wrapping_add(recv.idle_timeout()));
     recv.timeout().unwrap();
     let mut next = vec![50_000];
     next.extend_from_slice(&frame[1..]);
-    if edge {
+    if level.is_mark() {
         next.insert(0, 1);
     }
     let mut res = vec![];
     for &dt in &next {
         time.set(time.get().wrapping_add(dt));
-        edge = !edge;
-        res.push(recv.event(edge));
+        level = level.toggle();
+        res.push(recv.event(level));
     }
     assert!(res.iter().all(Result::is_ok));
     assert_eq!(res.into_iter().flatten().flatten().count(), 1);

@@ -12,6 +12,7 @@ mod encoder;
 mod tests;
 
 use crate::{
+    Level,
     protocol::{Command, Protocol, ProtocolId},
     receiver::{
         time::{InfraMonotonic, PulseSpans},
@@ -53,7 +54,7 @@ impl<Mono: InfraMonotonic> DecoderBuilder<Mono> for Samsung36 {
             state: Samsung36State::Init,
             address: 0,
             command: 0,
-            since_rising: Mono::ZERO_DURATION,
+            since_mark: Mono::ZERO_DURATION,
             spans: PulseSpans::new(freq, &PULSE, &TOL),
         }
     }
@@ -64,7 +65,7 @@ pub struct Samsung36Decoder<Mono: InfraMonotonic> {
     state: Samsung36State,
     address: u16,
     command: u32,
-    since_rising: Mono::Duration,
+    since_mark: Mono::Duration,
     spans: PulseSpans<Mono>,
 }
 
@@ -144,12 +145,13 @@ pub enum Samsung36State {
 
 impl<Mono: InfraMonotonic> ProtocolDecoder<Samsung36, Mono> for Samsung36Decoder<Mono> {
     #[rustfmt::skip]
-    fn event(&mut self, rising: bool, dt: Mono::Duration) -> DecoderState {
+    fn event(&mut self, dt: Mono::Duration, level: Level) -> DecoderState {
+        let mark = level.is_mark();
         use Samsung36Symbol::*;
         use Samsung36State::*;
 
-        if rising {
-            let dt = self.since_rising + dt;
+        if mark {
+            let dt = self.since_mark + dt;
             let pulsewidth = self.spans.get::<Samsung36Symbol>(dt).unwrap_or(Samsung36Symbol::Invalid);
 
             self.state = match (self.state, pulsewidth) {
@@ -175,7 +177,7 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Samsung36, Mono> for Samsung36Decoder
                 (Err(err),      _)      => Err(err),
             };
         } else {
-            self.since_rising = dt;
+            self.since_mark = dt;
         }
 
         self.state.into()
@@ -188,7 +190,7 @@ impl<Mono: InfraMonotonic> ProtocolDecoder<Samsung36, Mono> for Samsung36Decoder
         self.state = Samsung36State::Init;
         self.address = 0;
         self.command = 0;
-        self.since_rising = Mono::ZERO_DURATION;
+        self.since_mark = Mono::ZERO_DURATION;
     }
 
     fn spans(&self) -> &PulseSpans<Mono> {

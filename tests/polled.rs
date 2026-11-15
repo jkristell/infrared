@@ -2,6 +2,7 @@
 #[test]
 fn polled_rc5() {
     use infrared::{
+        Level,
         protocol::{rc5::Rc5Command, Rc5},
         PolledReceiver,
     };
@@ -15,7 +16,7 @@ fn polled_rc5() {
 
     let mut recv: PolledReceiver<Rc5> = infrared::receiver().rc5().resolution(40_000).build_polled();
 
-    let mut pinstate = false;
+    let mut pinstate = Level::Space;
 
     let mut res = None;
 
@@ -25,7 +26,7 @@ fn polled_rc5() {
                 res = Some(cmd);
             }
         }
-        pinstate = !pinstate;
+        pinstate = pinstate.toggle();
     }
 
     assert_eq!(

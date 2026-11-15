@@ -1,6 +1,7 @@
 use std::vec::Vec;
 
 use crate::{
+    Level,
     protocol::Samsung36,
     receiver::{BufferReceiver, DecodingError, Receiver},
 };
@@ -67,7 +68,7 @@ fn invalid_checksum() {
     let results: Vec<_> = dists
         .iter()
         .enumerate()
-        .map(|(i, dt)| r.event(*dt, i % 2 == 0))
+        .map(|(i, dt)| r.event(*dt, if i % 2 == 0 { Level::Mark } else { Level::Space }))
         .filter(|res| !matches!(res, Ok(None)))
         .collect();
 

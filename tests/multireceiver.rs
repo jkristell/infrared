@@ -1,6 +1,7 @@
 #![cfg(all(feature = "rc5", feature = "nec"))]
 
 use infrared::{
+    Level,
     ProtocolId,
     protocol::{Nec, Rc5},
     receiver::MultiReceiver,
@@ -17,8 +18,8 @@ fn multireceiver_decodes_rc5() {
 
     let mut cmds = Vec::new();
     for (i, dt) in DISTS.iter().enumerate() {
-        let edge = i % 2 == 0;
-        cmds.extend(mr.event_iter(*dt, edge));
+        let level = if i % 2 == 0 { Level::Mark } else { Level::Space };
+        cmds.extend(mr.event_iter(*dt, level));
     }
 
     assert_eq!(cmds.len(), 1);
@@ -34,9 +35,9 @@ fn multireceiver_event_instant() {
     let mut cmds = Vec::new();
     let mut t = 0u32;
     for (i, dt) in DISTS.iter().enumerate() {
-        let edge = i % 2 == 0;
+        let level = if i % 2 == 0 { Level::Mark } else { Level::Space };
         t += dt;
-        cmds.extend(mr.event_instant(t, edge).into_iter().flatten());
+        cmds.extend(mr.event_instant(t, level).into_iter().flatten());
     }
 
     assert_eq!(cmds.len(), 1);

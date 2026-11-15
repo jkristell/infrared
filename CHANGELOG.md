@@ -12,12 +12,13 @@
    - `Nec16` is now `NecExtended`, `Builder::nec16()` is `nec_extended()`
    - `NecDebug`/`NecDebugCmd` are now `NecRaw`/`NecRawCommand`
    - `Builder::nec_apple()` is now `apple_nec()`; `ProtocolId` variants renamed to match the types
+ - New `Level` enum (`Mark`/`Space`) replaces the `edge: bool` and `level: bool` arguments, with `Level::from_active_low(pin.is_low())` and `from_active_high()` helpers. The duration now always comes first: `ProtocolDecoder::event(dt, level)` (was `event(edge, dt)`)
  - `Samsung36Command` no longer has a `valid` field: frames with a bad checksum are a `DecodingError::Validation`
  - `DenonCommand` is decoded as Denon-K (Kaseikyo): 12 bit `address` and 8 bit `command` instead of the raw `bits`. The vendor id and parity are validated
  - Apple NEC: commands can now be encoded (`pack()` panicked), fixed an overflow in `command()`, and the device id is now the address
  - `BufferIterator` skips frames that fail to decode instead of ending the iteration
  - Idle timeout handling: `timeout()` on `Receiver`, `MultiReceiver`, `PolledReceiver` and `PinReceiver` (new `Timeout` trait) discards partially received frames once the input has been idle for `idle_timeout()`, which is derived from the protocol timing. `PolledReceiver` does this automatically. `ProtocolDecoder::timeout` lets protocols whose frames end on silence finish the frame. `EdgeDriven` gained `idle_timeout()`
- - Clock support: new `Clock` trait with `FnClock` (adapts any time source, e.g. a hardware timer, RTIC monotonic or fugit instant) and `StdClock` (new `std` feature). `ClockedReceiver` timestamps edges itself: `event(edge)`, a self-checking `timeout()`, and `poll(level)` that detects edges and idle input from the level alone. With a pin, `PinReceiver::event()` takes no arguments. Builder: `build_clocked(clock)` and `build_clocked_with_pin(clock, pin)`
+ - Clock support: new `Clock` trait with `FnClock` (adapts any time source, e.g. a hardware timer, RTIC monotonic or fugit instant) and `StdClock` (new `std` feature). `ClockedReceiver` timestamps edges itself: `event(level)`, a self-checking `timeout()`, and `poll(level)` that detects edges and idle input from the level alone. With a pin, `PinReceiver::event()` takes no arguments. Builder: `build_clocked(clock)` and `build_clocked_with_pin(clock, pin)`
  - Async receiver: new `async` feature with `AsyncReceiver`, which waits on an embedded-hal-async `Wait` pin and uses a `DelayNs` for the idle timeout. `receive().await` returns the next command and skips decode errors; `next().await` returns every decoder result. The `embassy` feature adds `EmbassyClock` and `AsyncReceiver::embassy(pin)`. Builder: `build_async(clock, pin, delay)` and `build_embassy(pin)`
  - `InfraMonotonic` has a new required method `to_micros()`
  - Sender rework:

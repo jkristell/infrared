@@ -17,6 +17,7 @@
 #![no_std]
 
 pub(crate) mod fmt;
+mod level;
 
 pub mod protocol;
 pub mod receiver;
@@ -25,6 +26,8 @@ pub mod sender;
 #[cfg(feature = "remotes")]
 pub mod remotecontrol;
 
+#[doc(inline)]
+pub use level::Level;
 #[doc(inline)]
 pub use protocol::{Command, Message, Protocol, ProtocolId};
 #[cfg(feature = "embedded-hal")]

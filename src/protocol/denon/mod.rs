@@ -14,6 +14,7 @@
 //! The address and command split is the same as IRremote's `Kaseikyo_Denon`.
 
 use crate::{
+    Level,
     protocol::{Command, Protocol, ProtocolId},
     receiver::{
         time::{InfraMonotonic, PulseSpans},
@@ -142,9 +143,10 @@ impl Command for DenonCommand {
 
 impl<Mono: InfraMonotonic> ProtocolDecoder<Denon, Mono> for DenonDecoder<Mono> {
     #[rustfmt::skip]
-    fn event(&mut self, rising: bool, dt: Mono::Duration) -> DecoderState {
+    fn event(&mut self, dt: Mono::Duration, level: Level) -> DecoderState {
+        let mark = level.is_mark();
 
-        if rising {
+        if mark {
             let symbol = self.spans.get::<DenonSymbol>( self.dt_save + dt)
                 .unwrap_or(DenonSymbol::Fail);
 

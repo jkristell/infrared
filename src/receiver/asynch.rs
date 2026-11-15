@@ -4,6 +4,7 @@ use embassy_futures::select::{select, Either};
 use embedded_hal_async::{delay::DelayNs, digital::Wait};
 
 use crate::{
+    Level,
     protocol::Message,
     receiver::{
         time::InfraMonotonic, Clock, ClockedReceiver, DecoderBuilder, EdgeDriven, Error,
@@ -38,8 +39,8 @@ pub struct AsyncReceiver<R: EdgeDriven, C, Pin, D> {
     recv: ClockedReceiver<R, C>,
     pin: Pin,
     delay: D,
-    /// Current input level, true = IR mark
-    level: bool,
+    /// Current input level
+    level: Level,
 }
 
 impl<R, C, Pin, D> AsyncReceiver<R, C, Pin, D>
@@ -57,7 +58,7 @@ where
             recv: ClockedReceiver::new(recv, clock),
             pin,
             delay,
-            level: false,
+            level: Level::Space,
         }
     }
 
@@ -72,10 +73,10 @@ where
     /// Most applications use `receive()` instead. This lower level method
     /// also returns decoding errors.
     pub async fn next(&mut self) -> Result<<R as EdgeDriven>::Output, Error<Pin::Error>> {
-        let to_mark = !self.level;
+        let next_level = self.level.toggle();
         let pin = &mut self.pin;
         let edge = async {
-            if to_mark {
+            if next_level.is_mark() {
                 pin.wait_for_low().await
             } else {
                 pin.wait_for_high().await
@@ -96,8 +97,8 @@ where
         match edge {
             Some(res) => {
                 res.map_err(Error::Hal)?;
-                self.level = to_mark;
-                self.recv.event(to_mark).map_err(Into::into)
+                self.level = next_level;
+                self.recv.event(next_level).map_err(Into::into)
             }
             None => self.recv.force_timeout().map_err(Into::into),
         }

@@ -64,7 +64,7 @@
 //! The core [`Receiver`] is hardware independent and can be used by feeding
 //! it edge events manually:
 //! ```
-//! use infrared::{Receiver, protocol::Nec};
+//! use infrared::{Level, Receiver, protocol::Nec};
 //!
 //! // Resolution of the clock used
 //! const RESOLUTION: u32 = 1_000_000;
@@ -75,10 +75,11 @@
 //! // Input interrupt handler
 //! // -------------------------------------------
 //!
-//! let dt = 0;        // Time since last pin flip
-//! let edge = false;  // Edge read from the pin
+//! let dt = 0;  // Time since last pin flip
+//! // Level read from the pin, here an active-low IR receiver module
+//! let level = Level::from_active_low(true);
 //!
-//! if let Ok(Some(cmd)) = receiver.event(dt, edge) {
+//! if let Ok(Some(cmd)) = receiver.event(dt, level) {
 //!     println!("{} {}", cmd.address, cmd.command);
 //! }
 //! ```
@@ -180,7 +181,7 @@
 //! ```
 use core::marker::PhantomData;
 
-use crate::{receiver::time::InfraMonotonic, Protocol};
+use crate::{receiver::time::InfraMonotonic, Level, Protocol};
 
 #[cfg(feature = "async")]
 mod asynch;
@@ -228,15 +229,15 @@ pub trait EdgeDriven {
 
     /// Update the receiver with an edge event
     /// * `dt`: Duration since the previous edge
-    /// * `edge`: true = start of an IR mark (the pin reading low on an active-low receiver module), false = start of a space
-    fn event_edge(&mut self, dt: Self::Duration, edge: bool)
+    /// * `level`: The input level after the edge, see [`Level`]
+    fn event_edge(&mut self, dt: Self::Duration, level: Level)
         -> Result<Self::Output, DecodingError>;
 
     /// Update the receiver with an edge event at instant `t`
     fn event_edge_instant(
         &mut self,
         t: Self::Instant,
-        edge: bool,
+        level: Level,
     ) -> Result<Self::Output, DecodingError>;
 
     /// Time without edges after which the input is considered idle
@@ -269,7 +270,7 @@ pub trait PollDriven {
     type Output;
 
     /// Update the receiver with the current pin state
-    fn poll_edge(&mut self, edge: bool) -> Result<Self::Output, DecodingError>;
+    fn poll_edge(&mut self, level: Level) -> Result<Self::Output, DecodingError>;
 }
 
 /// Event based Receiver
@@ -308,10 +309,10 @@ where
 
     /// Update the receiver
     /// * `dt`: Duration since the previous edge
-    /// * `edge`: true = start of an IR mark (the pin reading low on an active-low receiver module), false = start of a space
-    pub fn event(&mut self, dt: Mono::Duration, edge: bool) -> Result<Option<Cmd>, DecodingError> {
+    /// * `level`: The input level after the edge, see [`Level`]
+    pub fn event(&mut self, dt: Mono::Duration, level: Level) -> Result<Option<Cmd>, DecodingError> {
         self.decoder
-            .event_total(edge, dt)
+            .event_total(dt, level)
             .map(|cmd| cmd.map(Into::into))
     }
 
@@ -339,12 +340,12 @@ where
     pub fn event_instant(
         &mut self,
         t: Mono::Instant,
-        edge: bool,
+        level: Level,
     ) -> Result<Option<Cmd>, DecodingError> {
         let dt = Mono::checked_sub(t, self.prev_instant).unwrap_or(Mono::ZERO_DURATION);
         self.prev_instant = t;
 
-        self.event(dt, edge)
+        self.event(dt, level)
     }
 }
 
@@ -385,17 +386,17 @@ where
     fn event_edge(
         &mut self,
         dt: Self::Duration,
-        edge: bool,
+        level: Level,
     ) -> Result<Self::Output, DecodingError> {
-        self.event(dt, edge)
+        self.event(dt, level)
     }
 
     fn event_edge_instant(
         &mut self,
         t: Self::Instant,
-        edge: bool,
+        level: Level,
     ) -> Result<Self::Output, DecodingError> {
-        self.event_instant(t, edge)
+        self.event_instant(t, level)
     }
 
     fn idle_timeout(&self) -> Self::Duration {

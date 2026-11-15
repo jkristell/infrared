@@ -6,6 +6,7 @@ use embedded_hal::digital::{ErrorType, InputPin};
 #[test]
 fn receiver_remote() {
     use infrared::{
+        Level,
         protocol::Rc5,
         receiver::Receiver,
         remotecontrol::{rc5, rc5::CdPlayer, Button},
@@ -16,7 +17,7 @@ fn receiver_remote() {
         .remotecontrol(rc5::CdPlayer)
         .build();
 
-    match r.event(40, false) {
+    match r.event(40, Level::Space) {
         Ok(Some(event)) => {
             println!(
                 "Action: {:?}, repeat: {}",

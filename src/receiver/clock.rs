@@ -12,6 +12,7 @@ use embedded_hal::digital::InputPin;
 #[cfg(feature = "embedded-hal")]
 use crate::receiver::{Error, PinReceiver};
 use crate::{
+    Level,
     protocol::Message,
     receiver::{
         DecoderBuilder, DecodingError, EdgeDriven, MultiReceiver, PollDriven, Receiver,
@@ -144,8 +145,8 @@ impl Clock for StdClock {
 /// let mut receiver = ClockedReceiver::<infrared::Receiver<Nec>, _>::with_clock(clock);
 ///
 /// // Pin interrupt
-/// let edge = true;
-/// if let Ok(Some(cmd)) = receiver.event(edge) {
+/// let level = infrared::Level::Mark;
+/// if let Ok(Some(cmd)) = receiver.event(level) {
 ///     println!("{} {}", cmd.address, cmd.command);
 /// }
 ///
@@ -158,7 +159,7 @@ pub struct ClockedReceiver<R: EdgeDriven, C> {
     /// Time of the last edge
     last_edge: R::Instant,
     /// Level after the last edge
-    level: bool,
+    level: Level,
     /// The input has been idle since the last timeout
     idle: bool,
     idle_timeout: R::Duration,
@@ -176,7 +177,7 @@ where
             idle_timeout: recv.idle_timeout(),
             recv,
             clock,
-            level: false,
+            level: Level::Space,
             idle: true,
         }
     }
@@ -198,14 +199,14 @@ where
     }
 
     /// Report an edge that occurred now
-    /// * `edge`: true = start of an IR mark (the pin reading low on an active-low receiver module), false = start of a space
-    pub fn event(&mut self, edge: bool) -> Result<R::Output, DecodingError> {
+    /// * `level`: The input level after the edge, see [`Level`]
+    pub fn event(&mut self, level: Level) -> Result<R::Output, DecodingError> {
         let now = self.clock.now();
         let dt = C::Mono::checked_sub(now, self.last_edge).unwrap_or(C::Mono::ZERO_DURATION);
         self.last_edge = now;
-        self.level = edge;
+        self.level = level;
         self.idle = false;
-        self.recv.event_edge(dt, edge)
+        self.recv.event_edge(dt, level)
     }
 
     /// True if the input has been idle since the last timeout
@@ -271,7 +272,7 @@ where
     /// Handled as an [`event`](ClockedReceiver::event) if the level differs from
     /// the previous one, and as a [`timeout`](ClockedReceiver::timeout) check
     /// otherwise.
-    pub fn poll(&mut self, level: bool) -> Result<<R as EdgeDriven>::Output, DecodingError> {
+    pub fn poll(&mut self, level: Level) -> Result<<R as EdgeDriven>::Output, DecodingError> {
         if level != self.level {
             self.event(level)
         } else {
@@ -316,8 +317,8 @@ where
 {
     type Output = <R as EdgeDriven>::Output;
 
-    fn poll_edge(&mut self, edge: bool) -> Result<Self::Output, DecodingError> {
-        self.poll(edge)
+    fn poll_edge(&mut self, level: Level) -> Result<Self::Output, DecodingError> {
+        self.poll(level)
     }
 }
 
@@ -350,8 +351,8 @@ where
     }
 
     /// Report an edge that occurred now and get an iterator over the decoded commands
-    pub fn event_iter(&mut self, edge: bool) -> impl Iterator<Item = Message> {
-        self.event(edge).into_iter().flatten().flatten()
+    pub fn event_iter(&mut self, level: Level) -> impl Iterator<Item = Message> {
+        self.event(level).into_iter().flatten().flatten()
     }
 }
 
@@ -366,7 +367,7 @@ where
     ///
     /// To be called from the pin interrupt.
     pub fn event(&mut self) -> Result<R::Output, Error<Pin::Error>> {
-        let edge = self.pin_mut().is_low().map_err(Error::Hal)?;
-        self.receiver_mut().event(edge).map_err(Into::into)
+        let level = self.pin_mut().is_low().map(Level::from_active_low).map_err(Error::Hal)?;
+        self.receiver_mut().event(level).map_err(Into::into)
     }
 }

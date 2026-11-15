@@ -1,4 +1,5 @@
 use crate::{
+    Level,
     protocol::{rc6::Rc6Command, Rc6},
     receiver::{BufferReceiver, ProtocolDecoder},
     sender::PulseBuffer,
@@ -16,21 +17,21 @@ fn state_debug() {
     sender.load::<Rc6>(&cmd, SAMPLE_RATE);
 
 
-    let mut edge = false;
+    let mut level = Level::Space;
 
     let mut recv = Receiver::<Rc6>::new(SAMPLE_RATE);
 
     let mut res = None;
 
     for dist in sender.buffer() {
-        edge = !edge;
+        level = level.toggle();
 
         let s0 = recv.decoder.state;
-        let cmd = recv.event(*dist, edge);
+        let cmd = recv.event(*dist, level);
 
         println!(
             "{} ({}): {:?} -> {:?}",
-            edge as u32, dist, s0, recv.decoder.state
+            level.is_mark() as u32, dist, s0, recv.decoder.state
         );
 
         if let Ok(Some(cmd)) = cmd {

@@ -1,6 +1,7 @@
 use fugit::{TimerDurationU32, TimerInstantU32};
 
 use crate::{
+    Level,
     protocol::{
         nec::{AppleNecCommand, NecExtendedCommand, NecCommand, NecCommandVariant, Samsung32Command},
         Nec,
@@ -228,13 +229,13 @@ fn fugit() {
 
     let mut cmds = std::vec::Vec::new();
 
-    let mut edge = false;
+    let mut level = Level::Space;
     for dt in &data {
-        edge = !edge;
+        level = level.toggle();
 
         let dtf = TimerDurationU32::from_ticks(*dt);
 
-        let s = receiver.event(dtf, edge);
+        let s = receiver.event(dtf, level);
 
         if let Ok(Some(cmd)) = s {
             cmds.push(cmd);
