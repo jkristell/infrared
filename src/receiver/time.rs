@@ -60,6 +60,20 @@ where
             .map(Into::into)
     }
 
+    /// The longest duration that is part of a valid symbol
+    pub fn max(&self) -> Mono::Duration {
+        self.spans.iter().fold(Mono::ZERO_DURATION, |max, span| {
+            if span.high > max { span.high } else { max }
+        })
+    }
+
+    /// Time without edges after which the input is considered idle: twice
+    /// the longest valid symbol
+    pub fn idle_timeout(&self) -> Mono::Duration {
+        let max = self.max();
+        max + max
+    }
+
     pub fn check_overlaps(&self) -> bool {
         for i in 0..self.spans.len() {
             for j in 0..self.spans.len() {

@@ -18,9 +18,13 @@ use crate::receiver::PinReceiver;
 #[cfg(feature = "remotes")]
 use crate::remotecontrol::{Button, RemoteControl};
 use crate::{
-    receiver::{time::InfraMonotonic, DecoderBuilder, Receiver},
+    receiver::{time::InfraMonotonic, Clock, ClockedReceiver, DecoderBuilder, Receiver},
     PolledReceiver, Protocol,
 };
+
+#[cfg(feature = "embedded-hal")]
+type ClockedPinReceiver<Proto, C, Cmd, Pin> =
+    PinReceiver<ClockedReceiver<Receiver<Proto, <C as Clock>::Mono, Cmd>, C>, Pin>;
 
 /// Receiver Builder
 pub struct Builder<Proto = (), Mono: InfraMonotonic = u32, Cmd = ()> {
@@ -143,6 +147,35 @@ where
         Cmd: From<<Proto as Protocol>::Cmd>,
     {
         PinReceiver::new(Receiver::new(self.freq), pin)
+    }
+
+    /// Create a Receiver that timestamps the edges with `clock`
+    ///
+    /// The resolution and time representation are taken from the clock.
+    pub fn build_clocked<C>(self, clock: C) -> ClockedReceiver<Receiver<Proto, C::Mono, Cmd>, C>
+    where
+        C: Clock,
+        Proto: DecoderBuilder<C::Mono>,
+        Cmd: From<<Proto as Protocol>::Cmd>,
+    {
+        ClockedReceiver::with_clock(clock)
+    }
+
+    #[cfg(feature = "embedded-hal")]
+    /// Create a Receiver that timestamps the edges with `clock`, with `pin` as input
+    ///
+    /// The resolution and time representation are taken from the clock.
+    pub fn build_clocked_with_pin<C, Pin: InputPin>(
+        self,
+        clock: C,
+        pin: Pin,
+    ) -> ClockedPinReceiver<Proto, C, Cmd, Pin>
+    where
+        C: Clock,
+        Proto: DecoderBuilder<C::Mono>,
+        Cmd: From<<Proto as Protocol>::Cmd>,
+    {
+        ClockedReceiver::with_clock_and_pin(clock, pin)
     }
 
     /// Create a polled Receiver

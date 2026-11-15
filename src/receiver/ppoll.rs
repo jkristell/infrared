@@ -6,7 +6,7 @@ use embedded_hal::digital::InputPin;
 #[cfg(feature = "embedded-hal")]
 use crate::receiver::PinReceiver;
 use crate::{
-    receiver::{DecoderBuilder, DecodingError, PollDriven, ProtocolDecoder},
+    receiver::{DecoderBuilder, DecodingError, PollDriven, ProtocolDecoder, Timeout},
     Protocol,
 };
 
@@ -17,6 +17,10 @@ use crate::{
 /// sampled pin state is fed to [`poll`](PolledReceiver::poll) manually. Combine
 /// it with [`PinReceiver`](crate::receiver::PinReceiver) to let it sample an
 /// embedded-hal pin.
+///
+/// The receiver detects idle input by itself: when the input hasn't changed
+/// for [`idle_timeout`](PolledReceiver::idle_timeout) samples, any partially
+/// received frame is discarded.
 pub struct PolledReceiver<
     Proto: DecoderBuilder<u32>,
     Cmd: From<<Proto as Protocol>::Cmd> = <Proto as Protocol>::Cmd,
@@ -27,6 +31,8 @@ pub struct PolledReceiver<
     edge: bool,
     /// Seen at
     last_edge: u32,
+    /// Number of samples without an edge after which the input is idle
+    idle_samples: u32,
     /// The decoder
     decoder: Proto::Decoder,
     /// Command
@@ -40,8 +46,10 @@ where
 {
     /// Create a new PolledReceiver with the given sample frequency (in Hz)
     pub fn new(freq: u32) -> Self {
+        let decoder = Proto::build(freq);
         Self {
-            decoder: Proto::build(freq),
+            idle_samples: decoder.spans().idle_timeout(),
+            decoder,
             clock: 0,
             edge: false,
             last_edge: 0,
@@ -56,6 +64,9 @@ where
         self.clock = self.clock.wrapping_add(1);
 
         if edge == self.edge {
+            if self.clock.wrapping_sub(self.last_edge) == self.idle_samples {
+                return self.timeout();
+            }
             return Ok(None);
         }
 
@@ -66,6 +77,21 @@ where
         self.decoder
             .event_total(edge, ds)
             .map(|cmd| cmd.map(Into::into))
+    }
+
+    /// Discard any partially received frame
+    ///
+    /// Called automatically by [`poll`](PolledReceiver::poll) once the input
+    /// has been idle for [`idle_timeout`](PolledReceiver::idle_timeout) samples.
+    pub fn timeout(&mut self) -> Result<Option<Cmd>, DecodingError> {
+        self.decoder
+            .timeout_total()
+            .map(|cmd| cmd.map(Into::into))
+    }
+
+    /// Number of samples without an edge after which the input is considered idle
+    pub fn idle_timeout(&self) -> u32 {
+        self.idle_samples
     }
 
     #[cfg(feature = "embedded-hal")]
@@ -84,5 +110,17 @@ where
 
     fn poll_edge(&mut self, edge: bool) -> Result<Self::Output, DecodingError> {
         self.poll(edge)
+    }
+}
+
+impl<Proto, Cmd> Timeout for PolledReceiver<Proto, Cmd>
+where
+    Proto: DecoderBuilder<u32>,
+    Cmd: From<<Proto as Protocol>::Cmd>,
+{
+    type Output = Option<Cmd>;
+
+    fn timeout(&mut self) -> Result<Self::Output, DecodingError> {
+        PolledReceiver::timeout(self)
     }
 }
