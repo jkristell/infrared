@@ -1,3 +1,5 @@
+#![cfg(all(feature = "rc5", feature = "embedded-hal"))]
+
 use core::convert::Infallible;
 
 use embedded_hal::pwm::{ErrorType, SetDutyCycle};
@@ -38,6 +40,10 @@ fn send_receive_roundtrip() {
 
     let cmd = Rc5Command::new(20, 9, false);
     sender.load::<Rc5>(&cmd);
+    assert!(!sender.is_idle());
+
+    // A second load while busy must not replace the pending command
+    sender.load::<Rc5>(&Rc5Command::new(1, 1, false));
 
     // Drive the sender and record the tick index of every carrier on/off edge
     let mut edges = vec![];
